@@ -1,0 +1,17 @@
+{% extends base %}
+
+{% block title %}F1Viz{% endblock %}
+
+{% block preamble %}
+<style>
+    {% include 'styles.css' %}
+    @import url(https://fonts.googleapis.com/css?family=Noto+Sans);
+    body {
+        font-family: 'Noto Sans', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+        color: #000;
+        background: #2F2F2F;
+    }
+</style>
+{% endblock %}

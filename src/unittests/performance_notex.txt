@@ -1,0 +1,270 @@
+yearcircuit.py
+count    1033.000000
+mean      682.528917
+std       482.161403
+min         4.315853
+25%       178.763866
+50%       645.722151
+75%      1025.765896
+max      3650.756121
+95% RUN TIME: 1200ms
+Completed generate_gap_plot in  200.9730339050293 milliseconds
+Completed generate_position_plot in  52.14715003967285 milliseconds
+Completed generate_position_plot in  69.40722465515137 milliseconds
+Completed generate_lap_time_plot in  80.17516136169434 milliseconds
+Completed generate_lap_time_plot in  78.83477210998535 milliseconds
+Completed generate_pit_stop_plot in  0.11301040649414062 milliseconds
+Completed detect_mark_safety_car_end in  36.79490089416504 milliseconds
+Completed mark_fastest_lap in  0.4279613494873047 milliseconds
+Completed generate_race_stats_layout in  526.1707305908203 milliseconds
+The long time for generate_race_stats_layout is from downloading the image from the web
+
+year.py
+count      70.000000
+mean     1912.822945
+std       442.382750
+min      1166.359186
+25%      1638.840079
+50%      1772.091627
+75%      2125.991940
+max      3231.806993
+95% RUN TIME: 2400ms
+For 2003:
+Completed generate_wdc_plot in  411.99493408203125 milliseconds
+Completed generate_constructors_championship_plot in  75.73604583740234 milliseconds
+Completed generate_position_mlt_scatter in  166.71228408813477 milliseconds
+Completed generate_position_mfms_scatter in  173.13194274902344 milliseconds
+Completed generate_teams_and_drivers in  121.90604209899902 milliseconds
+Completed generate_races_info in  116.6982650756836 milliseconds
+Completed generate_wdc_results in  609.0319156646729 milliseconds
+Completed generate_dnf_table in  137.15410232543945 milliseconds
+
+driver.py
+count      848.000000
+mean      1445.045838
+std       1787.397759
+min         25.880814
+25%        425.282300
+50%        729.308128
+75%       1529.110312
+max      11235.489130
+95% RUN TIME: 4000ms (note, drivers with many races take like 6000ms)
+For Schumacher, a driver with many races:
+Completed generate_positions_plot in  3064.605236053467 milliseconds
+Completed mark_team_changes in  183.47740173339844 milliseconds
+Completed generate_circuit_performance_table in  139.55998420715332 milliseconds
+Completed generate_finishing_position_bar_plot in  4.974842071533203 milliseconds
+Completed generate_wdc_position_bar_plot in  17.162084579467773 milliseconds
+Completed generate_win_plot in  2093.6551094055176 milliseconds
+Completed generate_spvfp_scatter in  1945.6250667572021 milliseconds
+Completed generate_mltr_fp_scatter in  2429.118871688843 milliseconds
+Completed generate_team_performance_layout in  941.5159225463867 milliseconds
+
+circuit.py
+count      74.000000
+mean      530.895011
+std       642.872193
+min        26.833773
+25%        79.030633
+50%       209.663987
+75%       755.744219
+max      2749.708652
+95% RUN TIME: 1400ms (note this includes an image download)
+For Monza, a circuit with many races:
+Completed generate_times_plot in  638.3869647979736 milliseconds
+Completed generate_spmfp_plot in  237.49995231628418 milliseconds
+Completed generate_circuit_results_table in  787.6789569854736 milliseconds
+Completed generate_circuit_stats_layout in  326.2059688568115 milliseconds
+Completed generate_winners_table in  156.2020778656006 milliseconds
+
+constructor.py
+count      210.000000
+mean      1375.329748 (this is low because the majority of constructors participated for like 1 season)
+std       2594.165675
+min          3.387213
+25%         68.283558
+50%        485.158086
+75%       1387.936890
+max      18490.709066
+95% RUN TIME: ~4000ms
+NOTE: it seems that the modern teams seem to take a really long time, likely due to quali and fastest lap data, but
+      even still this really needs to be cached
+For Ferrari:
+Completed generate_positions_plot in  11177.936792373657 milliseconds
+Completed generate_finishing_positions_bar_plot in  5.537748336791992 milliseconds
+Completed generate_wcc_position_bar_plot in  16.91126823425293 milliseconds
+Completed generate_win_plot in  6736.401796340942 milliseconds
+Completed generate_circuit_performance_table in  542.003870010376 milliseconds
+Completed generate_driver_performance_layout in  993.1411743164062 milliseconds
+Completed generate_constructor_stats_layout in  638.0620002746582 milliseconds
+
+circuitdriver.py
+count    7793.000000
+mean      300.937959
+std        94.474097
+min       206.937790
+25%       232.821941
+50%       263.367891
+75%       328.967094
+max      1004.456758
+95% RUN TIME: 900ms
+For Kimi at Monaco:
+Long time caused by image downloading, takes ~300-400ms
+Completed generate_positions_plot in  136.61527633666992 milliseconds
+Completed generate_lap_time_distribution_plot in  119.82583999633789 milliseconds
+Completed generate_spvfp_scatter in  96.67468070983887 milliseconds
+Completed generate_mltr_fp_scatter in  120.92113494873047 milliseconds
+Completed generate_results_table in  108.63113403320312 milliseconds
+Completed generate_stats_div in  3.5309791564941406 milliseconds
+
+driverconstructor.py
+count    2109.000000
+mean      784.500975
+std      1027.376508
+min       167.868137
+25%       188.930988
+50%       345.144749
+75%      1017.991066
+max      9807.538033
+95% RUN TIME: 3000ms
+For Kimi at Ferrari:
+Completed generate_positions_plot in  1255.5809020996094 milliseconds
+Completed mark_teammate_changes in  104.05492782592773 milliseconds
+Completed generate_win_plot in  1039.0918254852295 milliseconds
+Completed generate_teammatefp_fp_scatter in  972.8999137878418 milliseconds
+Completed generate_teammate_diff_comparison_scatter in  1245.9640502929688 milliseconds
+Completed generate_teammate_comparison_line_plot in  832.5271606445312 milliseconds
+Completed generate_finishing_position_bar_plot in  5.318164825439453 milliseconds
+Completed generate_wdc_position_bar_plot in  20.473241806030273 milliseconds
+Completed generate_wcc_position_bar_plot in  58.61973762512207 milliseconds
+Completed generate_spvfp_scatter in  982.2940826416016 milliseconds
+Completed generate_mltr_fp_scatter in  1199.4891166687012 milliseconds
+Completed generate_circuit_performance_table in  148.57912063598633 milliseconds
+Completed generate_stats_layout in  32.75799751281738 milliseconds
+
+yeardriver.py
+count    3099.000000
+mean     1346.699568
+std       282.472837
+min       133.615732
+25%      1167.457461
+50%      1369.032860
+75%      1523.311496
+max      2877.269030
+95% RUN TIME: 2000ms
+For Vettel in 2013:
+Completed generate_wdc_plot in  586.820125579834 milliseconds
+Completed generate_positions_plot in  252.67267227172852 milliseconds
+Completed generate_win_plot in  179.0769100189209 milliseconds
+Completed generate_finishing_position_bar_plot in  5.19108772277832 milliseconds
+Completed generate_spvfp_scatter in  146.10719680786133 milliseconds
+Completed generate_mltr_fp_scatter in  196.78807258605957 milliseconds
+Completed generate_teammate_comparison_line_plot in  175.8437156677246 milliseconds
+Completed generate_results_table in  166.1362648010254 milliseconds
+Completed generate_stats_layout in  3.4809112548828125 milliseconds
+
+yearconstructor.py
+count     900.000000
+mean     1440.616976
+std       514.349374
+min       346.322298
+25%      1118.961871
+50%      1628.146410
+75%      1769.474208
+max      2959.843874
+95% TIME: 2400ms
+For Ferrari in 2014:
+Completed generate_wcc_plot in  84.53607559204102 milliseconds
+Completed generate_positions_plot in  236.85312271118164 milliseconds
+Completed generate_spvfp_scatter in  267.32397079467773 milliseconds
+Completed generate_mltr_fp_scatter in  324.21112060546875 milliseconds
+Completed generate_win_plot in  195.42598724365234 milliseconds
+Completed generate_finishing_position_bar_plot in  4.708766937255859 milliseconds
+Completed generate_driver_performance_table in  45.0439453125 milliseconds
+Completed generate_results_table in  412.68086433410645 milliseconds
+Completed generate_teammate_comparison_line_plot in  191.4517879486084 milliseconds
+Completed generate_stats_layout in  5.276918411254883 milliseconds
+
+circuitconstructor.py
+count    2627.000000
+mean      524.614023
+std       566.429261
+min       160.358191
+25%       221.533060
+50%       338.810205
+75%       578.963518
+max      7746.849060
+(Note this doesn't include the image download)
+95% TIME: 1500ms
+For Ferrari at Monaco:
+Completed generate_positions_plot in  1186.5179538726807 milliseconds
+Completed generate_win_plot in  565.2570724487305 milliseconds
+Completed generate_lap_time_distribution_plot in  131.7429542541504 milliseconds
+Completed generate_finishing_position_bar_plot in  9.227991104125977 milliseconds
+Completed generate_spvfp_scatter in  1166.9707298278809 milliseconds
+Completed generate_mltr_fp_scatter in  1364.3450736999512 milliseconds
+Completed generate_stats_layout in  4.110097885131836 milliseconds
+Completed generate_results_table in  1583.7080478668213 milliseconds
+
+yearcircuitdriver.py (note, I randomly sub-sample 7% of the IDs each time as testing every ID combo would be impossible)
+count    1707.000000
+mean      319.785568
+std       330.589227
+min        52.047014
+25%        78.615546
+50%        89.951992
+75%       620.786548
+max      1706.433058
+(Note this above doesn't include the image download)
+95% TIME: 1100ms
+For Kimi at Monaco in 2015 (generate_stats_layout INCLUDES the image download)
+Completed generate_gap_plot in  214.09320831298828 milliseconds
+Completed generate_position_plot in  54.97288703918457 milliseconds
+Completed generate_lap_time_plot in  106.37593269348145 milliseconds
+Completed detect_mark_safety_car in  42.085886001586914 milliseconds
+Completed mark_fastest_lap in  1.7170906066894531 milliseconds
+Completed detect_mark_overtakes in  157.5758457183838 milliseconds
+Completed generate_quali_table in  63.802242279052734 milliseconds
+
+yearcircuitconstructor.py (note, I randomly sub-sample 15% of the IDs each time as testing every ID combo would be impossible)
+count    1764.000000
+mean      240.513513
+std       190.268159
+min        54.253101
+25%        90.969205
+50%       105.175018
+75%       457.218826
+max       918.971062
+95% TIME: 1000ms
+For Ferrari at Monaco in 2015 (generate_stats_layout INCLUDES the image download)
+Completed generate_gap_plot in  182.96504020690918 milliseconds
+Completed generate_position_plot in  52.564144134521484 milliseconds
+Completed generate_lap_time_plot in  110.78500747680664 milliseconds
+Completed detect_mark_safety_car in  36.75699234008789 milliseconds
+Completed mark_pit_stops in  5.161046981811523 milliseconds
+Completed generate_quali_table in  61.83767318725586 milliseconds
+Completed generate_stats_layout in  435.6050491333008 milliseconds
+
+yeardriverconstructor.py (note, I randomly sub-sample 0.2% of the IDs each time as testing every ID combo would be impossible)
+count    1315.000000
+mean     1309.751904
+std       235.953037
+min       335.409880
+25%      1154.450059
+50%      1329.281807
+75%      1462.426901
+max      2340.843916
+95% TIME: 1900ms
+For Kimi with Ferrari in 2015:
+Completed generate_wdc_plot in  446.43402099609375 milliseconds
+Completed generate_wcc_plot in  77.1491527557373 milliseconds
+Completed generate_positions_plot in  187.5479221343994 milliseconds
+Completed generate_spvfp_scatter in  158.79011154174805 milliseconds
+Completed generate_mltr_fp_scatter in  175.14872550964355 milliseconds
+Completed generate_win_plot in  146.39925956726074 milliseconds
+Completed generate_finishing_position_bar_plot in  4.892110824584961 milliseconds
+Completed generate_teammatefp_fp_scatter in  133.69321823120117 milliseconds
+Completed generate_teammate_diff_comparison_scatter in  164.95490074157715 milliseconds
+Completed generate_teammate_comparison_line_plot in  173.62308502197266 milliseconds
+Completed generate_results_table in  161.54217720031738 milliseconds
+Completed generate_stats_layout in  3.280162811279297 milliseconds
