@@ -1,5 +1,5 @@
-cd /Users/dsiegler/PycharmProjects/F1Viz/
-source venv/bin/activate
+#cd /Users/dsiegler/PycharmProjects/F1Viz/
+#source venv/bin/activate
 export PYTHONPATH="src/"
 echo "Downloading data..."
 python src/data_loading/data_downloader.py
