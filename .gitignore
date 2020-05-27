@@ -1,4 +1,4 @@
-!data/static_data/
+!data/static_data/*
 *.csv
 .DS_Store
 .idea
