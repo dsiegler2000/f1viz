@@ -2,9 +2,11 @@ import argparse
 import os
 import shutil
 from collections import defaultdict
+
+import flag
 import pandas as pd
 import numpy as np
-from utils import get_race_name, get_constructor_name, get_driver_name, millis_to_str
+from utils import millis_to_str, NATIONALITY_TO_FLAG
 
 """
 Does the bulk of the pre-calculation
@@ -96,6 +98,40 @@ else:
     results = pd.read_csv(os.path.join(data_dir, results), index_col=0).set_index("resultId")
     seasons = pd.read_csv(os.path.join(data_dir, seasons), index_col=0).set_index("year")
     status = pd.read_csv(os.path.join(data_dir, status), index_col=0).set_index("statusId")
+
+
+# Define some util methods
+def get_driver_name(did):
+    driver = drivers.loc[did]
+    name = driver["forename"] + " " + driver["surname"]
+    nat = driver["nationality"].lower()
+    if nat in NATIONALITY_TO_FLAG.index:
+        flag_t = NATIONALITY_TO_FLAG.loc[nat, "flag"]
+        name = flag.flagize(f":{flag_t}: " + name)
+    return name
+
+
+def get_race_name(rid):
+    race = races.loc[rid]
+    circuit = circuits.loc[race["circuitId"]]
+    nat = circuit["country"].lower()
+    name = circuit["country"]
+    flag_t = NATIONALITY_TO_FLAG.loc[nat, "flag"]
+    name = flag.flagize(f":{flag_t}: " + name)
+    return name
+
+
+def get_constructor_name(cid):
+    try:
+        constructor = constructors.loc[cid]
+        name = constructor["name"]
+        nat = constructor["nationality"].lower()
+        if nat in NATIONALITY_TO_FLAG.index:
+            flag_t = NATIONALITY_TO_FLAG.loc[nat, "flag"]
+            name = flag.flagize(f":{flag_t}: " + name)
+        return name
+    except KeyError:
+        return "UNKNOWN"
 
 # ======================================================================================================================
 # Weather and safety car info
@@ -206,6 +242,7 @@ if args.enable_ratings:
 if args.enable_round_num_name:
     print("On round number and name")
     driver_standings["roundNum"] = driver_standings["raceId"].apply(lambda x: races.loc[x, "round"])
+
     driver_standings["roundName"] = driver_standings["raceId"].apply(lambda x: get_race_name(x))
     constructor_standings["roundNum"] = constructor_standings["raceId"].apply(lambda x: races.loc[x, "round"])
     constructor_standings["roundName"] = constructor_standings["raceId"].apply(lambda x: get_race_name(x))
