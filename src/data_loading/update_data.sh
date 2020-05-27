@@ -1,5 +1,6 @@
-#cd /Users/dsiegler/PycharmProjects/F1Viz/
-#source venv/bin/activate
+echo "Must be running from source root (one dir above src)"
+mkdir data
+mkdir backup_data
 export PYTHONPATH="src/"
 echo "Downloading data..."
 python src/data_loading/data_downloader.py
