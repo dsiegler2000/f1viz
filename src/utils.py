@@ -10,7 +10,7 @@ from PIL import Image
 from bokeh.colors import RGB
 from bokeh.palettes import Set3_12 as palette
 from bokeh.layouts import row, column
-from bokeh.models import Div, Spacer, DatetimeTickFormatter
+from bokeh.models import Div, Spacer
 from bokeh.plotting import figure
 import pandas as pd
 from reportlab.graphics import renderPM
@@ -33,12 +33,12 @@ DATETIME_TICK_KWARGS = dict(
     hourmin=_MINSEC_FORMAT
 )
 
-drivers = load_drivers()
-constructors = load_constructors()
-circuits = load_circuits()
-races = load_races()
-constructor_colors = load_constructor_colors()
-status = load_status()
+drivers = None
+constructors = None
+circuits = None
+races = None
+constructor_colors = None
+status = None
 
 # Quick map from nationality to their country code (for flag emojis)
 NATIONALITY_TO_FLAG = pd.read_csv("data/static_data/nationalities.csv", index_col=0)
@@ -134,6 +134,9 @@ def get_driver_name(did, include_flag=True, just_last=False):
     :param just_last: Whether to include the first name
     :return: String
     """
+    global drivers
+    if drivers is None:
+        drivers = load_drivers()
     driver = drivers.loc[did]
     if just_last:
         name = driver["surname"]
@@ -161,6 +164,9 @@ def get_constructor_name(cid, include_flag=True):
     :param include_flag: Whether to include the nationality flag in the constructor's name
     :return: String
     """
+    global constructors
+    if constructors is None:
+        constructors = load_constructors()
     try:
         constructor = constructors.loc[cid]
         name = constructor["name"]
@@ -183,6 +189,9 @@ def get_circuit_name(cid, include_flag=True):
     :param include_flag: Whether to include the nationality flag in the constructor's name
     :return: String
     """
+    global circuits
+    if circuits is None:
+        circuits = load_circuits()
     circuit = circuits.loc[cid]
     name = circuit["name"]
     if include_flag:
@@ -207,6 +216,11 @@ def get_race_name(rid, include_flag=True, include_country=True, line_br=None, us
     False
     :return: String
     """
+    global circuits, races
+    if circuits is None:
+        circuits = load_circuits()
+    if races is None:
+        races = load_races()
     race = races.loc[rid]
     circuit = circuits.loc[race["circuitId"]]
     name = circuit["country"] if include_country else race["name"]
@@ -412,6 +426,9 @@ def result_to_str(pos, status_id):
     :param status_id: Status ID
     :return: Results string, finish position (if driver retired, will be nan)
     """
+    global status
+    if status is None:
+        status = load_status()
     finish_pos = str(pos)
     classification = get_status_classification(status_id)
     if classification == "finished" and finish_pos.isnumeric():
@@ -430,6 +447,9 @@ class ColorDashGenerator:
     def __init__(self, colors=palette, dashes=None):
         if dashes is None:
             dashes = ["solid", "dashed", "dotted", "dotdash"]
+        global constructor_colors
+        if constructor_colors is None:
+            constructor_colors = load_constructor_colors()
         self.constructor_color_map = {}
         self.constructor_dashes_map = defaultdict(lambda: itertools.cycle(dashes))
         self.driver_dashes_map = {}
