@@ -1,4 +1,6 @@
 *.csv
 !data/static_data/*
+!data/*
 .DS_Store
 .idea
+venv
