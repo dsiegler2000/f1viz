@@ -3,10 +3,10 @@ import math
 from bokeh.layouts import column, row
 from bokeh.models import Spacer, Div, Span, Label
 from data_loading.data_loader import load_results, load_lap_times, load_pit_stops, load_qualifying, load_circuits, \
-    load_fastest_lap_data, load_driver_standings
+    load_fastest_lap_data, load_driver_standings, load_races
 from mode import yearcircuit
 import numpy as np
-from utils import PLOT_BACKGROUND_COLOR, races, get_driver_name, get_race_name, get_circuit_name, plot_image_url, \
+from utils import PLOT_BACKGROUND_COLOR, get_driver_name, get_race_name, get_circuit_name, plot_image_url, \
     get_constructor_name, int_to_ordinal, result_to_str, millis_to_str, vdivider, rounds_to_str
 
 # Note, ycd=yearcircuitdriver and dr=driver race
@@ -18,6 +18,7 @@ quali = load_qualifying()
 circuits = load_circuits()
 fastest_lap_data = load_fastest_lap_data()
 driver_standings = load_driver_standings()
+races = load_races()
 
 
 def get_layout(year_id=-1, circuit_id=-1, driver_id=-1, download_image=True, **kwargs):

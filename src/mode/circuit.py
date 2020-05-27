@@ -139,6 +139,11 @@ def generate_times_plot(circuit_years, circuit_quali, circuit_fastest_lap_data, 
     max_time = max(source["fastest_lap_time"].max(), source["avg_lap_time"].max(), source["quali_time"].max()) + 5000
     start = pd.to_datetime(min_time, unit="ms")
     end = pd.to_datetime(max_time, unit="ms")
+    if pd.isna(start) or pd.isna(end):
+        min_time = source["avg_lap_time"].min() - 5000
+        max_time = source["avg_lap_time"].max() + 5000
+        start = pd.to_datetime(min_time, unit="ms")
+        end = pd.to_datetime(max_time, unit="ms")
 
     # Scale rating so that a 0=min_time, 10=max_time
     source["rating_scaled"] = (max_time - min_time) * (source["rating"] / 10) + min_time
@@ -167,40 +172,47 @@ def generate_times_plot(circuit_years, circuit_quali, circuit_fastest_lap_data, 
         "line_width": 2,
         "muted_alpha": 0.05
     }
-    quali_time_line = times_plot.line(y="quali_time", line_color="red", **kwargs)
-    fastest_lap_time_line = times_plot.line(y="fastest_lap_time", line_color="yellow", **kwargs)
+
     avg_lap_time_line = times_plot.line(y="avg_lap_time", line_color="white", **kwargs)
-    rating_line = times_plot.line(y="rating_scaled", line_color="green", line_alpha=0.9, name="rating_line", **kwargs)
+    legend_items = [
+        LegendItem(label="Average Race Lap", renderers=[avg_lap_time_line]),
+    ]
 
-    # Add the other axis
-    y_range = Range1d(start=0, end=10, bounds=(0, 10))
-    times_plot.extra_y_ranges = {"rating_range": y_range}
-    axis = LinearAxis(y_range_name="rating_range", axis_label="Rating")
-    times_plot.add_layout(axis, "right")
+    if source["quali_time"].isna().sum() < source.shape[0]:
+        quali_time_line = times_plot.line(y="quali_time", line_color="red", **kwargs)
+        legend_items.append(LegendItem(label="Qualifying Fastest", renderers=[quali_time_line]))
 
-    def update_rating_axis():
-        def dt_to_millis(t):
-            if isinstance(t, float) or isinstance(t, int):
-                return t
-            return t.microsecond / 1000 + t.second * 1000 + t.minute * 1000 * 60
-        max_time = dt_to_millis(times_plot.y_range.end)
-        min_time = dt_to_millis(times_plot.y_range.start)
-        new_rating = (max_time - min_time) * (source["rating"].replace("???", np.nan).astype(float) / 10) + min_time
-        column_source.patch({
-            "rating_scaled": [(slice(new_rating.shape[0]), new_rating)]
-        })
-        times_plot.extra_y_ranges.update({"rating_range": Range1d(start=0, end=10, bounds=(0, 10))})
+    if source["fastest_lap_time"].isna().sum() < source.shape[0]:
+        fastest_lap_time_line = times_plot.line(y="fastest_lap_time", line_color="yellow", **kwargs)
+        legend_items.append(LegendItem(label="Fastest Race Lap", renderers=[fastest_lap_time_line]))
 
-    times_plot.y_range.on_change("start", lambda attr, old, new: update_rating_axis())
-    times_plot.y_range.on_change("end", lambda attr, old, new: update_rating_axis())
+    # Add rating and other axis
+    if source["rating"].replace("???", np.nan).isna().sum() < source.shape[0]:
+        rating_line = times_plot.line(y="rating_scaled", line_color="green", line_alpha=0.9, name="rating_line",
+                                      **kwargs)
+        legend_items.append(LegendItem(label="Average Rating", renderers=[rating_line]))
+        y_range = Range1d(start=0, end=10, bounds=(0, 10))
+        times_plot.extra_y_ranges = {"rating_range": y_range}
+        axis = LinearAxis(y_range_name="rating_range", axis_label="Rating")
+        times_plot.add_layout(axis, "right")
+
+        def update_rating_axis():
+            def dt_to_millis(t):
+                if isinstance(t, float) or isinstance(t, int):
+                    return t
+                return t.microsecond / 1000 + t.second * 1000 + t.minute * 1000 * 60
+            max_time = dt_to_millis(times_plot.y_range.end)
+            min_time = dt_to_millis(times_plot.y_range.start)
+            new_rating = (max_time - min_time) * (source["rating"].replace("???", np.nan).astype(float) / 10) + min_time
+            column_source.patch({
+                "rating_scaled": [(slice(new_rating.shape[0]), new_rating)]
+            })
+            times_plot.extra_y_ranges.update({"rating_range": Range1d(start=0, end=10, bounds=(0, 10))})
+
+        times_plot.y_range.on_change("start", lambda attr, old, new: update_rating_axis())
+        times_plot.y_range.on_change("end", lambda attr, old, new: update_rating_axis())
 
     # Legend
-    legend_items = [
-        LegendItem(label="Qualifying Fastest", renderers=[quali_time_line]),
-        LegendItem(label="Fastest Race Lap", renderers=[fastest_lap_time_line]),
-        LegendItem(label="Average Race Lap", renderers=[avg_lap_time_line]),
-        LegendItem(label="Average Rating", renderers=[rating_line])
-    ]
     legend = Legend(items=legend_items, location="top_right", glyph_height=15, spacing=2, inactive_fill_color="gray")
     times_plot.add_layout(legend, "right")
     times_plot.legend.click_policy = "mute"
@@ -209,10 +221,10 @@ def generate_times_plot(circuit_years, circuit_quali, circuit_fastest_lap_data, 
     # Hover tooltip
     times_plot.add_tools(HoverTool(show_arrow=False, tooltips=[
         ("Year", "@year"),
-        ("Qualifying Lap Time", "@quali_time_str"),
-        ("Fastest Lap Time", "@fastest_lap_str"),
+        # ("Qualifying Lap Time", "@quali_time_str"),
+        # ("Fastest Lap Time", "@fastest_lap_str"),
         ("Average Lap Time", "@avg_lap_str"),
-        ("Rating", "@rating")
+        # ("Rating", "@rating")
     ]))
 
     # Crosshair
