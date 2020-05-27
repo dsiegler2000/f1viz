@@ -1,5 +1,5 @@
 from bokeh.layouts import column, row
-from bokeh.models import AutocompleteInput, Div, Select
+from bokeh.models import AutocompleteInput, Div, Select, Button
 from bokeh.io import curdoc
 from data_loading.data_loader import load_races, load_drivers, load_circuits, load_constructors
 from mode import home, yearcircuit, unimplemented, year, driver, circuit, constructor, circuitdriver, driverconstructor, \
@@ -10,6 +10,10 @@ import logging
 # Set up some logging
 logging.basicConfig(level=logging.NOTSET)
 logging.root.setLevel(logging.NOTSET)
+
+logging.info(f"Receiving request, PID: {os.getpid()}")
+
+INCLUDE_GENERATE_BUTTON = True
 
 # Load data
 races = load_races()
@@ -107,14 +111,15 @@ def update():
                                   driver_id=driver_id, constructor_id=constructor_id, mode=mode[0])
 
     curdoc().remove_root(lay)
-    lay = column(desc, search_bars_row, mode_lay, sizing_mode="scale_width")
+    lay = column([header, search_bars_layout, mode_lay, footer], sizing_mode="scale_width")
     curdoc().add_root(lay)
 
 
 logging.info("Constructing initial layout...")
 
-# Header
-desc = Div(text=open(os.path.join("src", "header.html")).read(), sizing_mode="stretch_width")
+# Header and footer
+header = Div(text=open(os.path.join("src", "header.html")).read(), sizing_mode="stretch_width")
+footer = Div(text=open(os.path.join("src", "footer.html")).read(), sizing_mode="stretch_width")
 
 # Season search bar
 year_completions = ["<select year>"] + [str(y) for y in races.sort_values(by="year", ascending=False)["year"].unique()]
@@ -157,12 +162,17 @@ constructor_input = Select(options=constructor_completions)
 # year_input.value = "2017"
 
 search_bars = [circuit_input, year_input, driver_input, constructor_input]
-for s in search_bars:
-    s.on_change("value", lambda attr, old, new: update())
+search_bars_layout = row(*search_bars, sizing_mode="scale_width")
 
-search_bars_row = row(*search_bars, sizing_mode="scale_width")
+if INCLUDE_GENERATE_BUTTON:
+    generate_button = Button(label="Generate Plots")
+    generate_button.on_click(lambda event: update())
+    search_bars_layout = column([search_bars_layout, generate_button], sizing_mode="scale_width")
+else:
+    for s in search_bars:
+        s.on_change("value", lambda attr, old, new: update())
 
-lay = column(desc, search_bars_row, mode_lay, sizing_mode="scale_width")
+lay = column([header, search_bars_layout, mode_lay, footer], sizing_mode="scale_width")
 
 curdoc().add_root(lay)
 curdoc().title = "F1Viz"

@@ -77,12 +77,11 @@ def get_layout(year_id=-1, **kwargs):
     # Bring it all together
     middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
 
-    plots = column([wdc_plot, middle_spacer, constructors_plot, middle_spacer,
-                    position_mlt_scatter, middle_spacer, position_mfms_scatter, middle_spacer],
-                   sizing_mode="stretch_width")
-
     layout = column([header,
-                     plots,
+                     wdc_plot, middle_spacer,
+                     constructors_plot, middle_spacer,
+                     position_mlt_scatter, middle_spacer,
+                     position_mfms_scatter, middle_spacer,
                      middle_spacer,
                      teams_and_drivers,
                      races_info,
@@ -718,9 +717,9 @@ def generate_wdc_results(year_results, year_driver_standings, year_races):
 
     title = Div(text="""<h2 style="margin-bottom:0px;">World Driver's Championship Table</h2>""")
     subtitle = Div(text="<i>The coloring is based on finishing status, and top 10 are colored differently.</i>")
-    table = bokeh.layouts.row([Div(text=htmlcode)], sizing_mode="stretch_width")
+    table = bokeh.layouts.row([Div(text=htmlcode)], sizing_mode="fixed")
 
-    return column([title, subtitle, table], sizing_mode="stretch_width")
+    return column([title, subtitle, table], sizing_mode="fixed")
 
 
 def generate_dnf_table(year_results):
