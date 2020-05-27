@@ -1,5 +1,4 @@
 *.csv
 !data/static_data/*
-!backup_data
 .DS_Store
 .idea
