@@ -261,8 +261,10 @@ if args.enable_race_mlt:
     print("On mean lap time")
     constructor_df = pd.DataFrame(columns=["raceId", "constructorId", "constructor_name", "mean_time", "rank"])
     i = 0
+    counter = 0
     for race_id in races.index:
-        if i % 100 == 0:
+        counter += 1
+        if counter % 100 == 0:
             print(f"{i} / {races.shape[0]}")
         race_laps = lap_times[lap_times["raceId"] == race_id]
         race_results = results[results["raceId"] == race_id]
