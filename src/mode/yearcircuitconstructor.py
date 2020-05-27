@@ -163,7 +163,7 @@ def mark_pit_stops(ycc_pit_stop_data, driver_ids, cached_driver_map, plots):
     dh = 0.3
     for did in driver_ids:
         ycd_pit_stop_data = ycc_pit_stop_data[ycc_pit_stop_data["driverId"] == did]
-        yearcircuitdriver.mark_pit_stops(ycd_pit_stop_data, plots, driver_id=did, cached_driver_map=cached_driver_map,
+        yearcircuitdriver.mark_pit_stops(ycd_pit_stop_data, plots, did, cached_driver_map=cached_driver_map,
                                          h_pct=h_pct)
         h_pct += dh
 

@@ -69,7 +69,7 @@ def get_layout(year_id=-1, circuit_id=-1, driver_id=-1, download_image=True, **k
     disclaimer_overtakes = detect_mark_overtakes(ycd_laps, race_laps, plots)
 
     # Mark pit stops
-    mark_pit_stops(ycd_pit_stop_data, [gap_plot, lap_time_plot])
+    mark_pit_stops(ycd_pit_stop_data, [gap_plot, lap_time_plot], driver_id)
 
     # Quali table
     quali_table, quali_source = generate_quali_table(race_quali, race_results, driver_id)
@@ -220,20 +220,18 @@ def detect_mark_overtakes(ycd_laps, race_laps, plots):
     return disclaimer
 
 
-def mark_pit_stops(ycd_pit_stop_data, plots, driver_id=None, cached_driver_map=None, h_pct=0.5):
+def mark_pit_stops(ycd_pit_stop_data, plots, driver_id, cached_driver_map=None, h_pct=0.5):
     """
     Marks pit stops with a vertical line
     :param ycd_pit_stop_data: YCD pit stop data
     :param plots: Plots to mark
-    :param driver_id: If not None, will also mark the who did the pit stop
+    :param driver_id: Driver ID
     :param cached_driver_map: Must be passed if `driver_id is not None`
     :param h_pct: Percent of the height to write the safety car time
     :return: None
     """
     if ycd_pit_stop_data.shape[0] == 0:
         return
-    if driver_id is not None and cached_driver_map is None:
-        driver_id = None
     for idx, row in ycd_pit_stop_data.iterrows():
         lap = row["lap"]
         millis = row["milliseconds"]
