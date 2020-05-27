@@ -3,7 +3,8 @@ from bokeh.models import AutocompleteInput, Div, Select, Button
 from bokeh.io import curdoc
 from data_loading.data_loader import load_races, load_drivers, load_circuits, load_constructors
 from mode import home, yearcircuit, unimplemented, year, driver, circuit, constructor, circuitdriver, driverconstructor, \
-    yeardriver, yearconstructor, circuitconstructor, yearcircuitdriver, yearcircuitconstructor, yeardriverconstructor
+    yeardriver, yearconstructor, circuitconstructor, yearcircuitdriver, yearcircuitconstructor, yeardriverconstructor, \
+    circuitdriverconstructor, yearcircuitdriverconstructor
 import os
 import logging
 
@@ -30,7 +31,7 @@ modes = {
     0b0100: ["CIRCUIT", circuit],
     0b0010: ["DRIVER", driver],
     0b0001: ["CONSTRUCTOR", constructor],
-    0b1100: ["YEARCIRCUIT", yearcircuit],    # a year plus a circuit = a race
+    0b1100: ["YEARCIRCUIT", yearcircuit],
     0b0110: ["CIRCUITDRIVER", circuitdriver],
     0b0011: ["DRIVERCONSTRUCTOR", driverconstructor],
     0b1010: ["YEARDRIVER", yeardriver],
@@ -39,8 +40,8 @@ modes = {
     0b1110: ["YEARCIRCUITDRIVER", yearcircuitdriver],
     0b1101: ["YEARCIRCUITCONSTRUCTOR", yearcircuitconstructor],
     0b1011: ["YEARDRIVERCONSTRUCTOR", yeardriverconstructor],
-    0b0111: "CIRCUITDRIVERCONSTRUCTOR",      # doesn't always make sense
-    0b1111: "YEARCIRCUITDRIVERCONSTRUCTOR",  # doesn't always make sense
+    0b0111: ["CIRCUITDRIVERCONSTRUCTOR", circuitdriverconstructor],          # alias of circuitdriver
+    0b1111: ["YEARCIRCUITDRIVERCONSTRUCTOR", yearcircuitdriverconstructor],  # alias of yearcircuitdriver
 }
 mode_lay = unimplemented.get_layout()
 mode = "default"
