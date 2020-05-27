@@ -262,6 +262,8 @@ if args.enable_race_mlt:
     constructor_df = pd.DataFrame(columns=["raceId", "constructorId", "constructor_name", "mean_time", "rank"])
     i = 0
     for race_id in races.index:
+        if i % 100 == 0:
+            print(f"{i} / {races.shape[0]}")
         race_laps = lap_times[lap_times["raceId"] == race_id]
         race_results = results[results["raceId"] == race_id]
         constructor_laps = defaultdict(lambda: [])
@@ -387,19 +389,22 @@ status.to_csv("temp_data/augmented/status_augmented.csv", encoding="utf-8")
 # ======================================================================================================================
 # Back-up the current data
 # ======================================================================================================================
-shutil.copyfile("data/circuits_augmented.csv", "backup_data/circuits_augmented.csv")
-shutil.copyfile("data/constructor_results_augmented.csv", "backup_data/constructor_results_augmented.csv")
-shutil.copyfile("data/constructor_standings_augmented.csv", "backup_data/constructor_standings_augmented.csv")
-shutil.copyfile("data/constructors_augmented.csv", "backup_data/constructors_augmented.csv")
-shutil.copyfile("data/driver_standings_augmented.csv", "backup_data/driver_standings_augmented.csv")
-shutil.copyfile("data/drivers_augmented.csv", "backup_data/drivers_augmented.csv")
-shutil.copyfile("data/lap_times_augmented.csv", "backup_data/lap_times_augmented.csv")
-shutil.copyfile("data/pit_stops_augmented.csv", "backup_data/pit_stops_augmented.csv")
-shutil.copyfile("data/qualifying_augmented.csv", "backup_data/qualifying_augmented.csv")
-shutil.copyfile("data/races_augmented.csv", "backup_data/races_augmented.csv")
-shutil.copyfile("data/results_augmented.csv", "backup_data/results_augmented.csv")
-shutil.copyfile("data/seasons_augmented.csv", "backup_data/seasons_augmented.csv")
-shutil.copyfile("data/status_augmented.csv", "backup_data/status_augmented.csv")
+try:
+    shutil.copyfile("data/circuits_augmented.csv", "backup_data/circuits_augmented.csv")
+    shutil.copyfile("data/constructor_results_augmented.csv", "backup_data/constructor_results_augmented.csv")
+    shutil.copyfile("data/constructor_standings_augmented.csv", "backup_data/constructor_standings_augmented.csv")
+    shutil.copyfile("data/constructors_augmented.csv", "backup_data/constructors_augmented.csv")
+    shutil.copyfile("data/driver_standings_augmented.csv", "backup_data/driver_standings_augmented.csv")
+    shutil.copyfile("data/drivers_augmented.csv", "backup_data/drivers_augmented.csv")
+    shutil.copyfile("data/lap_times_augmented.csv", "backup_data/lap_times_augmented.csv")
+    shutil.copyfile("data/pit_stops_augmented.csv", "backup_data/pit_stops_augmented.csv")
+    shutil.copyfile("data/qualifying_augmented.csv", "backup_data/qualifying_augmented.csv")
+    shutil.copyfile("data/races_augmented.csv", "backup_data/races_augmented.csv")
+    shutil.copyfile("data/results_augmented.csv", "backup_data/results_augmented.csv")
+    shutil.copyfile("data/seasons_augmented.csv", "backup_data/seasons_augmented.csv")
+    shutil.copyfile("data/status_augmented.csv", "backup_data/status_augmented.csv")
+except:
+    print("No data to back up!")
 
 # ======================================================================================================================
 # Save data to it's final destination
