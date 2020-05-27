@@ -153,8 +153,8 @@ constructor_completions = ["<select constructor>"] + [c for c in constructors["n
 constructor_input = Select(options=constructor_completions)
 
 
-driver_input.value = "Lewis Hamilton"
-year_input.value = "2017"
+# driver_input.value = "Lewis Hamilton"
+# year_input.value = "2017"
 
 search_bars = [circuit_input, year_input, driver_input, constructor_input]
 for s in search_bars:
@@ -168,6 +168,7 @@ curdoc().add_root(lay)
 curdoc().title = "F1Viz"
 curdoc().theme = "dark_minimal"
 
-constructor_input.value = "Mercedes"
+# constructor_input.value = "Mercedes"
+update()
 
 logging.info("Initialized")
