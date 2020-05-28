@@ -64,13 +64,7 @@ __author__  = 'Philippe Lagadec'
 
 
 #-------------------------------------------------------------------------------
-#TODO:
-# - method to return a generator (yield each row) instead of a single string
-# - unicode support (input and output)
-# - escape text in cells (optional)
-# - constants for standard colors
-# - use lxml to generate well-formed HTML ?
-# - add classes/functions to generate a HTML page, paragraphs, headings, etc...
+# TODO make this support multi-level tables (like championship results table)
 
 
 #--- THANKS --------------------------------------------------------------------

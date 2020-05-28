@@ -4,7 +4,7 @@ import time
 import pandas as pd
 from data_loading.data_loader import load_circuits, load_races, load_fastest_lap_data, load_qualifying, load_results
 from mode.circuit import get_layout, generate_times_plot, generate_spmfp_plot, generate_circuit_results_table, \
-    generate_circuit_stats_layout, generate_winners_table
+    generate_stats_layout, generate_winners_table
 from utils import time_decorator, get_circuit_name
 
 # Biggest JOKE of a "unit test" but it works
@@ -45,7 +45,7 @@ generate_circuit_results_table = time_decorator(generate_circuit_results_table)
 circuit_results_table = generate_circuit_results_table(circuit_years, circuit_races, circuit_results,
                                                        circuit_quali, circuit_fastest_lap_data)
 
-generate_circuit_stats_layout = time_decorator(generate_circuit_stats_layout)
+generate_circuit_stats_layout = time_decorator(generate_stats_layout)
 circuit_stats = generate_circuit_stats_layout(circuit_id, circuit_years, circuit_fastest_lap_data, circuit_results,
                                               circuit_races)
 

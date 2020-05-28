@@ -220,14 +220,15 @@ def detect_mark_overtakes(ycd_laps, race_laps, plots):
     return disclaimer
 
 
-def mark_pit_stops(ycd_pit_stop_data, plots, driver_id, cached_driver_map=None, h_pct=0.5):
+def mark_pit_stops(ycd_pit_stop_data, plots, driver_id, cached_driver_map=None, h_pct=0.5, show_name=False):
     """
     Marks pit stops with a vertical line
     :param ycd_pit_stop_data: YCD pit stop data
     :param plots: Plots to mark
     :param driver_id: Driver ID
-    :param cached_driver_map: Must be passed if `driver_id is not None`
+    :param cached_driver_map: Must be passed if `show_name is True`
     :param h_pct: Percent of the height to write the safety car time
+    :param show_name: Whether to show the driver name
     :return: None
     """
     if ycd_pit_stop_data.shape[0] == 0:
@@ -257,7 +258,7 @@ def mark_pit_stops(ycd_pit_stop_data, plots, driver_id, cached_driver_map=None, 
             time_label = Label(x=lap + 0.5, y=y, text=time_str, **label_kwargs)
             p.renderers.extend([line])
             p.add_layout(time_label)
-            if driver_id:
+            if show_name:
                 name_label = Label(x=lap + 0.6, y=y - dy, text=driver_name, **label_kwargs)
                 p.add_layout(name_label)
 

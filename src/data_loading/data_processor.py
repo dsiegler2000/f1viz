@@ -36,7 +36,7 @@ if not args.custom:
     args.enable_race_mlt = True
     args.enable_fastest_lap = True
 else:
-    args.load_from_data = True  # TODO may cause issues
+    args.load_from_data = True
 
 # Read in all of the data
 if args.load_from_data:

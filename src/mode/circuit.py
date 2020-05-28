@@ -7,7 +7,7 @@ from bokeh.models import Div, HoverTool, LegendItem, Legend, CrosshairTool, Rang
 from bokeh.plotting import figure
 from data_loading.data_loader import load_circuits, load_fastest_lap_data, load_races, load_qualifying, load_results
 from utils import get_circuit_name, get_driver_name, millis_to_str, DATETIME_TICK_KWARGS, PLOT_BACKGROUND_COLOR, \
-    get_constructor_name, vdivider, plot_image_url, rounds_to_str
+    get_constructor_name, vdivider, plot_image_url, rounds_to_str, get_status_classification
 import pandas as pd
 
 circuits = load_circuits()
@@ -15,6 +15,10 @@ fastest_lap_data = load_fastest_lap_data()
 races = load_races()
 qualifying = load_qualifying()
 results = load_results()
+
+
+# TODO Add MLTR vs FP, SP vs FP, and refactor MLTR into mean lap time percent, and
+#  Add num DNFs and DNF percent vs time, potentially using an existing win plot
 
 
 def get_layout(circuit_id=-1, **kwargs):
@@ -39,8 +43,8 @@ def get_layout(circuit_id=-1, **kwargs):
                                                            circuit_quali, circuit_fastest_lap_data)
 
     # Circuit stats
-    circuit_stats = generate_circuit_stats_layout(circuit_id, circuit_years, circuit_fastest_lap_data, circuit_results,
-                                                  circuit_races)
+    circuit_stats = generate_stats_layout(circuit_id, circuit_years, circuit_fastest_lap_data, circuit_results,
+                                          circuit_races)
 
     # Winner's table
     winners_table = generate_winners_table(circuit_years, circuit_results, circuit_races)
@@ -177,20 +181,27 @@ def generate_times_plot(circuit_years, circuit_quali, circuit_fastest_lap_data, 
     legend_items = [
         LegendItem(label="Average Race Lap", renderers=[avg_lap_time_line]),
     ]
+    tooltips = [
+        ("Year", "@year"),
+        ("Average Lap Time", "@avg_lap_str"),
+    ]
 
     if source["quali_time"].isna().sum() < source.shape[0]:
         quali_time_line = times_plot.line(y="quali_time", line_color="red", **kwargs)
         legend_items.append(LegendItem(label="Qualifying Fastest", renderers=[quali_time_line]))
+        tooltips.append(("Qualifying Lap Time", "@quali_time_str"))
 
     if source["fastest_lap_time"].isna().sum() < source.shape[0]:
         fastest_lap_time_line = times_plot.line(y="fastest_lap_time", line_color="yellow", **kwargs)
         legend_items.append(LegendItem(label="Fastest Race Lap", renderers=[fastest_lap_time_line]))
+        tooltips.append(("Fastest Lap Time", "@fastest_lap_str"))
 
     # Add rating and other axis
     if source["rating"].replace("???", np.nan).isna().sum() < source.shape[0]:
         rating_line = times_plot.line(y="rating_scaled", line_color="green", line_alpha=0.9, name="rating_line",
                                       **kwargs)
         legend_items.append(LegendItem(label="Average Rating", renderers=[rating_line]))
+        tooltips.append(("Rating", "@rating"))
         y_range = Range1d(start=0, end=10, bounds=(0, 10))
         times_plot.extra_y_ranges = {"rating_range": y_range}
         axis = LinearAxis(y_range_name="rating_range", axis_label="Rating")
@@ -219,13 +230,7 @@ def generate_times_plot(circuit_years, circuit_quali, circuit_fastest_lap_data, 
     times_plot.legend.label_text_font_size = "12pt"  # The default font size
 
     # Hover tooltip
-    times_plot.add_tools(HoverTool(show_arrow=False, tooltips=[
-        ("Year", "@year"),
-        # ("Qualifying Lap Time", "@quali_time_str"),
-        # ("Fastest Lap Time", "@fastest_lap_str"),
-        ("Average Lap Time", "@avg_lap_str"),
-        # ("Rating", "@rating")
-    ]))
+    times_plot.add_tools(HoverTool(show_arrow=False, tooltips=tooltips))
 
     # Crosshair
     times_plot.add_tools(CrosshairTool(line_color="white", line_alpha=0.6))
@@ -252,7 +257,7 @@ def generate_spmfp_plot(circuit_years, circuit_races, circuit_results):
         dnf = results.shape[0] - results["positionText"].str.isnumeric().sum()
         source = source.append({
             "year": year,
-            "msp": results["grid"].mean(),
+            "msp": round(results["grid"].mean(), 1),
             "mfp": finishing_pos.mean(),
             "mspmfp": mspmfp,
             "dnf": dnf
@@ -260,7 +265,7 @@ def generate_spmfp_plot(circuit_years, circuit_races, circuit_results):
 
     min_year = source["year"].min()
     max_year = source["year"].max()
-    min_y = min(source["dnf"].min(), source["mspmfp"].min())
+    min_y = min(source["dnf"].min(), source["mspmfp"].min(), 1.5)
     max_y = max(source["dnf"].max(), source["mspmfp"].max())
     if min_year == max_year:
         min_year -= 1
@@ -289,6 +294,9 @@ def generate_spmfp_plot(circuit_years, circuit_races, circuit_results):
                          line_width=2, line_dash="dashed")
     spfp_plot.add_layout(mspmfp_mean_line)
     spfp_plot.add_layout(dnf_mean_line)
+
+    # Zero line
+    spfp_plot.add_layout(Span(line_color="white", location=0, dimension="width", line_alpha=0.3, line_width=1.5))
 
     # Legend
     legend_items = [
@@ -401,23 +409,24 @@ def generate_circuit_results_table(circuit_years, circuit_races, circuit_results
     title_div = Div(text="<h2><b>Circuit Results</b></h2>")
 
     source = source.sort_values(by="year", ascending=False)
-    source = ColumnDataSource(data=source)
+    column_source = ColumnDataSource(data=source)
     results_columns = [
         TableColumn(field="year", title="Year", width=50),
         TableColumn(field="laps", title="Laps", width=50),
         TableColumn(field="pole", title="Pole Position", width=200),
-        TableColumn(field="fastest_lap", title="Fastest Lap", width=200),
         TableColumn(field="p1", title="First", width=300),
         TableColumn(field="p2", title="Second", width=150),
         TableColumn(field="p3", title="Third", width=150),
     ]
-    fast_table = DataTable(source=source, columns=results_columns, index_position=None, min_height=530)
+    if source["fastest_lap"].isna().sum() + source[source["fastest_lap"].str.match("")].shape[0] < source.shape[0]:
+        results_columns.insert(3, TableColumn(field="fastest_lap", title="Fastest Lap", width=200))
+    fast_table = DataTable(source=column_source, columns=results_columns, index_position=None, min_height=530)
     fast_row = row([fast_table], sizing_mode="stretch_width")
 
     return column([title_div, fast_row], sizing_mode="stretch_width")
 
 
-def generate_circuit_stats_layout(circuit_id, circuit_years, circuit_fastest_lap_data, circuit_results, circuit_races):
+def generate_stats_layout(circuit_id, circuit_years, circuit_fastest_lap_data, circuit_results, circuit_races):
     """
     Generates a layout of the circuit image along with some basic stats on the track
     :param circuit_id: Circuit ID
@@ -477,13 +486,22 @@ def generate_circuit_stats_layout(circuit_id, circuit_years, circuit_fastest_lap
         fastest = fastest["fastest_lap_time_str"] + " (" + get_driver_name(did) + ", " + constructor + ", " + year + ")"
         circuit_stats += template.format("Fastest Race Lap: ".ljust(22), fastest)
 
+    # DNF pct
+    if circuit_results.shape[0] > 0:
+        classifications = circuit_results["statusId"].apply(get_status_classification)
+        dnfs = classifications[(classifications == "mechanical") | (classifications == "crash")].shape[0]
+        finishes = classifications[classifications == "finished"].shape[0]
+        dnf_pct = dnfs / (dnfs + finishes)
+        dnf_pct_str = f"{round(100 * dnf_pct, 1)}% of cars DNF'd"
+        circuit_stats += template.format("DNF Percent: ".ljust(22), dnf_pct_str)
+
     # Weather and SC Laps
     weather = circuit_races["weather"].value_counts()
     if weather.shape[0] > 0:
         dry = weather["dry"] if "dry" in weather.index else 0
         varied = weather["varied"] if "varied" in weather.index else 0
         wet = weather["wet"] if "wet" in weather.index else 0
-        circuit_stats += "<i>Note, we only have safety car and weather data from 2007 to 2017"
+        circuit_stats += "<i>Note, we only have safety car and weather data from 2007 to 2017</i>"
         circuit_stats += template.format("Dry Races: ".ljust(22), str(dry) + " (" +
                                          str(round(100 * dry / num_races, 1)) + "% of races)")
         circuit_stats += template.format("Varied Races: ".ljust(22), str(varied) + " (" +
@@ -507,7 +525,8 @@ def generate_winners_table(circuit_years, circuit_results, circuit_races):
     Table of drivers who've won the most at this circuit
     :return:
     """
-    scores = defaultdict(lambda: [0, [], ""])
+    driver_scores = defaultdict(lambda: [0, []])
+    constructor_scores = defaultdict(lambda: [0, []])
     for year in circuit_years:
         race = circuit_races[circuit_races["year"] == year]
         rid = race.index.values[0]
@@ -518,31 +537,39 @@ def generate_winners_table(circuit_years, circuit_results, circuit_races):
         else:
             continue
         driver_winner_name = get_driver_name(win["driverId"])
-        scores[driver_winner_name][0] += 1
-        scores[driver_winner_name][1].append(year)
-        scores[driver_winner_name][2] = "No"
+        driver_scores[driver_winner_name][0] += 1
+        driver_scores[driver_winner_name][1].append(year)
         constructor_winner_name = get_constructor_name(win["constructorId"])
-        scores[constructor_winner_name][0] += 1
-        scores[constructor_winner_name][1].append(year)
-        scores[constructor_winner_name][2] = "Yes"
-    scores = pd.DataFrame.from_dict(scores, orient="index", columns=["wins", "years", "is_constructor"])
-    scores.index.name = "name"
-    scores = scores.sort_values(by="wins", ascending=False)
-    scores["years"] = scores["years"].apply(rounds_to_str)
+        constructor_scores[constructor_winner_name][0] += 1
+        constructor_scores[constructor_winner_name][1].append(year)
+    driver_scores = pd.DataFrame.from_dict(driver_scores, orient="index", columns=["wins", "years"])
+    constructor_scores = pd.DataFrame.from_dict(constructor_scores, orient="index", columns=["wins", "years"])
+    driver_scores.index.name = "name"
+    constructor_scores.index.name = "name"
+    driver_scores = driver_scores.sort_values(by="wins", ascending=False)
+    constructor_scores = constructor_scores.sort_values(by="wins", ascending=False)
+    driver_scores["years"] = driver_scores["years"].apply(rounds_to_str)
+    constructor_scores["years"] = constructor_scores["years"].apply(rounds_to_str)
 
-    title_div = Div(text="<h2><b>Who has won the most at this circuit (drivers and constructors)?</b></h2>")
-
-    source = ColumnDataSource(data=scores)
     winners_columns = [
-        TableColumn(field="wins", title="Number of Wins", width=50),
+        TableColumn(field="wins", title="Num. Wins", width=50),
         TableColumn(field="name", title="Name", width=200),
-        TableColumn(field="is_constructor", title="Constructor?", width=50),
         TableColumn(field="years", title="Years Won", width=200),
     ]
-    winners_table = DataTable(source=source, columns=winners_columns, index_position=None, min_height=530)
-    winners_row = row([winners_table], sizing_mode="stretch_width")
 
-    return column([title_div, winners_row], sizing_mode="stretch_width")
+    # Driver table
+    title_div = Div(text=u"<h2><b>Who has won the most at this circuit \u2014 Drivers?</b></h2>")
+    source = ColumnDataSource(data=driver_scores)
+    driver_winners_table = DataTable(source=source, columns=winners_columns, index_position=None, min_height=530)
+    driver_winners_layout = column([title_div, row([driver_winners_table], sizing_mode="stretch_width")])
+
+    # Constructor table
+    title_div = Div(text=u"<h2><b>Who has won the most at this circuit \u2014 Constructors?</b></h2>")
+    source = ColumnDataSource(data=constructor_scores)
+    constructor_winners_table = DataTable(source=source, columns=winners_columns, index_position=None, min_height=530)
+    constructor_winners_layout = column([title_div, row([constructor_winners_table], sizing_mode="stretch_width")])
+
+    return row([driver_winners_layout, vdivider(), constructor_winners_layout], sizing_mode="stretch_width")
 
 
 def generate_error_layout():

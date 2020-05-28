@@ -4,7 +4,7 @@ from bokeh.io import curdoc
 from data_loading.data_loader import load_races, load_drivers, load_circuits, load_constructors
 from mode import home, yearcircuit, unimplemented, year, driver, circuit, constructor, circuitdriver, driverconstructor, \
     yeardriver, yearconstructor, circuitconstructor, yearcircuitdriver, yearcircuitconstructor, yeardriverconstructor, \
-    circuitdriverconstructor, yearcircuitdriverconstructor
+    circuitdriverconstructor, yearcircuitdriverconstructor, allyears
 import os
 import logging
 
@@ -14,7 +14,7 @@ logging.root.setLevel(logging.NOTSET)
 
 logging.info(f"Receiving request, PID: {os.getpid()}")
 
-INCLUDE_GENERATE_BUTTON = True
+INCLUDE_GENERATE_BUTTON = False
 
 # Load data
 races = load_races()
@@ -42,9 +42,18 @@ modes = {
     0b1011: ["YEARDRIVERCONSTRUCTOR", yeardriverconstructor],
     0b0111: ["CIRCUITDRIVERCONSTRUCTOR", circuitdriverconstructor],          # alias of circuitdriver
     0b1111: ["YEARCIRCUITDRIVERCONSTRUCTOR", yearcircuitdriverconstructor],  # alias of yearcircuitdriver
+    "all_years": ["ALLYEARS", allyears],
+    "all_circuits": None,
+    "all_drivers": None,
+    "all_constructors": None
 }
 mode_lay = unimplemented.get_layout()
 mode = "default"
+
+# TODO master list:
+#  Go through each existing mode and do a "second pass" to add simple features and make small clean-up changes
+#  Do simple refactoring, namely, adding common plots to common_plots.py
+#  Start on the all_years mode
 
 
 def update():
@@ -60,47 +69,66 @@ def update():
     driver_v = "XXXX" if driver_v.startswith("<select") else driver_v
     constructor_v = "XXXX" if constructor_v.startswith("<select") else constructor_v
 
-    year_in = year_v in year_completions
-    circuit_in = circuit_v in racecircuit_completions
-    driver_in = driver_v in driver_completions
-    constructor_in = constructor_v in constructor_completions
-    mode = modes[(year_in << 3) + (circuit_in << 2) + (driver_in << 1) + (constructor_in << 0)]
+    all_years = year_v.lower() == "all years"
+    all_circuits = circuit_v.lower() == "all circuits"
+    all_drivers = driver_v.lower() == "all drivers"
+    all_constructors = constructor_v.lower() == "all constructors"
 
-    # Determine the year id (just the year)
-    year_id = int(year_v) if year_in else -1
-
-    # Determine the circuit id
+    year_id = -1
     circuit_id = -1
-    if circuit_in:
-        if circuit_v in race_completions:
-            split = circuit_v.split(" at ")
-            race_name = split[0]
-            if len(split) == 1:
-                circuit_id = races[races["name"].str.lower() == race_name.lower()]["circuitId"].unique()[0]
-            else:
-                circuit_name = split[1]
-                circuit_id = circuits[circuits["name"].str.lower() == circuit_name.lower()].index.unique()[0]
-        elif circuit_v in circuit_completions:
-            circuit_id = circuits[circuits["name"].str.lower() == circuit_v.lower()].index.unique()[0]
-    circuit_id = int(circuit_id)
-
-    # Determine the driver id
-    split = driver_v.split(" ")
     driver_id = -1
-    if driver_in:
-        for first_name_len in range(1, len(split)):
-            first_name = " ".join(split[:first_name_len])
-            last_name = " ".join(split[first_name_len:])
-            matched = drivers[(drivers["forename"].str.lower() == first_name.lower()) &
-                              (drivers["surname"].str.lower() == last_name.lower())]
-            if matched.shape[0] == 1:
-                driver_id = matched.index.values[0]
-                break
-    driver_id = int(driver_id)
+    constructor_id = -1
 
-    # Determine the constructor id
-    constructor_id = int(constructors[constructors["name"].str.lower() == constructor_v.lower()].index.unique()[0])\
-        if constructor_in else -1
+    if all_years:
+        mode = modes["all_years"]
+    elif all_circuits:
+        mode = modes["all_circuits"]
+    elif all_drivers:
+        mode = modes["all_drivers"]
+    elif all_constructors:
+        mode = modes["all_constructors"]
+    else:
+        year_in = year_v in year_completions
+        circuit_in = circuit_v in racecircuit_completions
+        driver_in = driver_v in driver_completions
+        constructor_in = constructor_v in constructor_completions
+        mode = modes[(year_in << 3) + (circuit_in << 2) + (driver_in << 1) + (constructor_in << 0)]
+
+        # Determine the year id (just the year)
+        year_id = int(year_v) if year_in else -1
+
+        # Determine the circuit id
+        circuit_id = -1
+        if circuit_in:
+            if circuit_v in race_completions:
+                split = circuit_v.split(" at ")
+                race_name = split[0]
+                if len(split) == 1:
+                    circuit_id = races[races["name"].str.lower() == race_name.lower()]["circuitId"].unique()[0]
+                else:
+                    circuit_name = split[1]
+                    circuit_id = circuits[circuits["name"].str.lower() == circuit_name.lower()].index.unique()[0]
+            elif circuit_v in circuit_completions:
+                circuit_id = circuits[circuits["name"].str.lower() == circuit_v.lower()].index.unique()[0]
+        circuit_id = int(circuit_id)
+
+        # Determine the driver id
+        split = driver_v.split(" ")
+        driver_id = -1
+        if driver_in:
+            for first_name_len in range(1, len(split)):
+                first_name = " ".join(split[:first_name_len])
+                last_name = " ".join(split[first_name_len:])
+                matched = drivers[(drivers["forename"].str.lower() == first_name.lower()) &
+                                  (drivers["surname"].str.lower() == last_name.lower())]
+                if matched.shape[0] == 1:
+                    driver_id = matched.index.values[0]
+                    break
+        driver_id = int(driver_id)
+
+        # Determine the constructor id
+        constructor_id = int(constructors[constructors["name"].str.lower() == constructor_v.lower()].index.unique()[0])\
+            if constructor_in else -1
 
     # Dispatch to the proper module
     if not isinstance(mode, list):
@@ -123,7 +151,7 @@ header = Div(text=open(os.path.join("src", "header.html")).read(), sizing_mode="
 footer = Div(text=open(os.path.join("src", "footer.html")).read(), sizing_mode="stretch_width")
 
 # Season search bar
-year_completions = ["<select year>"] + [str(y) for y in races.sort_values(by="year", ascending=False)["year"].unique()]
+year_completions = ["<select year>", "All Years"] + [str(y) for y in races.sort_values(by="year", ascending=False)["year"].unique()]
 year_completions.remove("2020")
 year_input = Select(options=year_completions)
 
@@ -145,22 +173,18 @@ for i, r in races.iterrows():
         if n not in race_completions:
             race_completions.append(n)
 circuit_completions = [c for c in circuits["name"].unique()]
-racecircuit_completions = ["<select race or circuit>"] + race_completions + circuit_completions
+racecircuit_completions = ["<select race or circuit>", "All Circuits"] + race_completions + circuit_completions
 circuit_input = Select(options=racecircuit_completions)
 
 # Driver
-driver_completions = ["<select driver>"]
+driver_completions = ["<select driver>", "All Drivers"]
 for i, r in drivers.iterrows():
     driver_completions.append(r["forename"] + " " + r["surname"])
 driver_input = Select(options=driver_completions)
 
 # Constructor
-constructor_completions = ["<select constructor>"] + [c for c in constructors["name"].unique()]
+constructor_completions = ["<select constructor>", "All Constructors"] + [c for c in constructors["name"].unique()]
 constructor_input = Select(options=constructor_completions)
-
-
-# driver_input.value = "Lewis Hamilton"
-# year_input.value = "2017"
 
 search_bars = [circuit_input, year_input, driver_input, constructor_input]
 search_bars_layout = row(*search_bars, sizing_mode="scale_width")
@@ -179,7 +203,6 @@ curdoc().add_root(lay)
 curdoc().title = "F1Viz"
 curdoc().theme = "dark_minimal"
 
-# constructor_input.value = "Mercedes"
 update()
 
 logging.info("Initialized")
