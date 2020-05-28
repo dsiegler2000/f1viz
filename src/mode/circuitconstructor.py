@@ -16,6 +16,8 @@ driver_standings = load_driver_standings()
 constructor_standings = load_constructor_standings()
 circuits = load_circuits()
 
+# todo do a second pass
+
 
 def get_layout(circuit_id=-1, constructor_id=-1, download_image=True, **kwargs):
     # Grab some useful slices

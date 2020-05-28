@@ -14,7 +14,7 @@ logging.root.setLevel(logging.NOTSET)
 
 logging.info(f"Receiving request, PID: {os.getpid()}")
 
-INCLUDE_GENERATE_BUTTON = False
+INCLUDE_GENERATE_BUTTON = True
 
 # Load data
 races = load_races()
@@ -53,6 +53,7 @@ mode = "default"
 # TODO master list:
 #  Go through each existing mode and do a "second pass" to add simple features and make small clean-up changes
 #  Do simple refactoring, namely, adding common plots to common_plots.py
+#  Change all mean lap time ranks to be mean lap time percent
 #  Start on the all_years mode
 
 

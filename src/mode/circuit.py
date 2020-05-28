@@ -3,9 +3,11 @@ from collections import defaultdict
 import numpy as np
 from bokeh.layouts import column, row
 from bokeh.models import Div, HoverTool, LegendItem, Legend, CrosshairTool, Range1d, DataRange1d, LinearAxis, \
-    DatetimeTickFormatter, Spacer, Span, ColumnDataSource, TableColumn, DataTable
+    DatetimeTickFormatter, Spacer, Span, ColumnDataSource, TableColumn, DataTable, NumeralTickFormatter, Title
 from bokeh.plotting import figure
-from data_loading.data_loader import load_circuits, load_fastest_lap_data, load_races, load_qualifying, load_results
+from data_loading.data_loader import load_circuits, load_fastest_lap_data, load_races, load_qualifying, load_results, \
+    load_driver_standings
+from mode import constructor, driver
 from utils import get_circuit_name, get_driver_name, millis_to_str, DATETIME_TICK_KWARGS, PLOT_BACKGROUND_COLOR, \
     get_constructor_name, vdivider, plot_image_url, rounds_to_str, get_status_classification
 import pandas as pd
@@ -15,10 +17,7 @@ fastest_lap_data = load_fastest_lap_data()
 races = load_races()
 qualifying = load_qualifying()
 results = load_results()
-
-
-# TODO Add MLTR vs FP, SP vs FP, and refactor MLTR into mean lap time percent, and
-#  Add num DNFs and DNF percent vs time, potentially using an existing win plot
+driver_standings = load_driver_standings()
 
 
 def get_layout(circuit_id=-1, **kwargs):
@@ -28,6 +27,7 @@ def get_layout(circuit_id=-1, **kwargs):
     circuit_fastest_lap_data = fastest_lap_data[fastest_lap_data["raceId"].isin(circuit_rids)]
     circuit_quali = qualifying[qualifying["raceId"].isin(circuit_rids)]
     circuit_results = results[results["raceId"].isin(circuit_rids)]
+    circuit_driver_standings = driver_standings[driver_standings["raceId"].isin(circuit_rids)]
 
     logging.info(f"Generating layout for mode CIRCUIT in circuit, circuit_id={circuit_id}")
 
@@ -35,8 +35,17 @@ def get_layout(circuit_id=-1, **kwargs):
     times_plot = generate_times_plot(circuit_years, circuit_quali, circuit_fastest_lap_data, circuit_races,
                                      circuit_results, circuit_id)
 
+    # Generate DNF plot
+    dnf_plot = generate_dnf_plot(circuit_years, circuit_results, circuit_races, circuit_id)
+
     # Generate starting position minus finish position plot
     spmfp_plot = generate_spmfp_plot(circuit_years, circuit_races, circuit_results)
+
+    # Start pos vs finish pos scatter
+    spvfp_scatter = generate_spvfp_scatter(circuit_results, circuit_races, circuit_driver_standings)
+
+    # Mean lap time rank vs finish pos scatter
+    mltr_fp_scatter = generate_mltr_fp_scatter(circuit_results, circuit_races, circuit_driver_standings)
 
     # Generate results table
     circuit_results_table = generate_circuit_results_table(circuit_years, circuit_races, circuit_results,
@@ -52,7 +61,9 @@ def get_layout(circuit_id=-1, **kwargs):
     middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
     layout = column([
         times_plot, middle_spacer,
+        dnf_plot, middle_spacer,
         spmfp_plot, middle_spacer,
+        row([spvfp_scatter, mltr_fp_scatter], sizing_mode="stretch_width"),
         circuit_results_table,
         circuit_stats,
         winners_table
@@ -61,6 +72,149 @@ def get_layout(circuit_id=-1, **kwargs):
     logging.info("Finished generating layout for mode CIRCUIT")
 
     return layout
+
+
+def generate_spvfp_scatter(circuit_results, circuit_races, circuit_driver_standings):
+    """
+    Start position vs finish position scatter
+    :param circuit_results: Circuit results
+    :param circuit_races: Circuit races
+    :param circuit_driver_standings: Circuit driver standings
+    :return: Scatter plot layout
+    """
+    return driver.generate_spvfp_scatter(circuit_results, circuit_races, circuit_driver_standings,
+                                         include_driver_name=True, color_drivers=True)
+
+
+def generate_mltr_fp_scatter(circuit_results, circuit_races, circuit_driver_standings):
+    """
+    Mean lap time rank vs finish position scatter
+    :param circuit_results: Circuit results
+    :param circuit_races: Circuit races
+    :param circuit_driver_standings: Circuit driver standings
+    :return: Mean lap time vs finish pos scatter layout
+    """
+    return driver.generate_mltr_fp_scatter(circuit_results, circuit_races, circuit_driver_standings,
+                                           include_driver_name=False, color_drivers=True)
+
+
+def generate_dnf_plot(circuit_years, circuit_results, circuit_races, circuit_id):
+    """
+    Plots number of races, number of DNFs, and DNF percent for that year on the same plot. (2 different axes).
+    :param circuit_years: Circuit years
+    :param circuit_results: Circuit results
+    :param circuit_races: Circuit races
+    :param circuit_id: Circuit ID
+    :return: Plot layout
+    """
+    # TODO refactor to use existing method
+    logging.info("Generating dnf plot")
+    source = pd.DataFrame(columns=["n_races", "year", "n_drivers",
+                                   "dnf_pct", "dnfs", "dnf_pct_str",
+                                   "total_dnf_pct", "total_dnfs", "total_dnf_pct_str"])
+    n_races = 0
+    total_dnfs = 0
+    total_drivers = 0
+    for year in circuit_years:
+        year_race = circuit_races[circuit_races["year"] == year]
+        if year_race.shape[0] == 0:
+            continue
+        rid = year_race.index.values[0]
+        year_results = circuit_results[circuit_results["raceId"] == rid]
+        num_dnfs = year_results["position"].isna().sum()
+        num_drivers = year_results.shape[0]
+        total_dnfs += num_dnfs
+        total_drivers += num_drivers
+        if num_drivers > 0:
+            dnf_pct = num_dnfs / num_drivers
+            total_dnf_pct = total_dnfs / total_drivers
+            n_races += 1
+            source = source.append({
+                "n_races": n_races,
+                "n_drivers": num_drivers,
+                "year": year,
+                "dnf_pct": dnf_pct,
+                "dnfs": num_dnfs,
+                "dnf_pct_str": str(round(100 * dnf_pct, 1)) + "%",
+                "total_dnf_pct": total_dnf_pct,
+                "total_dnfs": total_dnfs,
+                "total_dnf_pct_str": str(round(100 * total_dnf_pct, 1)) + "%",
+            }, ignore_index=True)
+
+    circuit_name = get_circuit_name(circuit_id)
+    min_year = min(circuit_years)
+    max_year = max(circuit_years)
+    max_drivers = source["n_drivers"].max()
+    if max_drivers == 0:
+        return Div()
+    dnf_plot = figure(
+        title=u"Number of DNFs \u2014 " + circuit_name,
+        y_axis_label="",
+        x_axis_label="Year",
+        x_range=Range1d(min_year, max_year, bounds=(min_year, max_year + 1)),
+        tools="pan,xbox_zoom,xwheel_zoom,reset,box_zoom,wheel_zoom,save",
+        y_range=Range1d(0, max_drivers, bounds=(-1000, 1000))
+    )
+
+    subtitle = 'Year DNFs refers to the number/percent of DNFs for that year, Total DNFs refers to all DNFs up to ' \
+               'that point in time'
+    dnf_plot.add_layout(Title(text=subtitle, text_font_style="italic"), "above")
+
+    max_dnf_pct = max(source["dnf_pct"].max(), source["total_dnf_pct"].max())
+    if max_dnf_pct > 0:
+        k = max_drivers / max_dnf_pct
+    else:
+        k = 1
+    source["dnf_pct_scaled"] = k * source["dnf_pct"]
+    source["total_dnf_pct_scaled"] = k * source["total_dnf_pct"]
+
+    # Other y axis
+    y_range = Range1d(start=0, end=max_dnf_pct, bounds=(-0.02, 1000))
+    dnf_plot.extra_y_ranges = {"percent_range": y_range}
+    axis = LinearAxis(y_range_name="percent_range")
+    axis.formatter = NumeralTickFormatter(format="0.0%")
+    dnf_plot.add_layout(axis, "right")
+
+    kwargs = {
+        "x": "year",
+        "line_width": 2,
+        "line_alpha": 0.7,
+        "source": source,
+        "muted_alpha": 0.05
+    }
+
+    races_line = dnf_plot.line(y="n_races", color="white", **kwargs)
+    drivers_line = dnf_plot.line(y="n_drivers", color="yellow", **kwargs)
+    dnfs_line = dnf_plot.line(y="dnfs", color="aqua", **kwargs)
+    dnf_pct_line = dnf_plot.line(y="dnf_pct_scaled", color="aqua", line_dash="dashed", **kwargs)
+    total_dnfs_line = dnf_plot.line(y="total_dnfs", color="orange", **kwargs)
+    total_dnf_pct_line = dnf_plot.line(y="total_dnf_pct_scaled", color="orange", line_dash="dashed", **kwargs)
+
+    legend = [LegendItem(label="Number of Races", renderers=[races_line]),
+              LegendItem(label="Number of Drivers", renderers=[drivers_line]),
+              LegendItem(label="Year DNFs", renderers=[dnfs_line]),
+              LegendItem(label="Year DNF Pct.", renderers=[dnf_pct_line]),
+              LegendItem(label="Total DNFs", renderers=[total_dnfs_line]),
+              LegendItem(label="Total DNF Pct.", renderers=[total_dnf_pct_line])]
+
+    legend = Legend(items=legend, location="top_right", glyph_height=15, spacing=2, inactive_fill_color="gray")
+    dnf_plot.add_layout(legend, "right")
+    dnf_plot.legend.click_policy = "mute"
+    dnf_plot.legend.label_text_font_size = "12pt"
+
+    # Hover tooltip
+    dnf_plot.add_tools(HoverTool(show_arrow=False, tooltips=[
+        ("Number of Races", "@n_races"),
+        ("Number of Drivers", "@n_drivers"),
+        ("Year Num. DNFs", "@dnfs (@dnf_pct_str)"),
+        ("Total Num. DNFs", "@total_dnfs (@total_dnf_pct_str)"),
+        ("Year", "@year"),
+    ]))
+
+    # Crosshair tooltip
+    dnf_plot.add_tools(CrosshairTool(line_color="white", line_alpha=0.6))
+
+    return dnf_plot
 
 
 def generate_times_plot(circuit_years, circuit_quali, circuit_fastest_lap_data, circuit_races, circuit_results,
