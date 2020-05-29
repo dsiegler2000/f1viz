@@ -241,7 +241,7 @@ def mark_pit_stops(ycd_pit_stop_data, plots, driver_id, cached_driver_map=None, 
         time_str = str(round(millis / 1000, 3)) + "s"
 
         label_kwargs = dict(render_mode="canvas",
-                            text_color="pink",
+                            text_color="hotpink",
                             text_font_size="10pt",
                             angle=0.4 * math.pi)
 
@@ -249,7 +249,7 @@ def mark_pit_stops(ycd_pit_stop_data, plots, driver_id, cached_driver_map=None, 
             line_dash = cached_driver_map[driver_id][3]
         else:
             line_dash = "solid"
-        line = Span(location=lap, dimension="height", line_color="pink", line_width=3, line_dash=line_dash)
+        line = Span(location=lap, dimension="height", line_color="hotpink", line_width=3, line_dash=line_dash)
         driver_name = get_driver_name(driver_id, include_flag=False, just_last=True)
         for p in plots:
             r = (p.y_range.end - p.y_range.start)

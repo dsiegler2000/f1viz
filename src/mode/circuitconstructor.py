@@ -16,8 +16,6 @@ driver_standings = load_driver_standings()
 constructor_standings = load_constructor_standings()
 circuits = load_circuits()
 
-# todo do a second pass
-
 
 def get_layout(circuit_id=-1, constructor_id=-1, download_image=True, **kwargs):
     # Grab some useful slices
@@ -55,12 +53,12 @@ def get_layout(circuit_id=-1, constructor_id=-1, download_image=True, **kwargs):
     cc_fastest_lap_data = circuit_fastest_lap_data.loc[cc_fastest_lap_data_idxs]
     cc_lap_times = lap_times.loc[cc_lap_time_idxs]
     cc_driver_standings = driver_standings.loc[cc_driver_standings_idxs]
-    cc_constructor_standings = constructor_standings[(constructor_standings["constructorId"] == constructor_id) &
-                                                     (constructor_standings["raceId"].isin(cc_rids))]
+    constructor_constructor_standings = constructor_standings[constructor_standings["constructorId"] == constructor_id]
 
     # Positions plot
     positions_plot, positions_source = generate_positions_plot(cc_years, cc_fastest_lap_data, constructor_results,
-                                                               cc_constructor_standings, cc_races, constructor_id)
+                                                               constructor_constructor_standings, cc_races,
+                                                               constructor_id)
 
     # Win plot
     win_plot = generate_win_plot(positions_source, constructor_id)
@@ -94,10 +92,15 @@ def get_layout(circuit_id=-1, constructor_id=-1, download_image=True, **kwargs):
     else:
         image_view = Div()
 
-    logging.info("Finished generating layout for mode CIRCUITCONSTRUCTOR")
+    # Header
+    circuit_name = get_circuit_name(circuit_id)
+    constructor_name = get_constructor_name(constructor_id)
+    header = Div(text=f"<h2><b>What did/does {constructor_name}'s performance at "
+                      f"{circuit_name} look like?</b></h2><br>")
 
     middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
-    layout = column([positions_plot, middle_spacer,
+    layout = column([header,
+                     positions_plot, middle_spacer,
                      win_plot, middle_spacer,
                      lap_time_distribution_plot, middle_spacer,
                      finish_position_bar_plot, middle_spacer,
@@ -106,6 +109,9 @@ def get_layout(circuit_id=-1, constructor_id=-1, download_image=True, **kwargs):
                      stats_div,
                      results_table],
                     sizing_mode="stretch_width")
+
+    logging.info("Finished generating layout for mode CIRCUITCONSTRUCTOR")
+
     return layout
 
 
@@ -123,8 +129,8 @@ def generate_lap_time_distribution_plot(cc_lap_times, cc_rids, circuit_id, const
                                                              constructor_id=constructor_id)
 
 
-def generate_positions_plot(cc_years, cc_fastest_lap_data, constructor_results, cc_constructor_standings, cc_races,
-                            constructor_id):
+def generate_positions_plot(cc_years, cc_fastest_lap_data, constructor_results, constructor_constructor_standings,
+                            cc_races, constructor_id):
     """
     Plot the quali, finishing position, mean finish position that year, and average lap rank vs time to show improvement
     on that circuit and on the same plot show the quali and average race times to show car+driver improvement, along
@@ -132,12 +138,12 @@ def generate_positions_plot(cc_years, cc_fastest_lap_data, constructor_results, 
     :param cc_years: CC years
     :param cc_fastest_lap_data: CC fastest lap data
     :param constructor_results: Constructor results (not standings)
-    :param cc_constructor_standings: CC constructor standings
+    :param constructor_constructor_standings: Constructor constructor standings
     :param cc_races: CC races
     :param constructor_id: Constructor ID
     :return: Positions plot layout, positions source
     """
-    return constructor.generate_positions_plot(cc_years, cc_constructor_standings, constructor_results,
+    return constructor.generate_positions_plot(cc_years, constructor_constructor_standings, constructor_results,
                                                cc_fastest_lap_data, constructor_id, include_lap_times=True,
                                                races_sublist=cc_races)
 

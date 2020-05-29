@@ -7,7 +7,7 @@ from bokeh.models import Div, HoverTool, LegendItem, Legend, CrosshairTool, Rang
 from bokeh.plotting import figure
 from data_loading.data_loader import load_circuits, load_fastest_lap_data, load_races, load_qualifying, load_results, \
     load_driver_standings
-from mode import constructor, driver
+from mode import driver
 from utils import get_circuit_name, get_driver_name, millis_to_str, DATETIME_TICK_KWARGS, PLOT_BACKGROUND_COLOR, \
     get_constructor_name, vdivider, plot_image_url, rounds_to_str, get_status_classification
 import pandas as pd
@@ -58,8 +58,13 @@ def get_layout(circuit_id=-1, **kwargs):
     # Winner's table
     winners_table = generate_winners_table(circuit_years, circuit_results, circuit_races)
 
+    # Header
+    circuit_name = get_circuit_name(circuit_id)
+    header = Div(text=f"<h2><b>{circuit_name}</b></h2><br>")
+
     middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
     layout = column([
+        header,
         times_plot, middle_spacer,
         dnf_plot, middle_spacer,
         spmfp_plot, middle_spacer,
@@ -439,23 +444,26 @@ def generate_spmfp_plot(circuit_years, circuit_races, circuit_results):
         "muted_alpha": 0.05
     }
     mspmfp_line = spfp_plot.line(y="mspmfp", line_width=2, color="white", **kwargs)
-    dnf_line = spfp_plot.line(y="dnf", line_width=1.9, color="red", line_alpha=0.8, **kwargs)
+    dnf_line = spfp_plot.line(y="dnf", line_width=1.9, color="orange", line_alpha=0.8, **kwargs)
 
     # Mean lines
-    mspmfp_mean_line = Span(line_color="white", location=source["mspmfp"].mean(), dimension="width", line_alpha=0.5,
-                            line_width=2, line_dash="dashed")
-    dnf_mean_line = Span(line_color="red", location=source["dnf"].mean(), dimension="width", line_alpha=0.5,
-                         line_width=2, line_dash="dashed")
-    spfp_plot.add_layout(mspmfp_mean_line)
-    spfp_plot.add_layout(dnf_mean_line)
+    kwargs = {
+        "x": [1950, 2100],
+        "line_alpha": 0.5,
+        "line_width": 2,
+        "line_dash": "dashed",
+        "muted_alpha": 0.08
+    }
+    mspmfp_mean_line = spfp_plot.line(y=[source["mspmfp"].mean()] * 2, line_color="white", **kwargs)
+    dnf_mean_line = spfp_plot.line(y=[source["dnf"].mean()] * 2, line_color="orange", **kwargs)
 
     # Zero line
     spfp_plot.add_layout(Span(line_color="white", location=0, dimension="width", line_alpha=0.3, line_width=1.5))
 
     # Legend
     legend_items = [
-        LegendItem(label="Mean Start - Finish Pos.", renderers=[mspmfp_line]),
-        LegendItem(label="Number of DNFs", renderers=[dnf_line]),
+        LegendItem(label="Mean Start - Finish Pos.", renderers=[mspmfp_line, mspmfp_mean_line]),
+        LegendItem(label="Number of DNFs", renderers=[dnf_line, dnf_mean_line]),
     ]
     legend = Legend(items=legend_items, location="top_right", glyph_height=15, spacing=2, inactive_fill_color="gray")
     spfp_plot.add_layout(legend, "right")

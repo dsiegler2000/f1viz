@@ -217,17 +217,17 @@ def generate_positions_plot(driver_years, driver_driver_standings, driver_result
     final_standing_line = positions_plot.line(y="wdc_final_standing", color="white", line_width=major_line_width,
                                               line_alpha=0.7, **kwargs)
     finish_position_line = positions_plot.line(y="finish_position_int", color="yellow", line_width=minor_line_width,
-                                               line_alpha=0.5, **kwargs)
-    grid_line = positions_plot.line(y="grid", color="red", line_width=minor_line_width,
-                                    line_alpha=0.5, **kwargs)
-    fastest_lap_rank_line = positions_plot.line(y="fastest_lap_rank", color="pink", line_width=minor_line_width,
+                                               line_alpha=0.6, **kwargs)
+    grid_line = positions_plot.line(y="grid", color="orange", line_width=minor_line_width,
+                                    line_alpha=0.6, **kwargs)
+    fastest_lap_rank_line = positions_plot.line(y="fastest_lap_rank", color="hotpink", line_width=minor_line_width,
                                                 line_alpha=0.7, **kwargs)
     finish_position_smoothed_line = positions_plot.line(y="finish_position_int_smoothed", color="yellow",
                                                         line_width=minor_line_width + 0.5, line_alpha=0.7,
                                                         line_dash="dashed", **kwargs)
-    grid_smoothed_line = positions_plot.line(y="grid_smoothed", color="red", line_width=minor_line_width + 0.5,
+    grid_smoothed_line = positions_plot.line(y="grid_smoothed", color="orange", line_width=minor_line_width + 0.5,
                                              line_alpha=0.7, line_dash="dashed", **kwargs)
-    fastest_lap_rank_smoothed_line = positions_plot.line(y="fastest_lap_rank_smoothed", color="pink",
+    fastest_lap_rank_smoothed_line = positions_plot.line(y="fastest_lap_rank_smoothed", color="hotpink",
                                                          line_width=minor_line_width + 0.5, line_alpha=0.7,
                                                          line_dash="dashed", **kwargs)
 

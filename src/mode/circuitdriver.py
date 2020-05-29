@@ -2,7 +2,7 @@ import logging
 import numpy as np
 from bokeh.layouts import column, row
 from bokeh.models import Div, DatetimeTickFormatter, NumeralTickFormatter, LegendItem, Title, Range1d, Legend, \
-    HoverTool, CrosshairTool, Span, Spacer, FixedTicker, LinearAxis, TableColumn, DataTable, ColumnDataSource
+    HoverTool, CrosshairTool, Spacer, FixedTicker, LinearAxis, TableColumn, DataTable, ColumnDataSource
 from bokeh.plotting import figure
 import pandas as pd
 from data_loading.data_loader import load_results, load_races, load_lap_times, load_drivers, load_fastest_lap_data, \
@@ -22,6 +22,34 @@ status = load_status()
 circuits = load_circuits()
 driver_standings = load_driver_standings()
 constructor_standings = load_constructor_standings()
+
+# todo lots of small stuff:
+#  on the positions plot...
+#   why is this not using driver.generate_positions_plot (check why and if so change...)
+#   this really should be using the driver method as WCC current standing is wrong
+#   make sure to show final WDC standing (current doesn't really matter)
+#   make sure to show mean finish position for that year
+#   add mean finish pos for that year as a line potentially too (this might be redundant with final WDC standing)
+#   fix the name thing in hover tooltip (currently says unknown, likely due to using constructor method)
+#   make the smoothed line less smoothed
+#   make the un-smoothed line version the default (mute the smoothed)
+#   fix final pos. this year (probably by passing the whole times's worth of standings, not just CD standings)
+#   make the positions in the hover into ordinals (i.e. 1st, 2nd, 3rd not 1,2,3)
+#   do this for all positions plot implementations
+#  on the win plot
+#   make the 2nd axis (the % axis) right by making it so that there is no padding (the pct lines go right to the top,
+#    like other win plots)
+#   refactor this to use driver.generate_win_plot (don't add top-n support for now, just make a note of it)
+#  lap time dist. plot
+#   make the histogram more granular (less obvious bars), probably by upping the # of bins
+#   do this for the other lap time plot implementation
+#   make the mean lines match the style of the other lap time plot
+#  stats div
+#   potentially add DNF stats
+#   potentially add like compared to other circuits stats (i.e. finished 3 places higher on average)
+#  results table
+#   refactor to use yearconstructor.generate_results_table
+#  add histogram of finish positions
 
 
 def get_layout(circuit_id=-1, driver_id=-1, download_image=True, **kwargs):
@@ -168,7 +196,7 @@ def generate_lap_time_distribution_plot(cd_lap_times, cd_rids, circuit_id, drive
     time_dist.yaxis.formatter = NumeralTickFormatter(format="0.0%")
 
     cd_quad = time_dist.quad(top=cd_hist, bottom=0, left=cd_edges[:-1], right=cd_edges[1:],
-                             fill_color="red", line_alpha=0, alpha=0.1, muted_alpha=0)
+                             fill_color="orange", line_alpha=0, alpha=0.1, muted_alpha=0)
 
     line_kwargs = dict(
         x="x",
@@ -177,23 +205,24 @@ def generate_lap_time_distribution_plot(cd_lap_times, cd_rids, circuit_id, drive
         line_width=2,
         muted_line_alpha=0.05
     )
+    cd_pdf_line = time_dist.line(source=cd_pdf_source, color="orange", **line_kwargs)
     all_pdf_line = time_dist.line(source=all_pdf_source, color="white", **line_kwargs)
-    cd_pdf_line = time_dist.line(source=cd_pdf_source, color="red", **line_kwargs)
 
     # Mark means
     line_kwargs = dict(
-        dimension="height",
+        y=[-100, 100],
         line_alpha=0.9,
-        line_width=2.9
+        line_width=2,
+        muted_alpha=0.05
     )
     all_mean = all_times["milliseconds"].mean()
     cd_mean = cd_lap_times["milliseconds"].mean()
-    time_dist.add_layout(Span(line_color="white", location=all_mean, **line_kwargs))
-    time_dist.add_layout(Span(line_color="red", location=cd_mean, **line_kwargs))
+    cd_mean_line = time_dist.line(x=[cd_mean] * 2, line_color="orange", **line_kwargs)
+    all_mean_line = time_dist.line(x=[all_mean] * 2, line_color="white", **line_kwargs)
 
     # Legend
-    legend = [LegendItem(label=f"{name}'s Dist.", renderers=[cd_pdf_line, cd_quad]),
-              LegendItem(label="All Drivers Dist.", renderers=[all_pdf_line])]
+    legend = [LegendItem(label=f"{name}'s Dist.", renderers=[cd_pdf_line, cd_quad, cd_mean_line]),
+              LegendItem(label="All Drivers Dist.", renderers=[all_pdf_line, all_mean_line])]
 
     legend = Legend(items=legend, location="top_right", glyph_height=15, spacing=2, inactive_fill_color="gray")
     time_dist.add_layout(legend, "right")
@@ -201,7 +230,7 @@ def generate_lap_time_distribution_plot(cd_lap_times, cd_rids, circuit_id, drive
     time_dist.legend.label_text_font_size = "12pt"
 
     # Hover tooltip
-    time_dist.add_tools(HoverTool(show_arrow=False, tooltips=[
+    time_dist.add_tools(HoverTool(show_arrow=False, renderers=[all_pdf_line, cd_pdf_line], tooltips=[
         ("Lap Time", "@lap_time_str"),
         ("Percent of Laps", "@pct_str")
     ]))
@@ -223,6 +252,7 @@ def generate_positions_plot(cd_years, cd_constructor_standings, cd_results, cd_f
     muted by default
     :return: Position plot layout
     """
+    # todo why is this using cosntructor? see what driver_mode does and if its used anywhere elsewhere
     return constructor.generate_positions_plot(cd_years, cd_constructor_standings, cd_results,
                                                cd_fastest_lap_data, None, races_sublist=cd_races,
                                                show_driver_changes=False, driver_mode=True)
@@ -298,6 +328,7 @@ def generate_win_plot(positions_source):
     :return: Win plot
     """
     # TODO refactor to use constructor.generate_win_plot (ultimately driver.generate_win_plot)
+    # todo why did i say use constructor, can really just use driver.generate_win_plot
     logging.info("Generating win plot")
     win_source = pd.DataFrame(columns=["year",
                                        "n_races",

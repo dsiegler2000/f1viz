@@ -6,7 +6,7 @@ import pandas as pd
 from bokeh.layouts import column, row
 from bokeh.models import Div, Spacer, CrosshairTool, Range1d, FixedTicker, LegendItem, Legend, HoverTool, TableColumn, \
     DataTable, ColumnDataSource, LinearAxis, NumeralTickFormatter, Span, Label, CheckboxGroup, Title, \
-    DatetimeTickFormatter
+    DatetimeTickFormatter, Button
 from bokeh.plotting import figure
 from pandas import Series
 from data_loading.data_loader import load_constructors, load_results, load_constructor_standings, load_races, \
@@ -149,24 +149,26 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
     driver_changes_glyphs = []
     for year in range(min_year, max_year + 1):
         if races_sublist is None:
-            year_races = races[races["year"] == year]
+            year_subraces = races[races["year"] == year]
         else:
-            year_races = races_sublist[races_sublist["year"] == year]
-        if year_races.shape[0] == 0:
+            year_subraces = races_sublist[races_sublist["year"] == year]
+        if year_subraces.shape[0] == 0:
             continue
-        year_c_results = constructor_results[constructor_results["raceId"].isin(year_races.index)]
+        year_c_results = constructor_results[constructor_results["raceId"].isin(year_subraces.index)]
         year_fastest_lap_data = constructor_fastest_lap_data[
-            constructor_fastest_lap_data["raceId"].isin(year_races.index)]
-        dx = 1 / year_races.shape[0]
+            constructor_fastest_lap_data["raceId"].isin(year_subraces.index)]
+        dx = 1 / year_subraces.shape[0]
         x = year
+        year_races = races[races["year"] == year]
         final_rid = year_races[year_races["round"] == year_races["round"].max()].index.values[0]
         final_standing = constructor_constructor_standings[constructor_constructor_standings["raceId"] == final_rid]
+        pd.set_option("display.max_columns", None)
         final_standing = final_standing["position"]
         if final_standing.shape[0] == 0:
             final_standing = -1
         else:
             final_standing = final_standing.values[0]
-        for race_id in year_races.sort_index().index:
+        for race_id in year_subraces.sort_index().index:
             current_standing = constructor_constructor_standings[constructor_constructor_standings["raceId"] == race_id]
             race_results = year_c_results[year_c_results["raceId"] == race_id]
             num_dnfs = race_results[race_results["positionText"].str.match("r", flags=re.IGNORECASE)].shape[0]
@@ -231,11 +233,11 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
                 dy = -0.7
                 for did in new_drivers:
                     if constructor_results[constructor_results["driverId"] == did].shape[0] > 10:
-                        line = Span(line_color="white", location=x, dimension="height", line_alpha=0.7, line_width=3.2)
+                        line = Span(line_color="white", location=x, dimension="height", line_alpha=0.7, line_width=2.3)
                         line.visible = show_driver_changes
-                        label = Label(x=x + 0.01, y=y, text=get_driver_name(did, include_flag=False, just_last=True),
-                                      render_mode="canvas", text_color="white", text_font_size="12pt", text_alpha=0.9,
-                                      angle=math.pi/8)
+                        label = Label(x=x + 0.03, y=y, text=get_driver_name(did, include_flag=False, just_last=True),
+                                      render_mode="canvas", text_color="white", text_font_size="10pt", text_alpha=0.9,
+                                      angle=math.pi / 8)
                         positions_plot.add_layout(line)
                         positions_plot.add_layout(label)
                         driver_changes_glyphs.append(line)
@@ -259,7 +261,7 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
         positions_plot.xaxis.ticker = FixedTicker(ticks=np.arange(min_year - 1, max_year + 2, 3))
     else:
         positions_plot.xaxis.ticker = FixedTicker(ticks=np.arange(min_year - 1, max_year, 3))
-    positions_plot.yaxis.ticker = FixedTicker(ticks=np.arange(5, 18, 5).tolist() + [1])
+    positions_plot.yaxis.ticker = FixedTicker(ticks=np.arange(5, 60, 5).tolist() + [1])
 
     # Add the lines
     kwargs = {
@@ -275,17 +277,17 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
                                                   line_alpha=0.7, **kwargs)
         legend.append(LegendItem(label="WCC Final Year Standing", renderers=[final_standing_line]))
     finish_position_line = positions_plot.line(y="finish_position_int", color="yellow", line_width=minor_line_width,
-                                               line_alpha=0.5, **kwargs)
-    grid_line = positions_plot.line(y="grid", color="red", line_width=minor_line_width,
-                                    line_alpha=0.5, **kwargs)
-    fastest_lap_rank_line = positions_plot.line(y="fastest_lap_rank", color="pink", line_width=minor_line_width,
+                                               line_alpha=0.6, **kwargs)
+    grid_line = positions_plot.line(y="grid", color="orange", line_width=minor_line_width,
+                                    line_alpha=0.6, **kwargs)
+    fastest_lap_rank_line = positions_plot.line(y="fastest_lap_rank", color="hotpink", line_width=minor_line_width,
                                                 line_alpha=0.7, **kwargs)
     finish_position_smoothed_line = positions_plot.line(y="finish_position_int_smoothed", color="yellow",
                                                         line_width=minor_line_width + 0.5, line_alpha=0.7,
                                                         line_dash="dashed", **kwargs)
-    grid_smoothed_line = positions_plot.line(y="grid_smoothed", color="red", line_width=minor_line_width + 0.5,
+    grid_smoothed_line = positions_plot.line(y="grid_smoothed", color="orange", line_width=minor_line_width + 0.5,
                                              line_alpha=0.7, line_dash="dashed", **kwargs)
-    fastest_lap_rank_smoothed_line = positions_plot.line(y="fastest_lap_rank_smoothed", color="pink",
+    fastest_lap_rank_smoothed_line = positions_plot.line(y="fastest_lap_rank_smoothed", color="hotpink",
                                                          line_width=minor_line_width + 0.5, line_alpha=0.7,
                                                          line_dash="dashed", **kwargs)
 
@@ -341,14 +343,23 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
     ]))
 
     # Crosshair tooltip
-    positions_plot.add_tools(CrosshairTool(dimensions="height", line_color="white", line_alpha=0.6))
+    positions_plot.add_tools(CrosshairTool(line_color="white", line_alpha=0.6))
 
     # Enable/disable the driver changes glyphs
-    def update_driver_changes_visible(checked):
+    button = Button(label="Show Driver Changes", default_size=200)
+
+    def update_driver_changes_visible(showing_changes=None):
+        if len(driver_changes_glyphs) > 0 and showing_changes is None:
+            showing_changes = not driver_changes_glyphs[0].visible
+        if showing_changes is None:
+            return
         for g in driver_changes_glyphs:
-            g.visible = checked
-    checkbox_button_group = CheckboxGroup(labels=["Show Driver Changes"], active=[])
-    checkbox_button_group.on_change("active", lambda attr, old, new: update_driver_changes_visible(len(new) != 0))
+            g.visible = showing_changes
+        if showing_changes:
+            button.label = "Hide Driver Changes"
+        else:
+            button.label = "Show Driver Changes"
+    button.on_click(lambda event: update_driver_changes_visible())
     update_driver_changes_visible(show_driver_changes)
 
     if show_driver_changes:
@@ -358,9 +369,9 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
             return column([positions_plot], sizing_mode="stretch_width"), source
     else:
         if return_components_and_source:
-            return checkbox_button_group, positions_plot, source
+            return button, positions_plot, source
         else:
-            return column([checkbox_button_group, positions_plot], sizing_mode="stretch_width"), source
+            return column([row([button], sizing_mode="fixed"), positions_plot], sizing_mode="stretch_width"), source
 
 
 def generate_circuit_performance_table(constructor_results, constructor_races, constructor_id, consider_up_to=24):

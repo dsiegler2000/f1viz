@@ -817,9 +817,8 @@ def generate_pit_stop_plot(race_pit_stops, cached_driver_map, race_laps):
     logging.info("Generating pit stop plot")
 
     if race_pit_stops.shape[0] == 0:
-        # TODO fill out this link
         return Div(text="Unfortunately, we do not have any pit stop timing data on this race. We have lap timing data "
-                        "for the 2012 season onwards. If you know a source for this data, please contact us here.")
+                        "for the 2012 season onwards.")
 
     max_laps = race_laps["lap"].max()
     x = np.arange(1, max_laps + 1)

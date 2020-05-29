@@ -52,8 +52,10 @@ mode = "default"
 
 # TODO master list:
 #  Go through each existing mode and do a "second pass" to add simple features and make small clean-up changes
+#  Get rid of axis sharing on whatever mode that is
 #  Do simple refactoring, namely, adding common plots to common_plots.py
 #  Change all mean lap time ranks to be mean lap time percent
+#  Add the top-n support for all win plots as well as the calculate 95th percentile and set that as n feature
 #  Start on the all_years mode
 
 
@@ -190,6 +192,8 @@ constructor_input = Select(options=constructor_completions)
 search_bars = [circuit_input, year_input, driver_input, constructor_input]
 search_bars_layout = row(*search_bars, sizing_mode="scale_width")
 
+circuit_input.value = "Albert Park Grand Prix Circuit"
+
 if INCLUDE_GENERATE_BUTTON:
     generate_button = Button(label="Generate Plots")
     generate_button.on_click(lambda event: update())
@@ -203,6 +207,8 @@ lay = column([header, search_bars_layout, mode_lay, footer], sizing_mode="scale_
 curdoc().add_root(lay)
 curdoc().title = "F1Viz"
 curdoc().theme = "dark_minimal"
+
+driver_input.value = "Kimi Räikkönen"
 
 update()
 
