@@ -326,11 +326,11 @@ if args.enable_fastest_lap:
             constructor_name = get_constructor_name(constructor_id)
 
             driver_laps = race_laps[race_laps["driverId"] == driver_id]
+            avg_lap_time_millis = driver_laps["milliseconds"].mean()
 
             if use_lap_data:
                 fastest_lap_millis = driver_laps["milliseconds"].min()
                 fastest_lap_str = millis_to_str(fastest_lap_millis)
-                avg_lap_time_millis = driver_laps["milliseconds"].mean()
 
                 race_data["fastest_lap_time_millis"].append(fastest_lap_millis)
                 race_data["fastest_lap_time_str"].append(fastest_lap_str)
@@ -339,7 +339,6 @@ if args.enable_fastest_lap:
                 rank = 0 if np.isnan(rank) or np.isinf(rank) else int(rank)
                 fastest_lap_millis = results_row["fastestLapTime"]
                 fastest_lap_time_str = millis_to_str(fastest_lap_millis)
-                avg_lap_time_millis = driver_laps["milliseconds"].mean()
 
                 race_data["rank"].append(rank)
                 race_data["fastest_lap_time_millis"].append(fastest_lap_millis)

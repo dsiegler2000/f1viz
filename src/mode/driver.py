@@ -25,6 +25,15 @@ races = load_races()
 fastest_lap_data = load_fastest_lap_data()
 status = load_status()
 
+# todo wow, this is a thick one, do 2nd pass
+
+
+# todo at a minimum:
+#   Make sure tables are sortable
+#   Make sure second axes are scaled properly
+#   Make sure using ordinals (1st, 2nd, 3rd) on everything
+#   Make sure the mode has a header
+
 
 def get_layout(driver_id=-1, **kwargs):
     if driver_id not in drivers.index:
@@ -356,7 +365,7 @@ def generate_circuit_performance_table(driver_results, driver_races, driver_id, 
         return Div(text="")
     # Calculate best circuits by first ranking by number of wins, then number of 2nd places, then 3rd, etc
     circuit_scores = defaultdict(lambda: np.zeros(consider_up_to))
-    circuit_years = defaultdict(lambda: [""] * consider_up_to)
+    circuit_years = defaultdict(lambda: [[] for _ in range(0, consider_up_to)])
     for idx, results_row in driver_results.iterrows():
         circuit_id = driver_races.loc[results_row["raceId"], "circuitId"]
         year = driver_races.loc[results_row["raceId"], "year"]
@@ -364,7 +373,7 @@ def generate_circuit_performance_table(driver_results, driver_races, driver_id, 
         to_add = np.zeros(consider_up_to)
         if pos <= consider_up_to:
             to_add[pos - 1] = 1
-            circuit_years[circuit_id][pos - 1] += str(year) + ", "
+            circuit_years[circuit_id][pos - 1].append(year)
         circuit_scores[circuit_id] += to_add
     circuit_scores = pd.DataFrame.from_dict(circuit_scores, orient="index")
     circuit_scores.index.name = "circuitId"
@@ -380,12 +389,12 @@ def generate_circuit_performance_table(driver_results, driver_races, driver_id, 
         wins_years = circuit_years[cid][0]
         wins_str = str(wins)
         if int(wins) > 0:
-            wins_str += " (" + (wins_years[:-2] if len(wins_years) > 0 else "") + ")"
+            wins_str += " (" + rounds_to_str(wins_years) + ")"
         podiums = int(scores_row[0] + scores_row[1] + scores_row[2])
         podiums_years = wins_years + circuit_years[cid][1] + circuit_years[cid][2]
         podiums_str = str()
         if int(podiums) > 0:
-            podiums_str += " (" + (podiums_years[:-2] if len(podiums_years) > 0 else "") + ")"
+            podiums_str += " (" + rounds_to_str(podiums_years) + ")"
         other_places = ""
         place = 4
         for num_places in scores_row.values[3:]:
@@ -432,15 +441,15 @@ def generate_finishing_position_bar_plot(driver_results, consider_up_to=24, plot
     :return: Finishing position distribution plot layout
     """
     logging.info("Generating finishing position bar plot")
-    results = driver_results["positionText"].apply(position_text_to_str)
+    results = driver_results["positionText"].apply(position_text_to_str).apply(int_to_ordinal)
     n = results.shape[0]
     if n == 0:
         return Div(text="")
     results = results.value_counts()
-    names = np.arange(1, consider_up_to + 1).astype(str).tolist() + ["RET"]
+    names = [int_to_ordinal(i) for i in range(1, consider_up_to + 1)] + ["RET"]
     bar_dict = OrderedDict({k: 0 for k in names})
     for name, count in results.items():
-        if name.upper() in bar_dict.keys():
+        if name in bar_dict:
             bar_dict[name] = count
     names = []
     counts = []
@@ -493,12 +502,12 @@ def generate_wdc_position_bar_plot(positions_source, consider_up_to=24, plot_hei
     n = results.shape[0]
     if n == 0:
         return Div(text="")
-    results = results["wdc_final_standing"].value_counts()
-    names = np.arange(1, consider_up_to + 1).astype(str).tolist()
+    results = results["wdc_final_standing"].apply(int_to_ordinal).value_counts()
+    names = [int_to_ordinal(i) for i in range(1, consider_up_to + 1)]
     bar_dict = OrderedDict({k: 0 for k in names})
     for name, count in results.items():
         name = str(name)
-        if name.upper() in bar_dict.keys():
+        if name in bar_dict:
             bar_dict[name] = count
     names = []
     counts = []
@@ -511,7 +520,8 @@ def generate_wdc_position_bar_plot(positions_source, consider_up_to=24, plot_hei
             percents.append(str(round(100 * v / n, 1)) + "%")
         else:
             percents.append("0.0%")
-        years_this_pos = positions[positions["wdc_final_standing"].fillna(-1).astype(int) == int(k)]
+        years_this_pos = positions[positions["wdc_final_standing"].fillna(-1).apply(int_to_ordinal) ==
+                                   int_to_ordinal(k)]
         years_str = ", ".join(years_this_pos.index.values.astype(str).tolist())
         if len(years_str) > 0:
             years_str = "(" + years_str + ")"

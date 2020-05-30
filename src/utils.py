@@ -121,9 +121,9 @@ def millis_to_str(millis, format_seconds=False, fallback=""):
         if millis < 1000 * 60 and format_seconds:
             return dt.strftime("%S.%f")[:-3]
         if millis > 1000 * 60 * 60:
-            return dt.strftime("%-H:%M:%S.%f")[:-3]
+            return dt.strftime("%-H:%M:%S.%f")[:-3].rjust(12)
         else:
-            return dt.strftime("%M:%S.%f")[:-3]
+            return dt.strftime("%M:%S.%f")[:-3].rjust(9)
 
 
 def get_driver_name(did, include_flag=True, just_last=False):
@@ -417,10 +417,12 @@ def int_to_ordinal(n):
         return ""
     if isinstance(n, str) and n.strip().isnumeric():
         n = int(n)
+    elif isinstance(n, str):
+        return n
     if np.isnan(n):
         return ""
     else:
-        return "%d%s" % (n, {1: "st", 2: "nd", 3: "rd"}.get(n if n < 20 else n % 10, "th"))
+        return ("%d%s" % (n, {1: "st", 2: "nd", 3: "rd"}.get(n if n < 20 else n % 10, "th"))).rjust(4)
 
 
 def result_to_str(pos, status_id):

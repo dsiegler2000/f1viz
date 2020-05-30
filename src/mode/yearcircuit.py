@@ -272,7 +272,8 @@ def generate_fastest_lap_table(race_results, race_laps, race_fastest_lap_data):
     race_fastest_lap_data["rank"] = race_fastest_lap_data["rank"].replace("UNK", "  ")
 
     fast_source = ColumnDataSource(data=race_fastest_lap_data)
-    fast_table = DataTable(source=fast_source, columns=fastest_lap_columns, index_position=None, min_height=530)
+    fast_table = DataTable(source=fast_source, columns=fastest_lap_columns, index_position=None,
+                           min_height=min(530, 30 * race_fastest_lap_data.shape[0]))
     fast_row = row([fast_table], sizing_mode="stretch_width")
 
     c = [title_div, fast_row]

@@ -267,28 +267,21 @@ def generate_times_plot(circuit_years, circuit_quali, circuit_fastest_lap_data, 
 
         # Fastest and average lap
         year_fastest_lap_data = circuit_fastest_lap_data[circuit_fastest_lap_data["raceId"] == rid]
+        if year_fastest_lap_data.shape[0] == 0:
+            avg_lap_millis = np.nan
+            avg_lap_str = ""
+        else:
+            avg_lap_millis = int(year_fastest_lap_data["avg_lap_time_millis"].mean())
+            avg_lap_str = millis_to_str(avg_lap_millis)
         if year_fastest_lap_data.shape[0] == 0 or \
                 year_fastest_lap_data["fastest_lap_time_millis"].isna().sum() == year_fastest_lap_data.shape[0]:
             fastest_lap_millis = np.nan
             fastest_lap_str = ""
-            # If fastest lap data isn't available, use winner's time
-            race = circuit_races[circuit_races["year"] == year]
-            rid = race.index.values[0]
-            results = circuit_results[circuit_results["raceId"] == rid]
-            laps = results["laps"].sum()
-            if laps > 0:
-                avg_lap_millis = results["milliseconds"].sum() / laps
-                avg_lap_str = millis_to_str(avg_lap_millis)
-            else:
-                avg_lap_millis = np.nan
-                avg_lap_str = "???"
         else:
             idxmin = int(year_fastest_lap_data["fastest_lap_time_millis"].idxmin())
             fastest_lap_name = get_driver_name(year_fastest_lap_data.loc[idxmin, "driver_id"])
             fastest_lap_millis = int(year_fastest_lap_data.loc[idxmin, "fastest_lap_time_millis"])
             fastest_lap_str = millis_to_str(fastest_lap_millis) + " by " + fastest_lap_name
-            avg_lap_millis = int(year_fastest_lap_data["avg_lap_time_millis"].min())
-            avg_lap_str = millis_to_str(avg_lap_millis)
 
         source = source.append({
             "year": year,
@@ -314,7 +307,7 @@ def generate_times_plot(circuit_years, circuit_quali, circuit_fastest_lap_data, 
 
     # Scale rating so that a 0=min_time, 10=max_time
     source["rating_scaled"] = (max_time - min_time) * (source["rating"] / 10) + min_time
-    source["rating"] = source["rating"].fillna("???")
+    source["rating"] = source["rating"].fillna("")
 
     min_year = np.min(circuit_years)
     max_year = np.max(circuit_years)
@@ -360,7 +353,7 @@ def generate_times_plot(circuit_years, circuit_quali, circuit_fastest_lap_data, 
         tooltips.append(("Fastest Lap Time", "@fastest_lap_str"))
 
     # Add rating and other axis
-    if source["rating"].replace("???", np.nan).isna().sum() < source.shape[0]:
+    if source["rating"].replace("", np.nan).isna().sum() < source.shape[0]:
         rating_line = times_plot.line(y="rating_scaled", line_color="green", line_alpha=0.9, name="rating_line",
                                       **kwargs)
         legend_items.append(LegendItem(label="Average Rating", renderers=[rating_line]))
@@ -377,7 +370,7 @@ def generate_times_plot(circuit_years, circuit_quali, circuit_fastest_lap_data, 
                 return t.microsecond / 1000 + t.second * 1000 + t.minute * 1000 * 60
             max_time = dt_to_millis(times_plot.y_range.end)
             min_time = dt_to_millis(times_plot.y_range.start)
-            new_rating = (max_time - min_time) * (source["rating"].replace("???", np.nan).astype(float) / 10) + min_time
+            new_rating = (max_time - min_time) * (source["rating"].replace("", np.nan).astype(float) / 10) + min_time
             column_source.patch({
                 "rating_scaled": [(slice(new_rating.shape[0]), new_rating)]
             })

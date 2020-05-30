@@ -88,7 +88,8 @@ def get_layout(circuit_id=-1, driver_id=-1, constructor_id=-1, download_image=Tr
     else:
         image_view = Div()
 
-    header = Div(text=f"<h2><b>{get_driver_name(driver_id)} at {get_circuit_name(circuit_id)}</b></h2><br>")
+    header = Div(text=f"<h2><b>{get_driver_name(driver_id)} at {get_circuit_name(circuit_id)} with "
+                      f"{get_constructor_name(constructor_id)}</b></h2><br>")
 
     middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
     layout = column([header,

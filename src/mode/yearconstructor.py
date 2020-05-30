@@ -266,7 +266,7 @@ def generate_results_table(yc_results, yc_fastest_lap_data, year_results, year_f
         elif finish_pos == 1:
             time_str = millis_to_str(time)
         else:
-            time_str = ""
+            time_str = "Not Set"
         if race_driver_fastest_lap_data.shape[0] > 0:
             fastest_lap_time = race_driver_fastest_lap_data["fastest_lap_time_millis"].values[0]
             fastest_lap_time_str = millis_to_str(fastest_lap_time)
@@ -278,10 +278,12 @@ def generate_results_table(yc_results, yc_fastest_lap_data, year_results, year_f
                     fastest_time = fastest_time.values[0]
                     fastest_gap = millis_to_str(fastest_lap_time - fastest_time)
                     fastest_lap_time_str = millis_to_str(fastest_lap_time) + " (+" + fastest_gap + ")"
+            if fastest_lap_time_str == "":
+                fastest_lap_time_str = "Not Set"
             fastest_avg_idx = race_fastest_lap_data["avg_lap_time_millis"].idxmin()
             avg_lap_time = race_driver_fastest_lap_data["avg_lap_time_millis"].values[0]
             if np.isnan(avg_lap_time):
-                avg_lap_time_str = ""
+                avg_lap_time_str = "Not Set"
             elif race_fastest_lap_data.loc[fastest_avg_idx, "driver_id"] == driver_id or np.isnan(avg_lap_time):
                 avg_lap_time_str = millis_to_str(avg_lap_time) + " (Fastest Avg.)"
             else:
@@ -289,8 +291,8 @@ def generate_results_table(yc_results, yc_fastest_lap_data, year_results, year_f
                 avg_gap = millis_to_str(avg_lap_time - fastest_avg_time)
                 avg_lap_time_str = millis_to_str(avg_lap_time) + " (+" + avg_gap + ")"
         else:
-            fastest_lap_time_str = ""
-            avg_lap_time_str = ""
+            fastest_lap_time_str = "Not Set"
+            avg_lap_time_str = "Not Set"
         source = source.append({
             "race_name": race_name,
             "race_id": rid,

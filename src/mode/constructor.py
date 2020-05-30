@@ -11,6 +11,7 @@ from bokeh.plotting import figure
 from pandas import Series
 from data_loading.data_loader import load_constructors, load_results, load_constructor_standings, load_races, \
     load_fastest_lap_data
+from mode import driver
 from utils import get_constructor_name, PLOT_BACKGROUND_COLOR, position_text_to_str, get_driver_name, \
     get_circuit_name, int_to_ordinal, get_status_classification, rounds_to_str, nationality_to_flag, get_race_name, \
     millis_to_str, DATETIME_TICK_KWARGS, rescale
@@ -21,15 +22,6 @@ results = load_results()
 constructor_standings = load_constructor_standings()
 races = load_races()
 fastest_lap_data = load_fastest_lap_data()
-
-# todo some small stuff
-#  positions plot
-#   fix the "drivers" tooltip (see alfa)
-#   fix where there is discontinuities (don't set final wcc standing to -1, set it to nan, see alfa again)
-#   potentially change the scale slightly so we can see bad teams a bit easier by default (again see alfa)
-
-
-# todo do a second pass on me next :)
 
 
 def get_layout(constructor_id=-1, **kwargs):
@@ -76,8 +68,13 @@ def get_layout(constructor_id=-1, **kwargs):
                                               driver_performance_source, constructor_results,
                                               constructor_constructor_standings, constructor_id)
 
+    # Header
+    constructor_name = get_constructor_name(constructor_id)
+    header = Div(text=f"<h2><b>{constructor_name}</b></h2><br>")
+
     middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
-    layout = column([positions_plot, middle_spacer,
+    layout = column([header,
+                     positions_plot, middle_spacer,
                      positions_bar_plot, middle_spacer,
                      wcc_bar_plot, middle_spacer,
                      win_plot,
@@ -145,7 +142,7 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
         y_axis_label="Position",
         x_axis_label="Year",
         y_range=Range1d(0, 22, bounds=(0, 60)),
-        x_range=Range1d(min_year, max_year, bounds=(min_year, max_year + 1)),
+        x_range=Range1d(min_year, max_year + 1, bounds=(min_year, max_year + 3)),
         tools="pan,xbox_zoom,xwheel_zoom,reset,box_zoom,wheel_zoom,save"
     )
     if show_driver_changes:
@@ -192,9 +189,9 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
                 finish_position_int = round(finish_positions.mean(), 1)
                 grid = round(race_results["grid"].values[0].mean(), 1)
             else:
-                driver_names = "UNKNOWN"
-                constructor_name = "UNKNOWN"
-                finish_position_str = "RET, RET"
+                driver_names = ""
+                constructor_name = get_constructor_name(cid)
+                finish_position_str = ""
                 finish_position_int = np.nan
                 finish_positions = []
                 grid = np.nan
@@ -205,7 +202,7 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
                 round_name = current_standing["roundName"].values[0]
                 points = current_standing["points"].values[0]
             else:
-                current_wcc_standing = 10
+                current_wcc_standing = np.nan
                 current_wcc_standing_str = ""
             race_fastest_lap_data = year_fastest_lap_data[year_fastest_lap_data["raceId"] == race_id]
             if race_fastest_lap_data.shape[0] > 0:
@@ -240,7 +237,7 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
                 "avg_lap_time_millis": avg_lap_time_millis,
                 "avg_lap_time_str": avg_lap_time_str,
                 "avg_finish_pos": year_avg_finish_pos,
-                "avg_finish_pos_str": str(round(year_avg_finish_pos, 1))
+                "avg_finish_pos_str": "" if np.isnan(year_avg_finish_pos) else str(round(year_avg_finish_pos, 1))
             }, ignore_index=True)
 
             # Mark driver changes
@@ -356,7 +353,7 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
 
     positions_plot.add_tools(HoverTool(show_arrow=False, tooltips=[
         ("Name", constructor_name),
-        ("Drivers", "@driver_names"),
+        ("Driver(s)", "@driver_names"),
         ("Year", "@year"),
         ("Round", "@roundNum - @roundName"),
         ("Grid Position", "@grid"),
@@ -416,7 +413,7 @@ def generate_circuit_performance_table(constructor_results, constructor_races, c
         return Div(text="")
     # Calculate best circuits by first ranking by number of wins, then number of 2nd places, then 3rd, etc
     circuit_scores = defaultdict(lambda: np.zeros(consider_up_to))
-    circuit_years = defaultdict(lambda: [""] * consider_up_to)
+    circuit_years = defaultdict(lambda: [[] for _ in range(0, consider_up_to)])
     for idx, results_row in constructor_results.iterrows():
         circuit_id = constructor_races.loc[results_row["raceId"], "circuitId"]
         year = constructor_races.loc[results_row["raceId"], "year"]
@@ -424,7 +421,7 @@ def generate_circuit_performance_table(constructor_results, constructor_races, c
         to_add = np.zeros(consider_up_to)
         if pos <= consider_up_to:
             to_add[pos - 1] = 1
-            circuit_years[circuit_id][pos - 1] += str(year) + ", "
+            circuit_years[circuit_id][pos - 1].append(year)
         circuit_scores[circuit_id] += to_add
     circuit_scores = pd.DataFrame.from_dict(circuit_scores, orient="index")
     circuit_scores.index.name = "circuitId"
@@ -437,12 +434,12 @@ def generate_circuit_performance_table(constructor_results, constructor_races, c
         wins_years = circuit_years[cid][0]
         wins_str = str(int(wins)).rjust(2)
         if int(wins) > 0:
-            wins_str += " (" + (wins_years[:-2] if len(wins_years) > 0 else "") + ")"
+            wins_str += " (" + rounds_to_str(wins_years) + ")"
         podiums = scores_row[0] + scores_row[1] + scores_row[2]
-        podiums_years = wins_years + circuit_years[cid][1] + circuit_years[cid][2]
+        podiums_years = list(set(wins_years + circuit_years[cid][1] + circuit_years[cid][2]))
         podiums_str = str(int(podiums)).rjust(2)
         if int(podiums) > 0:
-            podiums_str += " (" + (podiums_years[:-2] if len(podiums_years) > 0 else "") + ")"
+            podiums_str += " (" + rounds_to_str(podiums_years) + ")"
         other_places = ""
         place = 4
         for num_places in scores_row.values[3:10]:
@@ -481,50 +478,7 @@ def generate_finishing_positions_bar_plot(constructor_results, consider_up_to=24
     :param consider_up_to: Place to consider up to
     :return: Finishing position distribution plot layout
     """
-    # TODO refactor to use driver
-    logging.info("Generating finishing position bar plot")
-    results = constructor_results["positionText"].apply(position_text_to_str)
-    n = results.shape[0]
-    if n == 0:
-        return Div(text="")
-    results = results.value_counts()
-    names = np.arange(1, consider_up_to + 1).astype(str).tolist() + ["RET"]
-    bar_dict = OrderedDict({k: 0 for k in names})
-    for name, count in results.items():
-        if name.upper() in bar_dict.keys():
-            bar_dict[name] = count
-    names = []
-    counts = []
-    percents = []
-    for k, v in bar_dict.items():
-        names.append(k)
-        counts.append(v)
-        percents.append(str(round(100 * v / n, 1)) + "%")
-
-    source = ColumnDataSource({
-        "name": names,
-        "count": counts,
-        "percent": percents
-    })
-    finish_position_plot = figure(x_range=names,
-                                  title=u"Race Finishing Positions \u2014 Doesn't include DNQ, NC, and DSQ finishes",
-                                  tools="hover",
-                                  tooltips="@name: @count (@percent)",
-                                  plot_height=400)
-    finish_position_plot.y_range.start = 0
-    finish_position_plot.y_range.end = max(counts) + 5
-    finish_position_plot.vbar(x="name", top="count", width=0.9, source=source, color="yellow", fill_alpha=0.8,
-                              line_alpha=0.9)
-
-    # Add the other y axis
-    max_y = finish_position_plot.y_range.end
-    y_range = Range1d(start=0, end=max_y / n)
-    finish_position_plot.extra_y_ranges = {"percent_range": y_range}
-    axis = LinearAxis(y_range_name="percent_range")
-    axis.formatter = NumeralTickFormatter(format="0.0%")
-    finish_position_plot.add_layout(axis, "right")
-
-    return finish_position_plot
+    return driver.generate_finishing_position_bar_plot(constructor_results)
 
 
 def generate_wcc_position_bar_plot(positions_source, consider_up_to=12, plot_height=400, color="white"):
@@ -545,12 +499,12 @@ def generate_wcc_position_bar_plot(positions_source, consider_up_to=12, plot_hei
     n = results.shape[0]
     if n == 0:
         return Div(text="")
-    results = results["wcc_final_standing"].value_counts()
-    names = np.arange(1, consider_up_to + 1).astype(str).tolist()
+    results = results["wcc_final_standing"].apply(int_to_ordinal).value_counts()
+    names = [int_to_ordinal(i) for i in range(1, consider_up_to + 1)]
     bar_dict = OrderedDict({k: 0 for k in names})
     for name, count in results.items():
         name = str(name)
-        if name.upper() in bar_dict.keys():
+        if name in bar_dict:
             bar_dict[name] = count
     names = []
     counts = []
@@ -563,7 +517,8 @@ def generate_wcc_position_bar_plot(positions_source, consider_up_to=12, plot_hei
             percents.append(str(round(100 * v / n, 1)) + "%")
         else:
             percents.append("0.0%")
-        years_this_pos = positions[positions["wcc_final_standing"].astype(int) == int(k)]
+        years_this_pos = positions[positions["wcc_final_standing"].fillna(-1).apply(int_to_ordinal) ==
+                                   int_to_ordinal(k)]
         years_str = ", ".join(years_this_pos.index.values.astype(str).tolist())
         if len(years_str) > 0:
             years_str = "(" + years_str + ")"
@@ -712,7 +667,7 @@ def generate_driver_performance_table(constructor_races, constructor_results):
 
     driver_performance_columns_table = DataTable(source=ColumnDataSource(data=source),
                                                  columns=driver_performance_columns, index_position=None,
-                                                 height=530)
+                                                 height=min(30 * source.shape[0], 570))
     title = Div(text=f"<h2><b>Performance of each Driver</b></h2><br><i>Again, wins, podiums, and finish percentages "
                      f"are calculated as a percentage of races entered, so they may exceeed 100% in certain cases.")
 

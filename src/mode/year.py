@@ -24,6 +24,7 @@ races = load_races()
 results = load_results()
 lap_times = load_lap_times()
 qualifying = load_qualifying()
+# TODO FIX THIS TO USE MILLIS / LAPS TO CALCULATE THIS OR JUST THE INFO IN FASTEST LAP DATA!
 constructor_mean_lap_times = load_constructor_mean_lap_times()
 fastest_lap_data = load_fastest_lap_data()
 
