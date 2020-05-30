@@ -19,6 +19,8 @@ qualifying = load_qualifying()
 results = load_results()
 driver_standings = load_driver_standings()
 
+# TODO this really needs a box to check for "generate SP v FP plot" and "generate MLTR vs FP plot" for efficiency
+
 
 def get_layout(circuit_id=-1, **kwargs):
     circuit_races = races[races["circuitId"] == circuit_id]
@@ -114,6 +116,8 @@ def generate_dnf_plot(circuit_years, circuit_results, circuit_races, circuit_id)
     """
     # TODO refactor to use existing method
     logging.info("Generating dnf plot")
+    if len(circuit_years) == 0:
+        return Div()
     source = pd.DataFrame(columns=["n_races", "year", "n_drivers",
                                    "dnf_pct", "dnfs", "dnf_pct_str",
                                    "total_dnf_pct", "total_dnfs", "total_dnf_pct_str"])
@@ -565,8 +569,6 @@ def generate_circuit_results_table(circuit_years, circuit_races, circuit_results
             "p2": p2_name,
             "p3": p3_name
         }, ignore_index=True)
-
-    pd.set_option('display.max_columns', None)
 
     title_div = Div(text="<h2><b>Circuit Results</b></h2>")
 

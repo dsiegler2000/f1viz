@@ -345,6 +345,11 @@ def str_to_millis(s):
 
 
 def position_text_to_str(pos):
+    """
+    DEPRECATED
+    :param pos:
+    :return:
+    """
     pos = pos.lower()
     if pos == "r":
         pos = "RET"

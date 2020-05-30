@@ -22,6 +22,13 @@ constructor_standings = load_constructor_standings()
 races = load_races()
 fastest_lap_data = load_fastest_lap_data()
 
+# todo some small stuff
+#  positions plot
+#   fix the "drivers" tooltip (see alfa)
+#   fix where there is discontinuities (don't set final wcc standing to -1, set it to nan, see alfa again)
+#   potentially change the scale slightly so we can see bad teams a bit easier by default (again see alfa)
+
+
 
 def get_layout(constructor_id=-1, **kwargs):
     if constructor_id not in constructors.index:
@@ -83,10 +90,10 @@ def get_layout(constructor_id=-1, **kwargs):
 
 
 def generate_positions_plot(constructor_years, constructor_constructor_standings, constructor_results,
-                            constructor_fastest_lap_data, cid, smoothing_alpha=0.05, minor_line_width=1.5,
-                            major_line_width=3.5, smoothing_muted=False, show_driver_changes=False,
+                            constructor_fastest_lap_data, cid, smoothing_alpha=0.05, minor_line_width=1.7,
+                            major_line_width=2.8, smoothing_muted=False, show_driver_changes=False,
                             return_components_and_source=False, include_lap_times=False, races_sublist=None,
-                            driver_mode=False):
+                            show_mean_finish_pos=False):
     """
     Plots WCC standing (calculated per-race and per-season), average quali rank (per-race), average fastest lap rank
     (per-race), and average finishing position (per-race) all on the same plot. Also marks driver changes with a line.
@@ -104,9 +111,10 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
     :param include_lap_times: If set to True, will plot average lap time of every race
     :param races_sublist: This is an option to only use a certain sub-set of races if, for example, the user wishes to
     show positions at just a specific circuit, set to None if looking at all races
-    :param driver_mode: If set to True, will change a few small things to make better for driver display
+    :param show_mean_finish_pos: If set to True, will show mean finish position that year instead of WDC finish pos
     :return: Position plot layout
     """
+    # TODO add smoothing slider
     logging.info("Generating position plot")
     if constructor_years.shape[0] == 0:
         return Div(text="Unfortunately, we don't have data on this constructor."), {}
@@ -121,22 +129,20 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
         "fastest_lap_rank",
         "points",
         "roundNum", "roundName",
-        "wcc_current_standing",
-        "wcc_final_standing",
+        "wcc_current_standing", "wcc_current_standing_str",
+        "wcc_final_standing", "wcc_final_standing_str",
         "num_dnfs_this_race",
-        "avg_lap_time_millis", "avg_lap_time_str"
+        "avg_lap_time_millis", "avg_lap_time_str",
+        "avg_finish_pos", "avg_finish_pos_str"
     ])
     min_year = constructor_years.min()
     max_year = constructor_years.max()
-    if driver_mode and constructor_results.shape[0] > 0:
-        name = get_driver_name(constructor_results["driverId"].values[0])
-    else:
-        name = get_constructor_name(cid)
+    name = get_constructor_name(cid)
     positions_plot = figure(
         title=u"Finishing Positions and Ranks \u2014 " + name,
         y_axis_label="Position",
         x_axis_label="Year",
-        y_range=Range1d(0, 24 if driver_mode else 12, bounds=(0, 60)),
+        y_range=Range1d(0, 22, bounds=(0, 60)),
         x_range=Range1d(min_year, max_year, bounds=(min_year, max_year + 1)),
         tools="pan,xbox_zoom,xwheel_zoom,reset,box_zoom,wheel_zoom,save"
     )
@@ -147,6 +153,7 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
     points = 0
     round_num = 1
     driver_changes_glyphs = []
+    round_name = ""
     for year in range(min_year, max_year + 1):
         if races_sublist is None:
             year_subraces = races[races["year"] == year]
@@ -162,12 +169,15 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
         year_races = races[races["year"] == year]
         final_rid = year_races[year_races["round"] == year_races["round"].max()].index.values[0]
         final_standing = constructor_constructor_standings[constructor_constructor_standings["raceId"] == final_rid]
-        pd.set_option("display.max_columns", None)
+        year_avg_finish_pos = constructor_results[
+            constructor_results["raceId"].isin(year_races.index)]["positionOrder"].mean()
         final_standing = final_standing["position"]
         if final_standing.shape[0] == 0:
-            final_standing = -1
+            final_standing = np.nan
+            final_standing_str = ""
         else:
             final_standing = final_standing.values[0]
+            final_standing_str = int_to_ordinal(final_standing)
         for race_id in year_subraces.sort_index().index:
             current_standing = constructor_constructor_standings[constructor_constructor_standings["raceId"] == race_id]
             race_results = year_c_results[year_c_results["raceId"] == race_id]
@@ -177,8 +187,8 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
                 constructor_name = get_constructor_name(race_results["constructorId"].values[0])
                 finish_position_str = ", ".join(race_results["positionText"].apply(position_text_to_str))
                 finish_positions = race_results["positionOrder"].astype(int)
-                finish_position_int = finish_positions.mean()
-                grid = int(race_results["grid"].values[0])
+                finish_position_int = round(finish_positions.mean(), 1)
+                grid = round(race_results["grid"].values[0].mean(), 1)
             else:
                 driver_names = "UNKNOWN"
                 constructor_name = "UNKNOWN"
@@ -188,17 +198,19 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
                 grid = np.nan
             if current_standing.shape[0]:
                 current_wcc_standing = current_standing["position"].values[0]
+                current_wcc_standing_str = int_to_ordinal(current_wcc_standing)
                 round_num = current_standing["roundNum"].values[0]
                 round_name = current_standing["roundName"].values[0]
                 points = current_standing["points"].values[0]
             else:
                 current_wcc_standing = 10
-                round_name = np.nan
+                current_wcc_standing_str = ""
             race_fastest_lap_data = year_fastest_lap_data[year_fastest_lap_data["raceId"] == race_id]
             if race_fastest_lap_data.shape[0] > 0:
                 fastest_lap_rank = race_fastest_lap_data["rank"]
                 fastest_lap_rank = fastest_lap_rank.replace("  ", np.nan).astype(float).mean()
-                avg_lap_time_millis = race_fastest_lap_data["fastest_lap_time_millis"].mean()
+                fastest_lap_rank = round(fastest_lap_rank, 1)
+                avg_lap_time_millis = race_fastest_lap_data["avg_lap_time_millis"].mean()
                 avg_lap_time_str = millis_to_str(avg_lap_time_millis)
             else:
                 fastest_lap_rank = np.nan
@@ -216,13 +228,17 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
                 "grid": grid,
                 "fastest_lap_rank": fastest_lap_rank,
                 "wcc_current_standing": current_wcc_standing,
+                "wcc_current_standing_str": current_wcc_standing_str,
                 "wcc_final_standing": final_standing,
+                "wcc_final_standing_str": final_standing_str,
                 "points": points,
                 "roundNum": round_num,
                 "roundName": round_name,
                 "num_dnfs_this_race": num_dnfs,
                 "avg_lap_time_millis": avg_lap_time_millis,
-                "avg_lap_time_str": avg_lap_time_str
+                "avg_lap_time_str": avg_lap_time_str,
+                "avg_finish_pos": year_avg_finish_pos,
+                "avg_finish_pos_str": str(round(year_avg_finish_pos, 1))
             }, ignore_index=True)
 
             # Mark driver changes
@@ -252,7 +268,7 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
     source["fastest_lap_rank_smoothed"] = source["fastest_lap_rank"].ewm(alpha=smoothing_alpha).mean()
     source["grid"] = source["grid"].fillna("")
     source["finish_position_int"] = source["finish_position_int"].fillna(np.nan)
-    source["fastest_lap_rank"] = source["fastest_lap_rank"].fillna("")
+    source["fastest_lap_rank_str"] = source["fastest_lap_rank"].fillna("")
 
     source = source.sort_values(by=["year", "race_id"])
     constructor_name = get_constructor_name(cid)
@@ -270,12 +286,20 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
         "muted_alpha": 0.02
     }
     legend = []
-    wcc_finish_position_line = positions_plot.line(y="wcc_current_standing", color="green", line_width=major_line_width,
-                                                   line_alpha=0.7, **kwargs)
-    if races_sublist is None:
+    if show_mean_finish_pos:
+        avg_finish_pos_line = positions_plot.line(y="avg_finish_pos", color="white", line_width=major_line_width,
+                                                  line_alpha=0.7, **kwargs)
+        legend.append(LegendItem(label="Yr. Avg. Finish Pos", renderers=[avg_finish_pos_line]))
+        subtitle = "Year average finish position is calculated including DNFs"
+        positions_plot.add_layout(Title(text=subtitle, text_font_style="italic"), "above")
+    elif races_sublist is None:
         final_standing_line = positions_plot.line(y="wcc_final_standing", color="white", line_width=major_line_width,
                                                   line_alpha=0.7, **kwargs)
-        legend.append(LegendItem(label="WCC Final Year Standing", renderers=[final_standing_line]))
+        wcc_finish_position_line = positions_plot.line(y="wcc_current_standing", color="green",
+                                                       line_width=major_line_width,
+                                                       line_alpha=0.7, **kwargs)
+        legend.extend([LegendItem(label="WCC Final Year Standing", renderers=[final_standing_line]),
+                       LegendItem(label="WCC Current Standing", renderers=[wcc_finish_position_line])])
     finish_position_line = positions_plot.line(y="finish_position_int", color="yellow", line_width=minor_line_width,
                                                line_alpha=0.6, **kwargs)
     grid_line = positions_plot.line(y="grid", color="orange", line_width=minor_line_width,
@@ -300,13 +324,12 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
         grid_line.muted = True
         fastest_lap_rank_line.muted = True
 
-    legend.append(LegendItem(label="WCC Current Standing", renderers=[wcc_finish_position_line]))
-    legend.append(LegendItem(label="Mean Race Finish Position", renderers=[finish_position_line]))
-    legend.append(LegendItem(label="Finish Pos. Smoothed", renderers=[finish_position_smoothed_line]))
-    legend.append(LegendItem(label="Mean Fastest Lap Rank", renderers=[fastest_lap_rank_line]))
-    legend.append(LegendItem(label="Fastest Lap Rank Smoothed", renderers=[fastest_lap_rank_smoothed_line]))
-    legend.append(LegendItem(label="Mean Grid Position", renderers=[grid_line]))
-    legend.append(LegendItem(label="Grid Position Smoothed", renderers=[grid_smoothed_line]))
+    legend.extend([LegendItem(label="Avg. Race Finish Position", renderers=[finish_position_line]),
+                   LegendItem(label="Finish Pos. Smoothed", renderers=[finish_position_smoothed_line]),
+                   LegendItem(label="Avg. Fastest Lap Rank", renderers=[fastest_lap_rank_line]),
+                   LegendItem(label="Fastest Lap Rank Smoothed", renderers=[fastest_lap_rank_smoothed_line]),
+                   LegendItem(label="Mean Grid Position", renderers=[grid_line]),
+                   LegendItem(label="Grid Position Smoothed", renderers=[grid_smoothed_line])])
 
     if include_lap_times:
         source["avg_lap_time_scaled"] = rescale(source["avg_lap_time_millis"], positions_plot.y_range.start,
@@ -335,11 +358,13 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
         ("Year", "@year"),
         ("Round", "@roundNum - @roundName"),
         ("Grid Position", "@grid"),
-        ("Fastest Lap Rank", "@fastest_lap_rank"),
+        ("Fastest Lap Rank", "@fastest_lap_rank_str"),
         ("Finishing Position", "@finish_position_str"),
         ("Points", "@points"),
-        ("Final Position this year", "@wcc_final_standing"),
-        ("Avg. Lap Time", "@avg_lap_time_str")
+        ("Final Position this year", "@wcc_final_standing_str"),
+        ("Current WCC Position", "@wcc_current_standing_str"),
+        ("Avg. Lap Time", "@avg_lap_time_str"),
+        ("Avg. Finish Pos. this year", "@avg_finish_pos_str")
     ]))
 
     # Crosshair tooltip
@@ -685,7 +710,7 @@ def generate_driver_performance_table(constructor_races, constructor_results):
 
     driver_performance_columns_table = DataTable(source=ColumnDataSource(data=source),
                                                  columns=driver_performance_columns, index_position=None,
-                                                 height=source.shape[0] * 36)
+                                                 height=530)
     title = Div(text=f"<h2><b>Performance of each Driver</b></h2><br><i>Again, wins, podiums, and finish percentages "
                      f"are calculated as a percentage of races entered, so they may exceeed 100% in certain cases.")
 

@@ -2,13 +2,14 @@ import logging
 import traceback
 import time
 import pandas as pd
-
-# Biggest JOKE of a "unit test" but it works
+import numpy as np
 from data_loading.data_loader import load_results, load_races, load_lap_times, load_drivers, load_circuits, \
     load_fastest_lap_data, load_driver_standings, load_constructor_standings
-from mode.circuitdriver import get_layout, generate_lap_time_distribution_plot, is_valid_input, generate_results_table, \
+from mode.circuitdriver import get_layout, generate_lap_time_plot, is_valid_input, generate_results_table, \
     generate_positions_plot, generate_spvfp_scatter, generate_mltr_fp_scatter, generate_stats_layout
 from utils import time_decorator
+
+# Biggest JOKE of a "unit test" but it works
 
 error_ids = []
 times = {
@@ -53,11 +54,11 @@ cd_constructor_standings = constructor_standings.loc[cd_constructor_standings_id
 
 # Positions plot
 generate_positions_plot = time_decorator(generate_positions_plot)
-positions_plot, positions_source = generate_positions_plot(cd_years, cd_constructor_standings, cd_results,
-                                                           cd_fastest_lap_data, cd_races)
+positions_plot, positions_source = generate_positions_plot(cd_years, driver_driver_standings, driver_results,
+                                                           cd_fastest_lap_data, cd_races, driver_id)
 
 # Lap time distribution plot
-generate_lap_time_distribution_plot = time_decorator(generate_lap_time_distribution_plot)
+generate_lap_time_distribution_plot = time_decorator(generate_lap_time_plot)
 lap_time_dist = generate_lap_time_distribution_plot(cd_lap_times, cd_rids, driver_id, circuit_id)
 
 # Starting position vs finish position scatter
@@ -82,7 +83,14 @@ id_list = []
 for driver_id in drivers.index.unique():
     for circuit_id in circuits.index.unique():
         id_list.append((circuit_id, driver_id))
+n_original = len(id_list)
+pct_reduce = 0.07  # Out of 1
+id_list = np.array(id_list)
+id_list_idxs = np.random.choice(len(id_list), int(pct_reduce * n_original), replace=False)
+id_list = id_list[id_list_idxs].tolist()
 n = len(id_list)
+print(f"NOTE: the length of id_list was reduced by {100 - pct_reduce * 100}% from {n_original} to {n} using random "
+      f"subsampling in order to speed up the test")
 for circuit_id, driver_id in id_list:
     try:
         i += 1

@@ -1012,7 +1012,7 @@ def generate_lap_time_plot(race_laps, cached_driver_map, linking_plot=None, stde
         ("Constructor", "@constructor"),
     ]))
 
-    lap_time_plot.add_tools(CrosshairTool(dimensions="height", line_color="white", line_alpha=0.6))
+    lap_time_plot.add_tools(CrosshairTool(dimensions="both", line_color="white", line_alpha=0.6))
 
     y = race_laps["milliseconds"]
     vhist, vedges = np.histogram(y, bins=500)
@@ -1206,7 +1206,7 @@ def generate_gap_plot(race_laps, race_results, highlight_dids=None, muted_dids=N
         y_range=(-180, gaps["gap"].max()),  # Cut off the plot at gap of -180
         plot_height=30 * dids.shape[0]
     )
-    gap_plot.add_tools(CrosshairTool(dimensions="height", line_color="white", line_alpha=0.6))
+    gap_plot.add_tools(CrosshairTool(dimensions="both", line_color="white", line_alpha=0.6))
     gap_plot.xaxis.ticker = FixedTicker(ticks=[1] + list(np.arange(0, max_laps, 5)))
 
     # We want the color scheme to be same team means same color, but the two drivers have solid vs. dashed lines

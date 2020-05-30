@@ -41,41 +41,44 @@ Completed generate_dnf_table in  137.15410232543945 milliseconds
 
 driver.py
 count      848.000000
-mean      1445.045838
-std       1787.397759
-min         25.880814
-25%        425.282300
-50%        729.308128
-75%       1529.110312
-max      11235.489130
-95% RUN TIME: 4000ms (note, drivers with many races take like 6000ms)
+mean      1833.344620
+std       2226.919727
+min         26.694775
+25%        490.699887
+50%        953.072429
+75%       2057.726026
+max      15803.176880
+95% RUN TIME: 4500ms (note, drivers with many races take like 6000ms)
 For Schumacher, a driver with many races:
-Completed generate_positions_plot in  3064.605236053467 milliseconds
-Completed mark_team_changes in  183.47740173339844 milliseconds
-Completed generate_circuit_performance_table in  139.55998420715332 milliseconds
-Completed generate_finishing_position_bar_plot in  4.974842071533203 milliseconds
-Completed generate_wdc_position_bar_plot in  17.162084579467773 milliseconds
-Completed generate_win_plot in  2093.6551094055176 milliseconds
-Completed generate_spvfp_scatter in  1945.6250667572021 milliseconds
-Completed generate_mltr_fp_scatter in  2429.118871688843 milliseconds
-Completed generate_team_performance_layout in  941.5159225463867 milliseconds
+Completed generate_positions_plot in  5446.085691452026 milliseconds
+Completed mark_team_changes in  210.16311645507812 milliseconds
+Completed generate_circuit_performance_table in  213.3479118347168 milliseconds
+Completed generate_finishing_position_bar_plot in  6.72602653503418 milliseconds
+Completed generate_wdc_position_bar_plot in  21.41118049621582 milliseconds
+Completed generate_win_plot in  2624.879837036133 milliseconds
+Completed generate_spvfp_scatter in  2234.218120574951 milliseconds
+Completed generate_mltr_fp_scatter in  2720.914125442505 milliseconds
+Completed generate_team_performance_layout in  983.623743057251 milliseconds
 
 circuit.py
-count      74.000000
-mean      530.895011
-std       642.872193
-min        26.833773
-25%        79.030633
-50%       209.663987
-75%       755.744219
-max      2749.708652
+count       74.000000
+mean      6570.908073
+std       7484.667679
+min         59.808969
+25%       1394.059420
+50%       3750.223279
+75%       9113.109827
+max      35419.412851
 95% RUN TIME: 1400ms (note this includes an image download)
 For Monza, a circuit with many races:
-Completed generate_times_plot in  638.3869647979736 milliseconds
-Completed generate_spmfp_plot in  237.49995231628418 milliseconds
-Completed generate_circuit_results_table in  787.6789569854736 milliseconds
-Completed generate_circuit_stats_layout in  326.2059688568115 milliseconds
-Completed generate_winners_table in  156.2020778656006 milliseconds
+Completed generate_times_plot in  666.4690971374512 milliseconds
+Completed generate_dnf_plot in  483.3638668060303 milliseconds
+Completed generate_spmfp_plot in  277.7059078216553 milliseconds
+Completed generate_spvfp_scatter in  14064.428091049194 milliseconds
+Completed generate_mltr_fp_scatter in  16614.52078819275 milliseconds
+Completed generate_circuit_results_table in  720.5429077148438 milliseconds
+Completed generate_stats_layout in  305.64212799072266 milliseconds
+Completed generate_winners_table in  141.7398452758789 milliseconds
 
 constructor.py
 count      210.000000
@@ -197,14 +200,14 @@ max      7746.849060
 (Note this doesn't include the image download)
 95% TIME: 1500ms
 For Ferrari at Monaco:
-Completed generate_positions_plot in  1186.5179538726807 milliseconds
-Completed generate_win_plot in  565.2570724487305 milliseconds
-Completed generate_lap_time_distribution_plot in  131.7429542541504 milliseconds
-Completed generate_finishing_position_bar_plot in  9.227991104125977 milliseconds
-Completed generate_spvfp_scatter in  1166.9707298278809 milliseconds
-Completed generate_mltr_fp_scatter in  1364.3450736999512 milliseconds
-Completed generate_stats_layout in  4.110097885131836 milliseconds
-Completed generate_results_table in  1583.7080478668213 milliseconds
+Completed generate_positions_plot in  1346.3160991668701 milliseconds
+Completed generate_win_plot in  553.0059337615967 milliseconds
+Completed generate_lap_time_plot in  198.58622550964355 milliseconds
+Completed generate_finishing_position_bar_plot in  5.606889724731445 milliseconds
+Completed generate_spvfp_scatter in  1125.99515914917 milliseconds
+Completed generate_mltr_fp_scatter in  1653.3451080322266 milliseconds
+Completed generate_stats_layout in  6.653070449829102 milliseconds
+Completed generate_results_table in  1704.8649787902832 milliseconds
 
 yearcircuitdriver.py (note, I randomly sub-sample 7% of the IDs each time as testing every ID combo would be impossible)
 count    1707.000000

@@ -192,7 +192,7 @@ def generate_wdc_plot(year_driver_standings, year_results, highlight_did=None, m
     ]))
 
     # Crosshair
-    wdc_plot.add_tools(CrosshairTool(dimensions="height", line_color="white", line_alpha=0.6))
+    wdc_plot.add_tools(CrosshairTool(dimensions="both", line_color="white", line_alpha=0.6))
 
     return wdc_plot
 
@@ -284,7 +284,7 @@ def generate_wcc_plot(year_constructor_standings, year_results, highlight_cid=No
     ]))
 
     # Crosshair
-    constructors_plot.add_tools(CrosshairTool(dimensions="height", line_color="white", line_alpha=0.6))
+    constructors_plot.add_tools(CrosshairTool(dimensions="both", line_color="white", line_alpha=0.6))
 
     return constructors_plot
 

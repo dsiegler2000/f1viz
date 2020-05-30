@@ -157,8 +157,6 @@ def generate_positions_plot(yc_constructor_standings, yc_results, yc_fastest_lap
     kwargs = dict(
         return_components_and_source=True,
         smoothing_alpha=0.2,
-        minor_line_width=1.8,
-        major_line_width=3,
         smoothing_muted=True,
         show_driver_changes=True,
     )
@@ -215,7 +213,8 @@ def generate_driver_performance_table(yc_races, yc_results):
     return constructor.generate_driver_performance_table(yc_races, yc_results)[0]
 
 
-def generate_results_table(yc_results, yc_fastest_lap_data, year_results, year_fastest_lap_data, include_year=False):
+def generate_results_table(yc_results, yc_fastest_lap_data, year_results, year_fastest_lap_data, year_only=False,
+                           height=None, include_driver_name=True, include_constructor_name=False):
     """
     Generates a table of results at each race, including quali position, finish position (or reason for DNF), time, gap
     to leader, fastest lap time and gap to fastest lap (of all drivers), average lap time and gap to fastest average lap
@@ -224,12 +223,15 @@ def generate_results_table(yc_results, yc_fastest_lap_data, year_results, year_f
     :param yc_fastest_lap_data: YC fastest lap data
     :param year_results: Year results
     :param year_fastest_lap_data: Year fastest lap data
-    :param include_year: Whether to include the year in the race name
-    :return:
+    :param year_only: Whether to set the race name row to just the year
+    :param height: Plot height
+    :param include_driver_name: If True, will include a driver name column
+    :param include_constructor_name: If True, will include a constructor name column
+    :return: Table layout, source
     """
     # TODO this might be able to be refactored with yeardriver or year, but it is kind of unique
     logging.info("Generating results table")
-    source = pd.DataFrame(columns=["race_name", "driver_name", "driver_id ", "race_id",
+    source = pd.DataFrame(columns=["race_name", "driver_name", "driver_id ", "race_id", "year", "constructor_name",
                                    "quali_pos_str",
                                    "finish_pos_str",
                                    "time_str",
@@ -238,12 +240,14 @@ def generate_results_table(yc_results, yc_fastest_lap_data, year_results, year_f
     for idx, results_row in yc_results.sort_values(by=["raceId", "driverId"]).iterrows():
         rid = results_row["raceId"]
         driver_id = results_row["driverId"]
+        constructor_id = results_row["constructorId"]
         driver_name = get_driver_name(driver_id)
+        constructor_name = get_constructor_name(constructor_id)
         race_results = year_results[year_results["raceId"] == rid]
         race_fastest_lap_data = year_fastest_lap_data[year_fastest_lap_data["raceId"] == rid]
         race_driver_fastest_lap_data = yc_fastest_lap_data[(yc_fastest_lap_data["raceId"] == rid) &
                                                            (yc_fastest_lap_data["driver_id"] == driver_id)]
-        race_name = get_race_name(rid, include_year=include_year, include_flag=not include_year)
+        race_name = get_race_name(rid)
         grid = results_row["grid"]
         if grid == -1:
             quali_pos_str = "DNQ"
@@ -292,6 +296,8 @@ def generate_results_table(yc_results, yc_fastest_lap_data, year_results, year_f
             "race_id": rid,
             "driver_name": driver_name,
             "driver_id": driver_id,
+            "constructor_name": constructor_name,
+            "year": races.loc[rid, "year"],
             "quali_pos_str": quali_pos_str,
             "finish_pos_str": finish_pos_str,
             "time_str": time_str,
@@ -299,20 +305,26 @@ def generate_results_table(yc_results, yc_fastest_lap_data, year_results, year_f
             "avg_lap_time_str": avg_lap_time_str
         }, ignore_index=True)
 
-    if include_year:
+    if year_only:
         source = source.sort_values(by="race_name", ascending=False)
 
     results_columns = [
-        TableColumn(field="race_name", title="Race Name", width=100),
-        TableColumn(field="driver_name", title="Driver Name", width=100),
         TableColumn(field="quali_pos_str", title="Grid Pos.", width=75),
         TableColumn(field="finish_pos_str", title="Finish Pos.", width=75),
         TableColumn(field="time_str", title="Time", width=100),
         TableColumn(field="fastest_lap_time_str", title="Fastest Lap Time", width=75),
         TableColumn(field="avg_lap_time_str", title="Avg. Lap Time", width=75),
     ]
+    if include_driver_name:
+        results_columns.insert(0, TableColumn(field="driver_name", title="Driver Name", width=100))
+    if include_constructor_name:
+        results_columns.insert(0, TableColumn(field="constructor_name", title="Constructor Name", width=100))
+    if year_only:
+        results_columns.insert(0, TableColumn(field="year", title="Year", width=50))
+    else:
+        results_columns.insert(0, TableColumn(field="race_name", title="Race Name", width=100))
     results_table = DataTable(source=ColumnDataSource(data=source), columns=results_columns, index_position=None,
-                              height=27 * yc_results.shape[0])
+                              height=27 * yc_results.shape[0] if height is None else height)
     title = Div(text=f"<h2><b>Results for each race</b></h2><br><i>The fastest lap time and average lap time gaps "
                      f"shown are calculated based on the gap to the fastest of all drivers and fastest average of "
                      f"all drivers in that race respectively.</i>")
@@ -561,7 +573,8 @@ def generate_teammate_comparison_line_plot(yc_results, year_races, yc_driver_sta
 def generate_stats_layout(positions_source, yc_results, comparison_source, year_id, constructor_id):
     """
     Year summary div, including WCC place, highest race finish, number of races, points, points per race, number of
-    wins, number of podiums, and everything else in constructor.generate_stats_div and yeardriver.generate_stats_div
+    wins, number of podiums, and everything else in constructor.generate_stats_layout and
+    yeardriver.generate_stats_layout
     - WCC place
     - Highest race finish
     - Number of races

@@ -64,7 +64,7 @@ def get_layout(circuit_id=-1, constructor_id=-1, download_image=True, **kwargs):
     win_plot = generate_win_plot(positions_source, constructor_id)
 
     # Lap time distribution plot
-    lap_time_distribution_plot = generate_lap_time_distribution_plot(cc_lap_times, cc_rids, circuit_id, constructor_id)
+    lap_time_distribution_plot = generate_lap_time_plot(cc_lap_times, cc_rids, circuit_id, constructor_id)
 
     # Finish position bar plot
     finish_position_bar_plot = generate_finishing_position_bar_plot(cc_results)
@@ -76,7 +76,8 @@ def get_layout(circuit_id=-1, constructor_id=-1, download_image=True, **kwargs):
     mltr_fp_scatter = generate_mltr_fp_scatter(cc_results, cc_races, cc_driver_standings)
 
     # Stats div
-    stats_div = generate_stats_layout(cc_years, cc_races, cc_results, cc_fastest_lap_data, circuit_id, constructor_id)
+    stats_div = generate_stats_layout(cc_years, cc_races, cc_results, cc_fastest_lap_data, positions_source,
+                                      circuit_id, constructor_id)
 
     # Results table
     results_table = generate_results_table(cc_results, cc_fastest_lap_data, circuit_results, circuit_fastest_lap_data)
@@ -115,7 +116,7 @@ def get_layout(circuit_id=-1, constructor_id=-1, download_image=True, **kwargs):
     return layout
 
 
-def generate_lap_time_distribution_plot(cc_lap_times, cc_rids, circuit_id, constructor_id):
+def generate_lap_time_plot(cc_lap_times, cc_rids, circuit_id, constructor_id):
     """
     Plot this constructor's distribution of lap times compared to all constructors' distribution of lap times for those
     time ranges to show how fast and consistent they are (uses method from `circuitdriver`).
@@ -125,8 +126,8 @@ def generate_lap_time_distribution_plot(cc_lap_times, cc_rids, circuit_id, const
     :param constructor_id: Constructor ID
     :return: Lap time distribution plot layout
     """
-    return circuitdriver.generate_lap_time_distribution_plot(cc_lap_times, cc_rids, circuit_id, None,
-                                                             constructor_id=constructor_id)
+    return circuitdriver.generate_lap_time_plot(cc_lap_times, cc_rids, circuit_id, None,
+                                                constructor_id=constructor_id)
 
 
 def generate_positions_plot(cc_years, cc_fastest_lap_data, constructor_results, constructor_constructor_standings,
@@ -145,7 +146,7 @@ def generate_positions_plot(cc_years, cc_fastest_lap_data, constructor_results, 
     """
     return constructor.generate_positions_plot(cc_years, constructor_constructor_standings, constructor_results,
                                                cc_fastest_lap_data, constructor_id, include_lap_times=True,
-                                               races_sublist=cc_races)
+                                               races_sublist=cc_races, show_mean_finish_pos=True)
 
 
 def generate_win_plot(positions_source, constructor_id):
@@ -170,8 +171,8 @@ def generate_results_table(cc_results, cc_fastest_lap_data, circuit_results, cir
     :param circuit_fastest_lap_data: Circuit fastest lap data
     :return: Results table (no source)
     """
-    return yearconstructor.generate_results_table(cc_results, cc_fastest_lap_data,
-                                                  circuit_results, circuit_fastest_lap_data, include_year=True)[0]
+    return yearconstructor.generate_results_table(cc_results, cc_fastest_lap_data, circuit_results,
+                                                  circuit_fastest_lap_data, year_only=True, height=530)[0]
 
 
 def generate_finishing_position_bar_plot(cc_results):
@@ -208,7 +209,8 @@ def generate_mltr_fp_scatter(cc_results, cc_races, cc_driver_standings):
                                            color_drivers=True)
 
 
-def generate_stats_layout(cc_years, cc_races, cc_results, cc_fastest_lap_data, circuit_id, constructor_id):
+def generate_stats_layout(cc_years, cc_races, cc_results, cc_fastest_lap_data, positions_source,
+                          circuit_id, constructor_id):
     """
     Have some type of stats div restating number of races, wins, podiums, best results, track image, weather at each
     race maybe, DNFs, and anything else typically included. See other modes for inspiration.
@@ -222,16 +224,19 @@ def generate_stats_layout(cc_years, cc_races, cc_results, cc_fastest_lap_data, c
     - Average finish position
     - Average lap time
     - Fastest lap time
+    - DNF info
+    - Compared to other circuits
     :param cc_years: CC years
     :param cc_races: CC races
     :param cc_results: CC results
     :param cc_fastest_lap_data: CC fastest lap data
+    :param positions_source: Positions source
     :param circuit_id: Circuit ID
     :param constructor_id: Constructor ID
     :return: Stats layout
     """
-    return circuitdriver.generate_stats_layout(cc_years, cc_races, cc_results, cc_fastest_lap_data, circuit_id,
-                                               None, constructor_id=constructor_id)
+    return circuitdriver.generate_stats_layout(cc_years, cc_races, cc_results, cc_fastest_lap_data, positions_source,
+                                               circuit_id, None, constructor_id=constructor_id)
 
 
 def generate_error_layout(circuit_id, constructor_id):

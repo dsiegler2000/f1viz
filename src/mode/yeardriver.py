@@ -142,8 +142,6 @@ def generate_positions_plot(yd_driver_standings, yd_results, yd_fastest_lap_data
     driver_years = np.array([year_id])
     kwargs = dict(
         smoothing_alpha=0.2,
-        minor_line_width=1.8,
-        major_line_width=3,
         smoothing_muted=True
     )
     positions_plot, positions_source = driver.generate_positions_plot(driver_years, yd_driver_standings, yd_results,

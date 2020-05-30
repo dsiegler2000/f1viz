@@ -4,7 +4,7 @@ import time
 import pandas as pd
 from data_loading.data_loader import load_results, load_races, load_lap_times, load_circuits, \
     load_fastest_lap_data, load_driver_standings, load_constructor_standings, load_constructors
-from mode.circuitconstructor import get_layout, generate_results_table, generate_lap_time_distribution_plot, \
+from mode.circuitconstructor import get_layout, generate_results_table, generate_lap_time_plot, \
     generate_win_plot, generate_positions_plot, is_valid_input, generate_finishing_position_bar_plot, \
     generate_spvfp_scatter, generate_mltr_fp_scatter, generate_stats_layout
 from utils import time_decorator
@@ -72,7 +72,7 @@ generate_win_plot = time_decorator(generate_win_plot)
 win_plot = generate_win_plot(positions_source, constructor_id)
 
 # Lap time distribution plot
-generate_lap_time_distribution_plot = time_decorator(generate_lap_time_distribution_plot)
+generate_lap_time_distribution_plot = time_decorator(generate_lap_time_plot)
 lap_time_distribution_plot = generate_lap_time_distribution_plot(cc_lap_times, cc_rids, circuit_id, constructor_id)
 
 # Finish position bar plot

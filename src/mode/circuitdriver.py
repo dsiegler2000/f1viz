@@ -2,14 +2,14 @@ import logging
 import numpy as np
 from bokeh.layouts import column, row
 from bokeh.models import Div, DatetimeTickFormatter, NumeralTickFormatter, LegendItem, Title, Range1d, Legend, \
-    HoverTool, CrosshairTool, Spacer, FixedTicker, LinearAxis, TableColumn, DataTable, ColumnDataSource
+    HoverTool, CrosshairTool, Spacer, TableColumn, DataTable, ColumnDataSource
 from bokeh.plotting import figure
 import pandas as pd
 from data_loading.data_loader import load_results, load_races, load_lap_times, load_drivers, load_fastest_lap_data, \
     load_status, load_circuits, load_driver_standings, load_constructor_standings
-from mode import driver, constructor
+from mode import driver, yearconstructor
 from utils import get_circuit_name, get_driver_name, DATETIME_TICK_KWARGS, millis_to_str, PLOT_BACKGROUND_COLOR, \
-    get_constructor_name, get_status_classification, plot_image_url, int_to_ordinal, rounds_to_str
+    get_constructor_name, plot_image_url, int_to_ordinal, rounds_to_str, result_to_str, get_status_classification
 
 # Note, CD stands for circuit driver
 
@@ -23,39 +23,12 @@ circuits = load_circuits()
 driver_standings = load_driver_standings()
 constructor_standings = load_constructor_standings()
 
-# todo lots of small stuff:
-#  on the positions plot...
-#   why is this not using driver.generate_positions_plot (check why and if so change...)
-#   this really should be using the driver method as WCC current standing is wrong
-#   make sure to show final WDC standing (current doesn't really matter)
-#   make sure to show mean finish position for that year
-#   add mean finish pos for that year as a line potentially too (this might be redundant with final WDC standing)
-#   fix the name thing in hover tooltip (currently says unknown, likely due to using constructor method)
-#   make the smoothed line less smoothed
-#   make the un-smoothed line version the default (mute the smoothed)
-#   fix final pos. this year (probably by passing the whole times's worth of standings, not just CD standings)
-#   make the positions in the hover into ordinals (i.e. 1st, 2nd, 3rd not 1,2,3)
-#   do this for all positions plot implementations
-#  on the win plot
-#   make the 2nd axis (the % axis) right by making it so that there is no padding (the pct lines go right to the top,
-#    like other win plots)
-#   refactor this to use driver.generate_win_plot (don't add top-n support for now, just make a note of it)
-#  lap time dist. plot
-#   make the histogram more granular (less obvious bars), probably by upping the # of bins
-#   do this for the other lap time plot implementation
-#   make the mean lines match the style of the other lap time plot
-#  stats div
-#   potentially add DNF stats
-#   potentially add like compared to other circuits stats (i.e. finished 3 places higher on average)
-#  results table
-#   refactor to use yearconstructor.generate_results_table
-#  add histogram of finish positions
-
 
 def get_layout(circuit_id=-1, driver_id=-1, download_image=True, **kwargs):
     # Grab some useful slices
     circuit_rids = races[races["circuitId"] == circuit_id].index.values
-    cd_results = results[(results["raceId"].isin(circuit_rids)) & (results["driverId"] == driver_id)]
+    driver_results = results[results["driverId"] == driver_id]
+    cd_results = driver_results[driver_results["raceId"].isin(circuit_rids)]
     cd_rids = cd_results["raceId"]
     cd_races = races[races.index.isin(cd_rids)]
 
@@ -70,39 +43,37 @@ def get_layout(circuit_id=-1, driver_id=-1, download_image=True, **kwargs):
     cd_lap_times = lap_times[(lap_times["raceId"].isin(cd_rids)) & (lap_times["driverId"] == driver_id)]
     cd_years = cd_races["year"].unique()
     cd_years.sort()
-    cd_fastest_lap_data = fastest_lap_data[(fastest_lap_data["raceId"].isin(cd_rids)) &
-                                           (fastest_lap_data["driver_id"] == driver_id)]
+    circuit_fastest_lap_data = fastest_lap_data[fastest_lap_data["raceId"].isin(cd_rids)]
+    cd_fastest_lap_data = circuit_fastest_lap_data[circuit_fastest_lap_data["driver_id"] == driver_id]
     driver_driver_standings = driver_standings[driver_standings["driverId"] == driver_id]
-    cd_constructor_standings_idxs = []
-    for idx, results_row in cd_results.iterrows():
-        rid = results_row["raceId"]
-        cid = results_row["constructorId"]
-        constructor_standings_slice = constructor_standings[(constructor_standings["raceId"] == rid) &
-                                                            (constructor_standings["constructorId"] == cid)]
-        cd_constructor_standings_idxs.extend(constructor_standings_slice.index.values.tolist())
-    cd_constructor_standings = constructor_standings.loc[cd_constructor_standings_idxs]
+    circuit_results = results[results["raceId"].isin(circuit_rids)]
 
     # Positions plot
-    positions_plot, positions_source = generate_positions_plot(cd_years, cd_constructor_standings, cd_results,
-                                                               cd_fastest_lap_data, cd_races)
+    positions_plot, positions_source = generate_positions_plot(cd_years, driver_driver_standings, driver_results,
+                                                               cd_fastest_lap_data, cd_races, driver_id)
 
     # Win plot
     win_plot = generate_win_plot(positions_source)
 
     # Lap time distribution plot
-    lap_time_dist = generate_lap_time_distribution_plot(cd_lap_times, cd_rids, circuit_id, driver_id)
+    lap_time_dist = generate_lap_time_plot(cd_lap_times, cd_rids, circuit_id, driver_id)
 
     # Starting position vs finish position scatter
     spvfp_scatter = generate_spvfp_scatter(cd_results, cd_races, driver_driver_standings)
 
     # Mean lap time rank vs finish position scatter plot
-    mltr_fp_scatter = generate_mltr_fp_scatter(cd_results, cd_races, driver_driver_standings, driver_id)
+    mltr_fp_scatter = generate_mltr_fp_scatter(cd_results, cd_races, driver_driver_standings)
+
+    # Finish position distribution plot
+    finish_pos_dist = generate_finishing_position_bar_plot(cd_results)
 
     # Results table
-    results_table = generate_results_table(cd_years, cd_races, cd_results, cd_fastest_lap_data)
+    results_table, results_source = generate_results_table(cd_results, cd_fastest_lap_data, circuit_results,
+                                                           circuit_fastest_lap_data)
 
     # Stats div
-    stats_div = generate_stats_layout(cd_years, cd_races, cd_results, cd_fastest_lap_data, circuit_id, driver_id)
+    stats_div = generate_stats_layout(cd_years, cd_races, cd_results, cd_fastest_lap_data, positions_source,
+                                      circuit_id, driver_id)
 
     if download_image:
         # Track image
@@ -121,15 +92,17 @@ def get_layout(circuit_id=-1, driver_id=-1, download_image=True, **kwargs):
                      positions_plot, middle_spacer,
                      win_plot, middle_spacer,
                      lap_time_dist, middle_spacer,
+                     finish_pos_dist,
                      row([spvfp_scatter, mltr_fp_scatter], sizing_mode="stretch_width"),
-                     row([image_view, results_table], sizing_mode="stretch_width"),
+                     row([image_view], sizing_mode="stretch_width"),
+                     results_table,
                      stats_div],
                     sizing_mode="stretch_width")
 
     return layout
 
 
-def generate_lap_time_distribution_plot(cd_lap_times, cd_rids, circuit_id, driver_id, constructor_id=None):
+def generate_lap_time_plot(cd_lap_times, cd_rids, circuit_id, driver_id, constructor_id=None):
     """
     Plot lap time distribution of the driver at this circuit along with the lap time distribution of all drivers at this
     circuit during the time period to show how fast and consistent he is.
@@ -153,8 +126,8 @@ def generate_lap_time_distribution_plot(cd_lap_times, cd_rids, circuit_id, drive
     all_times = all_times[(all_times["milliseconds"] > millis_range_min) &
                           (all_times["milliseconds"] < millis_range_max)]
 
-    cd_hist, cd_edges = np.histogram(cd_lap_times["milliseconds"], bins=30)
-    all_hist, all_edges = np.histogram(all_times["milliseconds"], bins=30)
+    cd_hist, cd_edges = np.histogram(cd_lap_times["milliseconds"], bins=50)
+    all_hist, all_edges = np.histogram(all_times["milliseconds"], bins=50)
     cd_hist = cd_hist / cd_lap_times.shape[0]
     all_hist = all_hist / all_times.shape[0]
 
@@ -241,83 +214,37 @@ def generate_lap_time_distribution_plot(cd_lap_times, cd_rids, circuit_id, drive
     return time_dist
 
 
-def generate_positions_plot(cd_years, cd_constructor_standings, cd_results, cd_fastest_lap_data, cd_races):
+def generate_positions_plot(cd_years, driver_driver_standings, driver_results, cd_fastest_lap_data, cd_races,
+                            driver_id):
     """
     Plot quali, finishing, and mean finish position and average lap time rank vs time to show improvement and on the
     same plot but different axis, plot average race times to show car+driver improvement.
     :param cd_years: CD years
-    :param cd_constructor_standings: CD constructor standings
-    :param cd_results: CD results
+    :param driver_driver_standings: Driver driver standings
+    :param driver_results: Driver results
     :param cd_fastest_lap_data: CD fastest lap data
     muted by default
+    :param cd_races: CD races
+    :param driver_id: Driver ID
     :return: Position plot layout
     """
-    # todo why is this using cosntructor? see what driver_mode does and if its used anywhere elsewhere
-    return constructor.generate_positions_plot(cd_years, cd_constructor_standings, cd_results,
-                                               cd_fastest_lap_data, None, races_sublist=cd_races,
-                                               show_driver_changes=False, driver_mode=True)
+    return driver.generate_positions_plot(cd_years, driver_driver_standings, driver_results, cd_fastest_lap_data,
+                                          driver_id, races_sublist=cd_races, smoothing_alpha=0.65,
+                                          show_mean_finish_pos=True, include_lap_times=True)
 
 
-def generate_results_table(cd_years, cd_races, cd_results, cd_fastest_lap_data):
+def generate_results_table(cd_results, cd_fastest_lap_data, circuit_results, circuit_fastest_lap_data):
     """
-    Table of all results for this driver at this circuit, including:
-    - Year
-    - Constructor
-    - Place/Why they DNF'd
-    - Points
-    - Fastest lap time
-    - Average lap time
-    :param cd_years: CD years
-    :param cd_races: CD races
+    Table of all results for this driver at this circuit.
     :param cd_results: CD results
     :param cd_fastest_lap_data: CD fastest lap data
-    :return: Results table layout
+    :param circuit_results: Circuit results
+    :param circuit_fastest_lap_data: Circuit fastest lap data
+    :return: Results table layout, source
     """
-    # TODO refactor to use yearconstructor.generate_results_table
-    logging.info("Generating results table")
-    source = pd.DataFrame(columns=["year",
-                                   "constructor",
-                                   "finish_position",
-                                   "fastest_lap_time",
-                                   "avg_lap_time"])
-    for year in reversed(cd_years):
-        year_rid = cd_races[cd_races["year"] == year].index.values[0]
-        year_results = cd_results[cd_results["raceId"] == year_rid].iloc[0]
-        constructor = get_constructor_name(year_results["constructorId"])
-        finish_position = year_results["position"]
-        status_id = year_results["statusId"]
-        classification = get_status_classification(status_id)
-        if classification == "dnq":
-            finish_position = "DNQ"
-        elif classification == "mechanical" or classification == "crash":
-            finish_position = "RET (" + status.loc[status_id, "status"] + ")"
-        year_fastest = cd_fastest_lap_data[cd_fastest_lap_data["raceId"] == year_rid]
-        if year_fastest.shape[0] > 0:
-            fastest_lap_time = year_fastest["fastest_lap_time_str"].fillna("").values[0]
-            avg_lap_time = year_fastest["avg_lap_time_str"].fillna("").values[0]
-        else:
-            fastest_lap_time = ""
-            avg_lap_time = ""
-        source = source.append({
-            "year": year,
-            "constructor": constructor,
-            "finish_position": finish_position,
-            "fastest_lap_time": fastest_lap_time,
-            "avg_lap_time": avg_lap_time
-        }, ignore_index=True)
-
-    results_columns = [
-        TableColumn(field="year", title="Year", width=75),
-        TableColumn(field="constructor", title="Constructor", width=200),
-        TableColumn(field="finish_position", title="Finish Pos.", width=100),
-        TableColumn(field="fastest_lap_time", title="Fastest Lap Time", width=100),
-        TableColumn(field="avg_lap_time", title="Avg. Lap Time", width=100),
-    ]
-
-    circuits_table = DataTable(source=ColumnDataSource(data=source), columns=results_columns, index_position=None)
-    title = Div(text=f"<h2><b>Results for each year</b></h2>")
-
-    return column([title, row([circuits_table], sizing_mode="stretch_width")], sizing_mode="stretch_width")
+    return yearconstructor.generate_results_table(cd_results, cd_fastest_lap_data, circuit_results,
+                                                  circuit_fastest_lap_data, year_only=True, include_driver_name=False,
+                                                  include_constructor_name=True)
 
 
 def generate_win_plot(positions_source):
@@ -327,117 +254,117 @@ def generate_win_plot(positions_source):
     :param positions_source: Positions source
     :return: Win plot
     """
-    # TODO refactor to use constructor.generate_win_plot (ultimately driver.generate_win_plot)
-    # todo why did i say use constructor, can really just use driver.generate_win_plot
-    logging.info("Generating win plot")
-    win_source = pd.DataFrame(columns=["year",
-                                       "n_races",
-                                       "win_pct", "wins", "win_pct_str",
-                                       "podium_pct", "podiums", "podium_pct_str",
-                                       "top6_pct", "top6", "top6_pct_str",
-                                       "constructor_name"])
-    wins = 0
-    podiums = 0
-    top6 = 0
-    n_races = 0
-    for idx, row in positions_source.sort_values(by="year").iterrows():
-        year = row["year"]
-        pos = row["finish_position_int"]
-        if not np.isnan(pos):
-            wins += 1 if pos == 1 else 0
-            podiums += 1 if 3 >= pos > 0 else 0
-            top6 += 1 if 6 >= pos > 0 else 0
-        n_races += 1
-        win_pct = wins / n_races
-        podium_pct = podiums / n_races
-        top6_pct = top6 / n_races
-        win_source = win_source.append({
-            "year": year,
-            "n_races": n_races,
-            "wins": wins,
-            "win_pct": win_pct,
-            "podiums": podiums,
-            "podium_pct": podium_pct,
-            "top6": top6,
-            "top6_pct": top6_pct,
-            "constructor_name": row["constructor_name"],
-            "win_pct_str": str(round(100 * win_pct, 1)) + "%",
-            "podium_pct_str": str(round(100 * podium_pct, 1)) + "%",
-            "top6_pct_str": str(round(100 * top6_pct, 1)) + "%"
-        }, ignore_index=True)
-
-    min_year = positions_source["year"].min()
-    max_year = positions_source["year"].max()
-    win_plot = figure(
-        title=u"Wins, Podiums, and Top 6 finishes",
-        y_axis_label="",
-        x_axis_label="Year",
-        x_range=Range1d(min_year, max_year, bounds=(min_year - 1, max_year + 1)),
-        tools="pan,xbox_zoom,xwheel_zoom,reset,box_zoom,wheel_zoom,save",
-        y_range=Range1d(0, win_source["top6"].max() + 1, bounds=(-3, 25))
-    )
-    win_plot.xaxis.ticker = FixedTicker(ticks=np.arange(min_year - 1, max_year + 2))
-
-    max_top6_pct = win_source["top6_pct"].max()
-    max_top6 = win_source["top6"].max()
-    if max_top6 == 0:
-        k = 1
-    else:
-        k = max_top6 / max_top6_pct
-    win_source["top6_pct_scaled"] = k * win_source["top6_pct"]
-    win_source["podium_pct_scaled"] = k * win_source["podium_pct"]
-    win_source["win_pct_scaled"] = k * win_source["win_pct"]
-
-    # Other y axis
-    max_y = win_plot.y_range.end
-    y_range = Range1d(start=0, end=max_y / win_source["n_races"].max(), bounds=(-0.02, 1000))
-    win_plot.extra_y_ranges = {"percent_range": y_range}
-    axis = LinearAxis(y_range_name="percent_range")
-    axis.formatter = NumeralTickFormatter(format="0.0%")
-    win_plot.add_layout(axis, "right")
-
-    kwargs = {
-        "x": "year",
-        "line_width": 2,
-        "line_alpha": 0.7,
-        "source": win_source,
-        "muted_alpha": 0.05
-    }
-    races_line = win_plot.line(y="n_races", color="white", **kwargs)
-    wins_line = win_plot.line(y="wins", color="green", **kwargs)
-    win_pct_line = win_plot.line(y="win_pct_scaled", color="green", line_dash="dashed", **kwargs)
-    podiums_line = win_plot.line(y="podiums", color="yellow", **kwargs)
-    podium_pct_line = win_plot.line(y="podium_pct_scaled", color="yellow", line_dash="dashed", **kwargs)
-    top6_line = win_plot.line(y="top6", color="red", **kwargs)
-    top6_pct_line = win_plot.line(y="top6_pct_scaled", color="red", line_dash="dashed", **kwargs)
-
-    legend = [LegendItem(label="Number of Races", renderers=[races_line]),
-              LegendItem(label="Number of Wins", renderers=[wins_line]),
-              LegendItem(label="Win Percentage", renderers=[win_pct_line]),
-              LegendItem(label="Number of Podiums", renderers=[podiums_line]),
-              LegendItem(label="Podium Percentage", renderers=[podium_pct_line]),
-              LegendItem(label="Number of Top 6s", renderers=[top6_line]),
-              LegendItem(label="Top 6 Percentage", renderers=[top6_pct_line])]
-
-    legend = Legend(items=legend, location="top_right", glyph_height=15, spacing=2, inactive_fill_color="gray")
-    win_plot.add_layout(legend, "right")
-    win_plot.legend.click_policy = "mute"
-    win_plot.legend.label_text_font_size = "12pt"
-
-    # Hover tooltip
-    win_plot.add_tools(HoverTool(show_arrow=False, tooltips=[
-        ("Year", "@year"),
-        ("Number of Races", "@n_races"),
-        ("Number of Wins", "@wins (@win_pct_str)"),
-        ("Number of Podiums", "@podiums (@podium_pct_str)"),
-        ("Number of Top 6 Finishes", "@top6 (@top6_pct_str)"),
-        ("Constructor", "@constructor_name")
-    ]))
-
-    # Crosshair tooltip
-    win_plot.add_tools(CrosshairTool(line_color="white", line_alpha=0.6))
-
-    return win_plot
+    # TODO add back top-n support when it is implemented in the driver method
+    return driver.generate_win_plot(positions_source)
+    # logging.info("Generating win plot")
+    # win_source = pd.DataFrame(columns=["year",
+    #                                    "n_races",
+    #                                    "win_pct", "wins", "win_pct_str",
+    #                                    "podium_pct", "podiums", "podium_pct_str",
+    #                                    "top6_pct", "top6", "top6_pct_str",
+    #                                    "constructor_name"])
+    # wins = 0
+    # podiums = 0
+    # top6 = 0
+    # n_races = 0
+    # for idx, row in positions_source.sort_values(by="year").iterrows():
+    #     year = row["year"]
+    #     pos = row["finish_position_int"]
+    #     if not np.isnan(pos):
+    #         wins += 1 if pos == 1 else 0
+    #         podiums += 1 if 3 >= pos > 0 else 0
+    #         top6 += 1 if 6 >= pos > 0 else 0
+    #     n_races += 1
+    #     win_pct = wins / n_races
+    #     podium_pct = podiums / n_races
+    #     top6_pct = top6 / n_races
+    #     win_source = win_source.append({
+    #         "year": year,
+    #         "n_races": n_races,
+    #         "wins": wins,
+    #         "win_pct": win_pct,
+    #         "podiums": podiums,
+    #         "podium_pct": podium_pct,
+    #         "top6": top6,
+    #         "top6_pct": top6_pct,
+    #         "constructor_name": row["constructor_name"],
+    #         "win_pct_str": str(round(100 * win_pct, 1)) + "%",
+    #         "podium_pct_str": str(round(100 * podium_pct, 1)) + "%",
+    #         "top6_pct_str": str(round(100 * top6_pct, 1)) + "%"
+    #     }, ignore_index=True)
+    #
+    # min_year = positions_source["year"].min()
+    # max_year = positions_source["year"].max()
+    # win_plot = figure(
+    #     title=u"Wins, Podiums, and Top 6 finishes",
+    #     y_axis_label="",
+    #     x_axis_label="Year",
+    #     x_range=Range1d(min_year, max_year, bounds=(min_year - 1, max_year + 1)),
+    #     tools="pan,xbox_zoom,xwheel_zoom,reset,box_zoom,wheel_zoom,save",
+    #     y_range=Range1d(0, win_source["top6"].max() + 1, bounds=(-3, 25))
+    # )
+    # win_plot.xaxis.ticker = FixedTicker(ticks=np.arange(min_year - 1, max_year + 2))
+    #
+    # max_top6_pct = win_source["top6_pct"].max()
+    # max_top6 = win_source["top6"].max()
+    # if max_top6 == 0:
+    #     k = 1
+    # else:
+    #     k = max_top6 / max_top6_pct
+    # win_source["top6_pct_scaled"] = k * win_source["top6_pct"]
+    # win_source["podium_pct_scaled"] = k * win_source["podium_pct"]
+    # win_source["win_pct_scaled"] = k * win_source["win_pct"]
+    #
+    # # Other y axis
+    # max_y = win_plot.y_range.end
+    # y_range = Range1d(start=0, end=max_y / win_source["n_races"].max(), bounds=(-0.02, 1000))
+    # win_plot.extra_y_ranges = {"percent_range": y_range}
+    # axis = LinearAxis(y_range_name="percent_range")
+    # axis.formatter = NumeralTickFormatter(format="0.0%")
+    # win_plot.add_layout(axis, "right")
+    #
+    # kwargs = {
+    #     "x": "year",
+    #     "line_width": 2,
+    #     "line_alpha": 0.7,
+    #     "source": win_source,
+    #     "muted_alpha": 0.05
+    # }
+    # races_line = win_plot.line(y="n_races", color="white", **kwargs)
+    # wins_line = win_plot.line(y="wins", color="green", **kwargs)
+    # win_pct_line = win_plot.line(y="win_pct_scaled", color="green", line_dash="dashed", **kwargs)
+    # podiums_line = win_plot.line(y="podiums", color="yellow", **kwargs)
+    # podium_pct_line = win_plot.line(y="podium_pct_scaled", color="yellow", line_dash="dashed", **kwargs)
+    # top6_line = win_plot.line(y="top6", color="red", **kwargs)
+    # top6_pct_line = win_plot.line(y="top6_pct_scaled", color="red", line_dash="dashed", **kwargs)
+    #
+    # legend = [LegendItem(label="Number of Races", renderers=[races_line]),
+    #           LegendItem(label="Number of Wins", renderers=[wins_line]),
+    #           LegendItem(label="Win Percentage", renderers=[win_pct_line]),
+    #           LegendItem(label="Number of Podiums", renderers=[podiums_line]),
+    #           LegendItem(label="Podium Percentage", renderers=[podium_pct_line]),
+    #           LegendItem(label="Number of Top 6s", renderers=[top6_line]),
+    #           LegendItem(label="Top 6 Percentage", renderers=[top6_pct_line])]
+    #
+    # legend = Legend(items=legend, location="top_right", glyph_height=15, spacing=2, inactive_fill_color="gray")
+    # win_plot.add_layout(legend, "right")
+    # win_plot.legend.click_policy = "mute"
+    # win_plot.legend.label_text_font_size = "12pt"
+    #
+    # # Hover tooltip
+    # win_plot.add_tools(HoverTool(show_arrow=False, tooltips=[
+    #     ("Year", "@year"),
+    #     ("Number of Races", "@n_races"),
+    #     ("Number of Wins", "@wins (@win_pct_str)"),
+    #     ("Number of Podiums", "@podiums (@podium_pct_str)"),
+    #     ("Number of Top 6 Finishes", "@top6 (@top6_pct_str)"),
+    #     ("Constructor", "@constructor_name")
+    # ]))
+    #
+    # # Crosshair tooltip
+    # win_plot.add_tools(CrosshairTool(line_color="white", line_alpha=0.6))
+    #
+    # return win_plot
 
 
 def generate_spvfp_scatter(cd_results, cd_races, driver_driver_standings):
@@ -451,20 +378,28 @@ def generate_spvfp_scatter(cd_results, cd_races, driver_driver_standings):
     return driver.generate_spvfp_scatter(cd_results, cd_races, driver_driver_standings, include_year_labels=True)
 
 
-def generate_mltr_fp_scatter(cd_results, cd_races, driver_driver_standings, driver_id):
+def generate_mltr_fp_scatter(cd_results, cd_races, driver_driver_standings):
     """
     Plot scatter of mean lap time rank (x) vs finish position (y) to get a sense of what years the driver out-drove the
     car
     :param cd_results: CD results
     :param cd_races: CD races
     :param driver_driver_standings: Driver driver standings
-    :param driver_id: Driver ID
     :return: Mean lap time rank vs finish position scatter plot layout
     """
     return driver.generate_mltr_fp_scatter(cd_results, cd_races, driver_driver_standings, include_year_labels=True)
 
 
-def generate_stats_layout(cd_years, cd_races, cd_results, cd_fastest_lap_data, circuit_id, driver_id,
+def generate_finishing_position_bar_plot(cd_results):
+    """
+    Bar plot of finishing positions at this circuit.
+    :param cd_results: CD results
+    :return: Bar plot layout
+    """
+    return driver.generate_finishing_position_bar_plot(cd_results)
+
+
+def generate_stats_layout(cd_years, cd_races, cd_results, cd_fastest_lap_data, positions_source, circuit_id, driver_id,
                           constructor_id=None):
     """
     Stats div including:
@@ -477,10 +412,13 @@ def generate_stats_layout(cd_years, cd_races, cd_results, cd_fastest_lap_data, c
     - Average finish position
     - Average lap time
     - Fastest lap time
+    - Num mechanical DNFs and mechanical DNF rate
+    - Num crash DNFs and crash DNF rate
     :param cd_years: CD years
     :param cd_races: CD races
     :param cd_results: CD results
     :param cd_fastest_lap_data: CD fastest lap data
+    :param positions_source: Positions source
     :param driver_id: Driver ID
     :param circuit_id: Circuit ID
     :param constructor_id: If set to anything but None, will do constructor mode
@@ -497,15 +435,21 @@ def generate_stats_layout(cd_years, cd_races, cd_results, cd_fastest_lap_data, c
         years = sorted(cd_races.loc[rids.values, "year"].astype(str).values.tolist(), reverse=True)
         num_wins = str(num_wins) + " (" + ", ".join(years) + ")"
     else:
-        num_races = str(num_wins)
+        num_wins = str(num_wins)
     podium_results = cd_results[cd_results["positionOrder"] <= 3]
     num_podiums = podium_results.shape[0]
     if num_podiums > 0:
         rids = podium_results["raceId"]
-        years = sorted(cd_races.loc[rids.values, "year"].astype(str).values.tolist(), reverse=True)
-        num_podiums = str(num_podiums) + " (" + ", ".join(years) + ")"
+        # todo something here is messed up, check for ferrari too
+        years = list(set(cd_races.loc[rids.values, "year"].values.tolist()))
+        years = rounds_to_str(years)
+        num_podiums_str = str(num_podiums) + " (" + years + ")"
+        if len(num_podiums_str) > 120:
+            split = num_podiums_str.split(" ")
+            split.insert(int(len(split) / 2), "<br>      " + "".ljust(20))
+            num_podiums_str = " ".join(split)
     else:
-        num_podiums = str(num_podiums)
+        num_podiums_str = str(num_podiums)
     best_result = None
     if num_wins == 0:
         idxmin = cd_results["positionOrder"].idxmin()
@@ -518,6 +462,30 @@ def generate_stats_layout(cd_years, cd_races, cd_results, cd_fastest_lap_data, c
 
     avg_lap_time = cd_fastest_lap_data["avg_lap_time_millis"].mean()
     fastest_lap_time = cd_fastest_lap_data["fastest_lap_time_millis"].min()
+
+    classifications = cd_results["statusId"].apply(get_status_classification)
+    num_mechanical_dnfs = classifications[classifications == "mechanical"].shape[0]
+    num_crash_dnfs = classifications[classifications == "crash"].shape[0]
+    num_finishes = classifications[classifications == "finished"].shape[0]
+    mechanical_dnfs_str = str(num_mechanical_dnfs)
+    crash_dnfs_str = str(num_crash_dnfs)
+    finishes_str = str(num_finishes)
+    if num_races > 0:
+        mechanical_dnfs_str += " (" + str(round(100 * num_mechanical_dnfs / num_races, 1)) + "%)"
+        crash_dnfs_str += " (" + str(round(100 * num_crash_dnfs / num_races, 1)) + "%)"
+        finishes_str += " (" + str(round(100 * num_finishes / num_races, 1)) + "%)"
+
+    if positions_source.shape[0] > 0:
+        avg_finish_pos_overall = positions_source["avg_finish_pos"].mean()
+        avg_finish_pos_here = positions_source["finish_position_int"].mean()
+        diff = avg_finish_pos_here - avg_finish_pos_overall
+        avg_finish_pos_overall = round(avg_finish_pos_overall, 1)
+        avg_finish_pos_here = round(avg_finish_pos_here, 1)
+        w = "higher" if diff < 0 else "lower"
+        finish_pos_diff_str = f"Finished on average {round(abs(diff), 1)} place(s) {w} than average " \
+                              f"(pos. {avg_finish_pos_here} here vs pos. {avg_finish_pos_overall} average overall)"
+    else:
+        finish_pos_diff_str = ""
 
     header_template = """
     <h2 style="text-align: center;"><b>{}</b></h2>
@@ -532,18 +500,23 @@ def generate_stats_layout(cd_years, cd_races, cd_results, cd_fastest_lap_data, c
     else:
         name = get_driver_name(driver_id, include_flag=False, just_last=True)
     cd_stats = header_template.format(f"{name} at {get_circuit_name(circuit_id, include_flag=False)} Stats")
-    cd_stats += template.format("Years: ".ljust(20), rounds_to_str(cd_years))
-    cd_stats += template.format("Num Races: ".ljust(20), str(num_races))
-    cd_stats += template.format("Num Wins: ".ljust(20), str(num_wins))
-    cd_stats += template.format("Num Podiums: ".ljust(20), str(num_podiums))
+    cd_stats += template.format("Years: ".ljust(22), rounds_to_str(cd_years))
+    cd_stats += template.format("Num Races: ".ljust(22), str(num_races))
+    cd_stats += template.format("Num Wins: ".ljust(22), str(num_wins))
+    cd_stats += template.format("Num Podiums: ".ljust(22), str(num_podiums_str))
     if best_result:
-        cd_stats += template.format("Best Result: ".ljust(20), str(best_result))
-    cd_stats += template.format("Avg. Start Pos.: ".ljust(20), mean_sp)
-    cd_stats += template.format("Avg. Finish Pos.: ".ljust(20), mean_fp)
+        cd_stats += template.format("Best Result: ".ljust(22), str(best_result))
+    cd_stats += template.format("Avg. Start Pos.: ".ljust(22), mean_sp)
+    cd_stats += template.format("Avg. Finish Pos.: ".ljust(22), mean_fp)
 
     if not np.isnan(avg_lap_time):
-        cd_stats += template.format("Avg. Lap Time: ".ljust(20), millis_to_str(avg_lap_time))
-        cd_stats += template.format("Fastest Lap Time: ".ljust(20), millis_to_str(fastest_lap_time))
+        cd_stats += template.format("Avg. Lap Time: ".ljust(22), millis_to_str(avg_lap_time))
+        cd_stats += template.format("Fastest Lap Time: ".ljust(22), millis_to_str(fastest_lap_time))
+    cd_stats += template.format("Num. Mechanical DNFs: ".ljust(22), mechanical_dnfs_str)
+    cd_stats += template.format("Num. Crash DNFs: ".ljust(22), crash_dnfs_str)
+    cd_stats += template.format("Num Finishes".ljust(22), finishes_str)
+    if positions_source.shape[0] > 0:
+        cd_stats += template.format("Compared to Average: ".ljust(22), finish_pos_diff_str)
 
     return Div(text=cd_stats)
 

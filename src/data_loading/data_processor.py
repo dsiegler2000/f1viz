@@ -265,7 +265,7 @@ if args.enable_race_mlt:
     for race_id in races.index:
         counter += 1
         if counter % 100 == 0:
-            print(f"{i} / {races.shape[0]}")
+            print(f"{counter} / {races.shape[0]}")
         race_laps = lap_times[lap_times["raceId"] == race_id]
         race_results = results[results["raceId"] == race_id]
         constructor_laps = defaultdict(lambda: [])
@@ -345,7 +345,10 @@ if args.enable_fastest_lap:
                 race_data["fastest_lap_time_millis"].append(fastest_lap_millis)
                 race_data["fastest_lap_time_str"].append(fastest_lap_time_str)
             if np.isnan(avg_lap_time_millis) and results_row["laps"] > 0:
-                avg_lap_time_millis = results_row["milliseconds"] / results_row["laps"]
+                if np.isnan(results_row["position"]):
+                    avg_lap_time_millis = np.nan
+                else:
+                    avg_lap_time_millis = results_row["milliseconds"] / results_row["laps"]
             avg_lap_time_str = millis_to_str(avg_lap_time_millis)
             race_data["avg_lap_time_millis"].append(avg_lap_time_millis)
             race_data["avg_lap_time_str"].append(avg_lap_time_str)
