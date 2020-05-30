@@ -29,6 +29,8 @@ fastest_lap_data = load_fastest_lap_data()
 #   potentially change the scale slightly so we can see bad teams a bit easier by default (again see alfa)
 
 
+# todo do a second pass on me next :)
+
 
 def get_layout(constructor_id=-1, **kwargs):
     if constructor_id not in constructors.index:

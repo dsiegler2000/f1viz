@@ -511,7 +511,7 @@ def generate_wdc_position_bar_plot(positions_source, consider_up_to=24, plot_hei
             percents.append(str(round(100 * v / n, 1)) + "%")
         else:
             percents.append("0.0%")
-        years_this_pos = positions[positions["wdc_final_standing"].astype(int) == int(k)]
+        years_this_pos = positions[positions["wdc_final_standing"].fillna(-1).astype(int) == int(k)]
         years_str = ", ".join(years_this_pos.index.values.astype(str).tolist())
         if len(years_str) > 0:
             years_str = "(" + years_str + ")"
@@ -818,7 +818,7 @@ def generate_win_plot(positions_source, driver_id=None):
         title=title,
         y_axis_label="",
         x_axis_label="Year",
-        x_range=Range1d(min_year, max_year + 1, bounds=(min_year - 1, max_year + 1)),
+        x_range=Range1d(min_year, max_year, bounds=(min_year - 1, max_year + 3)),
         tools="pan,xbox_zoom,reset,box_zoom,wheel_zoom,save",
         y_range=Range1d(0, win_source["podiums"].max(), bounds=(-20, 1000))
     )

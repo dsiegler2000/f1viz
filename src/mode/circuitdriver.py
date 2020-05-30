@@ -2,14 +2,14 @@ import logging
 import numpy as np
 from bokeh.layouts import column, row
 from bokeh.models import Div, DatetimeTickFormatter, NumeralTickFormatter, LegendItem, Title, Range1d, Legend, \
-    HoverTool, CrosshairTool, Spacer, TableColumn, DataTable, ColumnDataSource
+    HoverTool, CrosshairTool, Spacer
 from bokeh.plotting import figure
 import pandas as pd
 from data_loading.data_loader import load_results, load_races, load_lap_times, load_drivers, load_fastest_lap_data, \
     load_status, load_circuits, load_driver_standings, load_constructor_standings
-from mode import driver, yearconstructor
+from mode import driver, yearconstructor, driverconstructor, yeardriver
 from utils import get_circuit_name, get_driver_name, DATETIME_TICK_KWARGS, millis_to_str, PLOT_BACKGROUND_COLOR, \
-    get_constructor_name, plot_image_url, int_to_ordinal, rounds_to_str, result_to_str, get_status_classification
+    get_constructor_name, plot_image_url, int_to_ordinal, rounds_to_str, get_status_classification
 
 # Note, CD stands for circuit driver
 
@@ -47,6 +47,14 @@ def get_layout(circuit_id=-1, driver_id=-1, download_image=True, **kwargs):
     cd_fastest_lap_data = circuit_fastest_lap_data[circuit_fastest_lap_data["driver_id"] == driver_id]
     driver_driver_standings = driver_standings[driver_standings["driverId"] == driver_id]
     circuit_results = results[results["raceId"].isin(circuit_rids)]
+    constructor_results_idxs = []
+    for idx, results_row in cd_results.iterrows():
+        constructor_id = results_row["constructorId"]
+        rid = results_row["raceId"]
+        results_slice = circuit_results[(circuit_results["constructorId"] == constructor_id) &
+                                        (circuit_results["raceId"] == rid)]
+        constructor_results_idxs.extend(results_slice.index.values.tolist())
+    constructor_results = circuit_results.loc[constructor_results_idxs]
 
     # Positions plot
     positions_plot, positions_source = generate_positions_plot(cd_years, driver_driver_standings, driver_results,
@@ -66,6 +74,10 @@ def get_layout(circuit_id=-1, driver_id=-1, download_image=True, **kwargs):
 
     # Finish position distribution plot
     finish_pos_dist = generate_finishing_position_bar_plot(cd_results)
+
+    # Teammate comparison plot
+    teammate_comparison_line_plot = generate_teammate_comparison_line_plot(positions_source, constructor_results,
+                                                                           cd_results, driver_id)
 
     # Results table
     results_table, results_source = generate_results_table(cd_results, cd_fastest_lap_data, circuit_results,
@@ -94,10 +106,13 @@ def get_layout(circuit_id=-1, driver_id=-1, download_image=True, **kwargs):
                      lap_time_dist, middle_spacer,
                      finish_pos_dist,
                      row([spvfp_scatter, mltr_fp_scatter], sizing_mode="stretch_width"),
+                     teammate_comparison_line_plot,
                      row([image_view], sizing_mode="stretch_width"),
                      results_table,
                      stats_div],
                     sizing_mode="stretch_width")
+
+    logging.info("Finished generating layout for mode CIRCUITDRIVER")
 
     return layout
 
@@ -388,6 +403,30 @@ def generate_mltr_fp_scatter(cd_results, cd_races, driver_driver_standings):
     :return: Mean lap time rank vs finish position scatter plot layout
     """
     return driver.generate_mltr_fp_scatter(cd_results, cd_races, driver_driver_standings, include_year_labels=True)
+
+
+def generate_teammate_comparison_line_plot(positions_source, constructor_results, cd_results, driver_id):
+    """
+    Driver finish pos and teammate finish pos vs time.
+    :param positions_source: Positions source
+    :param constructor_results: Constructor results
+    :param cd_results: CD results
+    :param driver_id: Driver ID
+    :return: Teammate comparison line plot layout
+    """
+    kwargs = dict(
+        return_components_and_source=True,
+        default_alpha=0.5,
+        mute_smoothed=True
+    )
+    slider, teammate_fp_plot, source = driverconstructor.generate_teammate_comparison_line_plot(positions_source,
+                                                                                                constructor_results,
+                                                                                                driver_id,
+                                                                                                **kwargs)
+
+    yeardriver.mark_teammate_team_changes(cd_results, positions_source, driver_id, teammate_fp_plot, x_offset=0.2)
+
+    return column([slider, teammate_fp_plot], sizing_mode="stretch_width")
 
 
 def generate_finishing_position_bar_plot(cd_results):

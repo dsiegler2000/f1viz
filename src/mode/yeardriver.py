@@ -161,13 +161,14 @@ def generate_positions_plot(yd_driver_standings, yd_results, yd_fastest_lap_data
     return positions_plot, positions_source
 
 
-def mark_teammate_team_changes(yd_results, positions_source, driver_id, fig):
+def mark_teammate_team_changes(yd_results, positions_source, driver_id, fig, x_offset=0.03):
     """
     Marks team and teammate changes
     :param yd_results: YD results
     :param positions_source: Positions source
     :param driver_id: Driver ID
     :param fig: Figure to mark
+    :param x_offset: Offset for drawing text labels
     :return: None
     """
     if yd_results.shape[0] > 0:
@@ -182,7 +183,7 @@ def mark_teammate_team_changes(yd_results, positions_source, driver_id, fig):
         def draw_mark(location, line_color, text, up=True):
             line = Span(line_color=line_color, location=location, dimension="height", line_alpha=0.4, line_width=3.2)
             fig.add_layout(line)
-            label = Label(x=location + 0.02, y=18 if up else 16, text=text, **label_kwargs)
+            label = Label(x=location + x_offset, y=18 if up else 16, text=text, **label_kwargs)
             fig.add_layout(label)
 
         for race_id in yd_results["raceId"]:

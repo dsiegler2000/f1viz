@@ -324,7 +324,7 @@ def generate_results_table(yc_results, yc_fastest_lap_data, year_results, year_f
     else:
         results_columns.insert(0, TableColumn(field="race_name", title="Race Name", width=100))
     results_table = DataTable(source=ColumnDataSource(data=source), columns=results_columns, index_position=None,
-                              height=27 * yc_results.shape[0] if height is None else height)
+                              height=30 * yc_results.shape[0] if height is None else height)
     title = Div(text=f"<h2><b>Results for each race</b></h2><br><i>The fastest lap time and average lap time gaps "
                      f"shown are calculated based on the gap to the fastest of all drivers and fastest average of "
                      f"all drivers in that race respectively.</i>")
@@ -384,7 +384,7 @@ def generate_teammate_comparison_line_plot(yc_results, year_races, yc_driver_sta
     :param year_races: Year races
     :param yc_driver_standings: YC driver standings
     :param year_id: Year
-    :return:
+    :return: Layout
     """
     logging.info("Generating teammate finish pos. vs driver finish pos line plot")
     source = pd.DataFrame(columns=["x", "year",
@@ -502,21 +502,20 @@ def generate_teammate_comparison_line_plot(yc_results, year_races, yc_driver_sta
     mean_driver_fp = source["driver1_fp"].mean()
     mean_teammate_fp = source["driver2_fp"].mean()
     line_kwargs = dict(
-        dimension="width",
+        x=[-1000, 5000],
         line_alpha=0.4,
-        line_width=2.5
+        line_width=2.5,
+        muted_alpha=0
     )
-    driver1_line = Span(line_color="white", location=mean_driver_fp, **line_kwargs)
-    driver2_line = Span(line_color="yellow", location=mean_teammate_fp, **line_kwargs)
-    teammate_fp_plot.add_layout(driver1_line)
-    teammate_fp_plot.add_layout(driver2_line)
+    driver1_mean_line = teammate_fp_plot.line(line_color="white", y=[mean_driver_fp] * 2, **line_kwargs)
+    driver2_mean_line = teammate_fp_plot.line(line_color="yellow", y=[mean_teammate_fp] * 2, **line_kwargs)
 
     driver1_fp_smoothed_line.muted = True
     driver2_fp_smoothed_line.muted = True
 
     # Legend
-    legend = [LegendItem(label="Driver 1 Finish Pos.", renderers=[driver1_fp_line]),
-              LegendItem(label="Finish Pos. Smoothed", renderers=[driver1_fp_smoothed_line]),
+    legend = [LegendItem(label="Driver 1 Finish Pos.", renderers=[driver1_fp_line, driver1_mean_line]),
+              LegendItem(label="Finish Pos. Smoothed", renderers=[driver1_fp_smoothed_line, driver2_mean_line]),
               LegendItem(label="Driver 2 Finish Pos.", renderers=[driver2_fp_line]),
               LegendItem(label="Finish Pos. Smoothed", renderers=[driver2_fp_smoothed_line])]
     legend = Legend(items=legend, location="top_right", glyph_height=15, spacing=2, inactive_fill_color="gray")

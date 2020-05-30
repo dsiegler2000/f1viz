@@ -144,6 +144,8 @@ def mark_teammate_changes(positions_source, constructor_results, driver_id, fig)
                         text_font_size="12pt",
                         angle=math.pi / 4)
     for idx, row in positions_source.iterrows():
+        if row["grid"] == "":
+            continue
         rid = row["race_id"]
         dids = constructor_results[constructor_results["raceId"] == rid]["driverId"].unique().tolist()
         if driver_id in dids:
@@ -621,7 +623,7 @@ def generate_teammate_comparison_line_plot(positions_source, constructor_results
                                     u"show mean finish position, include DNFs",
                               x_axis_label="Year",
                               y_axis_label="Finish Position",
-                              x_range=Range1d(min_year, max_year + 1, bounds=(min_year, max_year + 1)),
+                              x_range=Range1d(min_year, max_year, bounds=(min_year, max_year + 3)),
                               y_range=Range1d(0, 22, bounds=(0, 60)),
                               tools="pan,box_zoom,reset,save")
     teammate_fp_plot.xaxis.ticker = FixedTicker(ticks=np.arange(1950, 2050))
@@ -643,14 +645,13 @@ def generate_teammate_comparison_line_plot(positions_source, constructor_results
     mean_driver_fp = source["driver_fp"].mean()
     mean_teammate_fp = source["teammate_fp"].mean()
     line_kwargs = dict(
-        dimension="width",
+        x=[-1000, 5000],
         line_alpha=0.4,
-        line_width=2.5
+        line_width=2.5,
+        muted_alpha=0
     )
-    driver_line = Span(line_color="white", location=mean_driver_fp, **line_kwargs)
-    teammate_line = Span(line_color="yellow", location=mean_teammate_fp, **line_kwargs)
-    teammate_fp_plot.add_layout(driver_line)
-    teammate_fp_plot.add_layout(teammate_line)
+    driver_mean_line = teammate_fp_plot.line(line_color="white", y=[mean_driver_fp] * 2, **line_kwargs)
+    teammate_mean_line = teammate_fp_plot.line(line_color="yellow", y=[mean_teammate_fp] * 2, **line_kwargs)
 
     if mute_smoothed:
         driver_fp_smoothed_line.muted = True
@@ -658,11 +659,13 @@ def generate_teammate_comparison_line_plot(positions_source, constructor_results
     else:
         driver_fp_line.muted = True
         teammate_fp_line.muted = True
+        driver_mean_line.muted = True
+        teammate_mean_line.muted = True
 
     # Legend
-    legend = [LegendItem(label="Driver Finish Pos.", renderers=[driver_fp_line]),
+    legend = [LegendItem(label="Driver Finish Pos.", renderers=[driver_fp_line, driver_mean_line]),
               LegendItem(label="Finish Pos. Smoothed", renderers=[driver_fp_smoothed_line]),
-              LegendItem(label="Teammate Finish Pos.", renderers=[teammate_fp_line]),
+              LegendItem(label="Teammate Finish Pos.", renderers=[teammate_fp_line, teammate_mean_line]),
               LegendItem(label="T.M. Finish Pos. Smoothed", renderers=[teammate_fp_smoothed_line])]
     legend = Legend(items=legend, location="top_right", glyph_height=15, spacing=2, inactive_fill_color="gray")
     teammate_fp_plot.add_layout(legend, "right")

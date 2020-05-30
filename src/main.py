@@ -192,7 +192,7 @@ constructor_input = Select(options=constructor_completions)
 search_bars = [circuit_input, year_input, driver_input, constructor_input]
 search_bars_layout = row(*search_bars, sizing_mode="scale_width")
 
-circuit_input.value = "Albert Park Grand Prix Circuit"
+# circuit_input.value = "Albert Park Grand Prix Circuit"
 
 if INCLUDE_GENERATE_BUTTON:
     generate_button = Button(label="Generate Plots")
@@ -209,6 +209,7 @@ curdoc().title = "F1Viz"
 curdoc().theme = "dark_minimal"
 
 driver_input.value = "Kimi Räikkönen"
+constructor_input.value = "Ferrari"
 
 update()
 
