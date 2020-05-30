@@ -211,7 +211,7 @@ curdoc().add_root(lay)
 curdoc().title = "F1Viz"
 curdoc().theme = "dark_minimal"
 
-driver_input.value = "Lewis Hamilton"
+# driver_input.value = "Lewis Hamilton"
 
 update()
 

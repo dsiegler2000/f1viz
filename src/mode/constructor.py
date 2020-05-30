@@ -23,6 +23,11 @@ constructor_standings = load_constructor_standings()
 races = load_races()
 fastest_lap_data = load_fastest_lap_data()
 
+# TODO:
+#  refactor win plot to use driver.generate_win_plot
+#  add teammate comparison line plot
+#  add DNFs to stats div
+
 
 def get_layout(constructor_id=-1, **kwargs):
     if constructor_id not in constructors.index:
