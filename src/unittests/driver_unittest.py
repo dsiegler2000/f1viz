@@ -81,7 +81,7 @@ for driver_id in drivers.index.unique():
         print(f"Testing driver ID {driver_id}, {name}, {i} / {n}")
         i += 1
         start = time.time()
-        get_layout(driver_id=driver_id)
+        get_layout(driver_id=driver_id, download_image=False)
         end = time.time()
         elapsed = 1000 * (end - start)
         print(f"Completed in  {elapsed} milliseconds")

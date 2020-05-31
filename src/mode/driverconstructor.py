@@ -574,7 +574,7 @@ def generate_teammate_comparison_line_plot(positions_source, constructor_results
     """
     # TODO add mean lap time percent to this plot
     logging.info("Generating teammate finish pos. vs driver finish pos line plot")
-    source = pd.DataFrame(columns=["x", "year",
+    source = pd.DataFrame(columns=["x", "year", "race_id",
                                    "driver_fp", "teammate_fp",
                                    "driver_fp_str", "teammate_fp_str"
                                    "year", "roundNum", "roundName", "wdc_final_standing", "teammate_name"])
@@ -598,11 +598,12 @@ def generate_teammate_comparison_line_plot(positions_source, constructor_results
                 teammate_fp = teammate_results["positionOrder"].values[0]
                 # TODO add DNFs to the FP strings
                 source = source.append({
+                    "race_id": rid,
+                    "x": x,
                     "driver_fp": driver_fp,
                     "teammate_fp": teammate_fp,
                     "driver_fp_str": int_to_ordinal(driver_fp),
                     "teammate_fp_str": int_to_ordinal(teammate_fp),
-                    "x": x,
                     "year": row["year"],
                     "roundNum": row["roundNum"],
                     "roundName": row["roundName"],

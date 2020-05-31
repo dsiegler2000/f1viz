@@ -12,9 +12,11 @@ import pandas as pd
 from bokeh.plotting import figure
 from bokeh.transform import factor_cmap
 from pandas import Series
+
+from mode import driverconstructor
 from utils import get_driver_name, position_text_to_str, get_constructor_name, ColorDashGenerator, get_circuit_name, \
     PLOT_BACKGROUND_COLOR, int_to_ordinal, get_status_classification, rounds_to_str, get_race_name, nationality_to_flag, \
-    result_to_str, millis_to_str, DATETIME_TICK_KWARGS, rescale
+    result_to_str, millis_to_str, DATETIME_TICK_KWARGS, rescale, plot_image_url, vdivider
 from data_loading.data_loader import load_drivers, load_results, load_driver_standings, load_races, \
     load_fastest_lap_data, load_status
 
@@ -25,22 +27,8 @@ races = load_races()
 fastest_lap_data = load_fastest_lap_data()
 status = load_status()
 
-# todo
-#  add teammate comparison line plot
-#  add num fastest laps to stats div
-#  add header                                                                                                   √
-#  change fastest lap rank to avg lap rank (do this in constructor too, and pre-calculate the rank)
-#   this should be pretty simple, already made an avg_lap_time_rank column in fastest lap data
 
-
-# todo at a minimum:
-#   Make sure tables are sortable
-#   Make sure second axes are scaled properly
-#   Make sure using ordinals (1st, 2nd, 3rd) on everything
-#   Make sure the mode has a header
-
-
-def get_layout(driver_id=-1, **kwargs):
+def get_layout(driver_id=-1, download_image=True, **kwargs):
     if driver_id not in drivers.index:
         return generate_error_layout()
 
@@ -50,15 +38,20 @@ def get_layout(driver_id=-1, **kwargs):
     driver_races = races[races.index.isin(driver_rids)].sort_values(by=["year", "raceId"])
     driver_years = driver_races["year"].unique()
     driver_fastest_lap_data = fastest_lap_data[fastest_lap_data["driver_id"] == driver_id]
+    constructor_results_idxs = []
+    for idx, results_row in driver_results.iterrows():
+        constructor_id = results_row["constructorId"]
+        rid = results_row["raceId"]
+        results_slice = results[(results["constructorId"] == constructor_id) &
+                                (results["raceId"] == rid)]
+        constructor_results_idxs.extend(results_slice.index.values.tolist())
+    constructor_results = results.loc[constructor_results_idxs]
 
     logging.info(f"Generating layout for mode DRIVER in driver, driver_id={driver_id}")
 
     # Position plot
     positions_plot, positions_source = generate_positions_plot(driver_years, driver_driver_standings, driver_results,
                                                                driver_fastest_lap_data, driver_id)
-
-    # Mark constructor changes
-    mark_team_changes(driver_years, driver_results, [positions_plot], [positions_source])
 
     # Circuit performance table
     circuit_performance_table = generate_circuit_performance_table(driver_results, driver_races, driver_id)
@@ -78,6 +71,10 @@ def get_layout(driver_id=-1, **kwargs):
     # Mean lap time rank vs finish position scatter plot
     mltr_fp_scatter = generate_mltr_fp_scatter(driver_results, driver_races, driver_driver_standings)
 
+    # Teammate comparison line plot
+    teammate_comparison_line_plot = generate_teammate_comparison_line_plot(positions_source, constructor_results,
+                                                                           driver_years, driver_results, driver_id)
+
     # Team performance graph and table
     team_performance_layout, performance_source = generate_team_performance_layout(driver_races, positions_source,
                                                                                    driver_results)
@@ -89,16 +86,26 @@ def get_layout(driver_id=-1, **kwargs):
     # Header
     header = Div(text=f"<h2><b>{get_driver_name(driver_id)}</b></h2><br>")
 
+    # Driver image
+    if download_image:
+        image_url = str(drivers.loc[driver_id, "imgUrl"])
+        print(image_url)
+        image_view = plot_image_url(image_url)
+    else:
+        image_view = Div()
+
     middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
+    divider = vdivider()
     layout = column([header,
                      positions_plot, middle_spacer,
                      position_dist, middle_spacer,
                      wdc_position_dist, middle_spacer,
                      win_plot, middle_spacer,
                      row([spvfp_scatter, mltr_fp_scatter], sizing_mode="stretch_width"),
+                     teammate_comparison_line_plot,
                      circuit_performance_table,
                      team_performance_layout,
-                     driver_stats_layout],
+                     row([image_view, divider, driver_stats_layout], sizing_mode="stretch_both")],
                     sizing_mode="stretch_width")
 
     logging.info("Finished generating layout for mode DRIVER")
@@ -140,7 +147,7 @@ def generate_positions_plot(driver_years, driver_driver_standings, driver_result
         "race_id",
         "year",
         "grid", "grid_str",
-        "fastest_lap_rank", "fastest_lap_rank_str",
+        "avg_lap_rank", "avg_lap_rank_str",
         "points",
         "roundNum",
         "roundName",
@@ -200,19 +207,18 @@ def generate_positions_plot(driver_years, driver_driver_standings, driver_result
                 current_wdc_standing = 20
                 current_wdc_standing_str = ""
             race_fastest_lap_data = year_fastest_lap_data[year_fastest_lap_data["raceId"] == race_id]
-            fastest_lap_rank = race_fastest_lap_data["rank"]
-            fastest_lap_rank = fastest_lap_rank.replace("  ", np.nan)
-            if fastest_lap_rank.shape[0] > 0:
-                fastest_lap_rank = float(fastest_lap_rank.values[0])
-                if np.isnan(fastest_lap_rank):
-                    fastest_lap_rank_str = ""
+            avg_lap_rank = race_fastest_lap_data["avg_lap_time_rank"]
+            if avg_lap_rank.shape[0] > 0:
+                avg_lap_rank = float(avg_lap_rank.values[0])
+                if np.isnan(avg_lap_rank):
+                    avg_lap_rank_str = ""
                 else:
-                    fastest_lap_rank_str = int_to_ordinal(int(fastest_lap_rank))
+                    avg_lap_rank_str = int_to_ordinal(int(avg_lap_rank))
                 avg_lap_time_millis = race_fastest_lap_data["avg_lap_time_millis"].mean()
                 avg_lap_time_str = millis_to_str(avg_lap_time_millis)
             else:
-                fastest_lap_rank = np.nan
-                fastest_lap_rank_str = ""
+                avg_lap_rank = np.nan
+                avg_lap_rank_str = ""
                 avg_lap_time_millis = np.nan
                 avg_lap_time_str = np.nan
             source = source.append({
@@ -224,8 +230,8 @@ def generate_positions_plot(driver_years, driver_driver_standings, driver_result
                 "year": year,
                 "grid": grid,
                 "grid_str": grid_str,
-                "fastest_lap_rank": fastest_lap_rank,
-                "fastest_lap_rank_str": fastest_lap_rank_str,
+                "avg_lap_rank": avg_lap_rank,
+                "avg_lap_rank_str": avg_lap_rank_str,
                 "wdc_current_standing": current_wdc_standing,
                 "wdc_current_standing_str": current_wdc_standing_str,
                 "wdc_final_standing": final_standing,
@@ -243,7 +249,7 @@ def generate_positions_plot(driver_years, driver_driver_standings, driver_result
     # Apply some smoothing
     source["grid_smoothed"] = source["grid"].ewm(alpha=smoothing_alpha).mean()
     source["finish_position_int_smoothed"] = source["finish_position_int"].ewm(alpha=smoothing_alpha).mean()
-    source["fastest_lap_rank_smoothed"] = source["fastest_lap_rank"].ewm(alpha=smoothing_alpha).mean()
+    source["avg_lap_rank_smoothed"] = source["avg_lap_rank"].ewm(alpha=smoothing_alpha).mean()
     source["grid"] = source["grid"].fillna("")
     source["finish_position_int"] = source["finish_position_int"].fillna(np.nan)
 
@@ -291,30 +297,30 @@ def generate_positions_plot(driver_years, driver_driver_standings, driver_result
                                                line_alpha=0.6, **kwargs)
     grid_line = positions_plot.line(y="grid", color="orange", line_width=minor_line_width,
                                     line_alpha=0.6, **kwargs)
-    fastest_lap_rank_line = positions_plot.line(y="fastest_lap_rank", color="hotpink", line_width=minor_line_width,
-                                                line_alpha=0.7, **kwargs)
+    avg_lap_rank_line = positions_plot.line(y="avg_lap_rank", color="hotpink", line_width=minor_line_width,
+                                            line_alpha=0.7, **kwargs)
     finish_position_smoothed_line = positions_plot.line(y="finish_position_int_smoothed", color="yellow",
                                                         line_width=minor_line_width + 0.5, line_alpha=0.7,
                                                         line_dash="dashed", **kwargs)
     grid_smoothed_line = positions_plot.line(y="grid_smoothed", color="orange", line_width=minor_line_width + 0.5,
                                              line_alpha=0.7, line_dash="dashed", **kwargs)
-    fastest_lap_rank_smoothed_line = positions_plot.line(y="fastest_lap_rank_smoothed", color="hotpink",
-                                                         line_width=minor_line_width + 0.5, line_alpha=0.7,
-                                                         line_dash="dashed", **kwargs)
+    avg_lap_rank_smoothed_line = positions_plot.line(y="avg_lap_rank_smoothed", color="hotpink",
+                                                     line_width=minor_line_width + 0.5, line_alpha=0.7,
+                                                     line_dash="dashed", **kwargs)
 
     if smoothing_muted:
         finish_position_smoothed_line.muted = True
         grid_smoothed_line.muted = True
-        fastest_lap_rank_smoothed_line.muted = True
+        avg_lap_rank_smoothed_line.muted = True
     else:
         finish_position_line.muted = True
         grid_line.muted = True
-        fastest_lap_rank_line.muted = True
+        avg_lap_rank_line.muted = True
 
     legend.extend([LegendItem(label="Race Finish Position", renderers=[finish_position_line]),
                    LegendItem(label="Finish Pos. Smoothed", renderers=[finish_position_smoothed_line]),
-                   LegendItem(label="Fastest Lap Rank", renderers=[fastest_lap_rank_line]),
-                   LegendItem(label="Fastest Lap Rank Smoothed", renderers=[fastest_lap_rank_smoothed_line]),
+                   LegendItem(label="Avg. Lap Rank", renderers=[avg_lap_rank_line]),
+                   LegendItem(label="Avg. Lap Rank Smoothed", renderers=[avg_lap_rank_smoothed_line]),
                    LegendItem(label="Grid Position", renderers=[grid_line]),
                    LegendItem(label="Grid Position Smoothed", renderers=[grid_smoothed_line])])
 
@@ -345,7 +351,7 @@ def generate_positions_plot(driver_years, driver_driver_standings, driver_result
         ("Year", "@year"),
         ("Round", "@roundNum - @roundName"),
         ("Grid Position", "@grid_str"),
-        ("Fastest Lap Rank", "@fastest_lap_rank_str"),
+        ("Avg. Lap Rank", "@avg_lap_rank_str"),
         ("Finishing Position", "@finish_position_str"),
         ("Points", "@points"),
         ("Final Position this year", "@wdc_final_standing_str"),
@@ -356,6 +362,9 @@ def generate_positions_plot(driver_years, driver_driver_standings, driver_result
 
     # Crosshair tooltip
     positions_plot.add_tools(CrosshairTool(dimensions="both", line_color="white", line_alpha=0.6))
+
+    # Mark team changes
+    mark_team_changes(driver_years, driver_results, positions_plot, source)
 
     return positions_plot, source
 
@@ -566,13 +575,13 @@ def generate_wdc_position_bar_plot(positions_source, consider_up_to=24, plot_hei
     return wdc_finish_position_plot
 
 
-def mark_team_changes(driver_years, driver_results, figures, sources):
+def mark_team_changes(driver_years, driver_results, fig, source):
     """
     Mark team changes with a vertical line.
     :param driver_years: Driver years
     :param driver_results: Driver results
-    :param figures: Figures
-    :param sources: Sources (must have "x" column)
+    :param fig: Figure
+    :param source: Source (must have "x" column)
     :return: None
     """
     logging.info("Marking team changes")
@@ -596,17 +605,16 @@ def mark_team_changes(driver_years, driver_results, figures, sources):
             if race_results.shape[0] > 0:
                 curr_constructor = race_results["constructorId"].values[0]
                 if curr_constructor != prev_constructor:  # Mark the constructor change
-                    for fig, source in zip(figures, sources):
-                        x = source[source["race_id"] == race_id]["x"]
-                        if x.shape[0] > 0:
-                            x = x.values[0]
-                        else:
-                            continue
-                        color, _ = color_gen.get_color_dash(None, curr_constructor)
-                        line = Span(line_color=color, location=x, dimension="height", line_alpha=0.4, line_width=3.2)
-                        fig.add_layout(line)
-                        label = Label(x=x + 0.01, y=16, text=get_constructor_name(curr_constructor), **label_kwargs)
-                        fig.add_layout(label)
+                    x = source[source["race_id"] == race_id]["x"]
+                    if x.shape[0] > 0:
+                        x = x.values[0]
+                    else:
+                        continue
+                    color, _ = color_gen.get_color_dash(None, curr_constructor)
+                    line = Span(line_color=color, location=x, dimension="height", line_alpha=0.4, line_width=3.2)
+                    fig.add_layout(line)
+                    label = Label(x=x + 0.01, y=16, text=get_constructor_name(curr_constructor), **label_kwargs)
+                    fig.add_layout(label)
                     prev_constructor = curr_constructor
 
 
@@ -778,6 +786,8 @@ def generate_team_performance_layout(driver_races, positions_source, driver_resu
     performance_plot.x_range.range_padding = 0.1
     performance_plot.xaxis.major_label_orientation = 1
     performance_plot.xgrid.grid_line_color = None
+    performance_plot.xaxis.group_text_color = "white"
+    performance_plot.xaxis.group_text_font_size = "11pt"
 
     return column([title, performance_plot, row([team_performance_columns_table], sizing_mode="stretch_width")],
                   sizing_mode="stretch_width"), source
@@ -1218,6 +1228,24 @@ def generate_mltr_fp_scatter(driver_results, driver_races, driver_driver_standin
     return mltr_fp_scatter
 
 
+def generate_teammate_comparison_line_plot(positions_source, constructor_results, driver_years, driver_results,
+                                           driver_id):
+    """
+    Teammate comparison line plot
+    :param positions_source: Positions source
+    :param constructor_results: Constructor results (all results from the constructor this driver was at)
+    :param driver_years: Driver years
+    :param driver_results: Driver results
+    :param driver_id: Driver ID
+    :return: Plot layout
+    """
+    slider, plot, source = driverconstructor.generate_teammate_comparison_line_plot(positions_source,
+                                                                                    constructor_results, driver_id,
+                                                                                    return_components_and_source=True)
+    mark_team_changes(driver_years, driver_results, plot, source)
+    return column([slider, plot], sizing_mode="stretch_width")
+
+
 def generate_driver_stats_layout(driver_years, driver_races, performance_source, driver_results, driver_id):
     """
     Includes some information not found in the "Career Total" category of the team performance table.
@@ -1246,24 +1274,28 @@ def generate_driver_stats_layout(driver_years, driver_races, performance_source,
     first_rid = driver_races[driver_races["year"] == first_year].sort_values(by="round").index.values[0]
     first_race_name = str(first_year) + " " + get_race_name(first_rid)
     last_year = np.max(driver_years)
-    last_rid = driver_races[driver_races["year"] == last_year].sort_values(by="round", ascending=True).index.values[0]
+    last_rid = driver_races[driver_races["year"] == last_year].sort_values(by="round").index.values[-1]
     last_race_name = str(last_year) + " " + get_race_name(last_rid)
 
     wins = []
     driver_results = driver_results.set_index("raceId")
+    last_win_rid = -1
+    last_win_year = -1
     for rid, race_row in driver_races.iterrows():
         position = driver_results.loc[rid, "positionOrder"]
         if isinstance(position, Series):
             position = position.values[0]
         if rid in driver_results.index and position == 1:
+            year = race_row["year"]
+            if year > last_win_year and rid > last_win_rid:
+                last_win_rid = rid
+                last_win_year = year
             wins.append(rid)
     if len(wins) > 0:
         first_win_rid = wins[0]
         first_win_year = races.loc[first_win_rid, "year"]
         first_win_name = str(first_win_year) + " " + get_race_name(first_win_rid)
-        last_win_rid = wins[-1]
-        last_win_year = races.loc[first_win_rid, "year"]
-        last_win_name = str(last_win_year) + " " + get_race_name(last_win_rid)
+        last_win_name = get_race_name(last_win_rid, include_year=True)
 
     performance_source = performance_source.loc["Career Total"]
     num_podiums_str = performance_source["num_podiums_str"]

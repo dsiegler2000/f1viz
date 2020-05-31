@@ -193,6 +193,7 @@ def generate_win_plot(positions_source, constructor_id):
     :param constructor_id: Constructor ID
     :return: Win plot
     """
+    # TODO add points and points per race to this plot
     win_plot = constructor.generate_win_plot(positions_source, constructor_id)
 
     # Override axes

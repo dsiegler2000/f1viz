@@ -22,7 +22,7 @@ parser.add_argument("--enable_weather_sc", nargs="?", const=True, default=False,
 parser.add_argument("--enable_ratings", nargs="?", const=True, default=False, help="Ratings.")
 parser.add_argument("--enable_runtime", nargs="?", const=True, default=False, help="Runtime.")
 parser.add_argument("--enable_round_num_name", nargs="?", const=True, default=False, help="Round number and name.")
-parser.add_argument("--enable_circuit_img", nargs="?", const=True, default=False, help="Circuit image.")
+parser.add_argument("--enable_imgs", nargs="?", const=True, default=False, help="Image.")
 parser.add_argument("--enable_race_mlt", nargs="?", const=True, default=False, help="Race mean lap time.")
 parser.add_argument("--enable_fastest_lap", nargs="?", const=True, default=False, help="Fastest lap info.")
 
@@ -32,7 +32,7 @@ if not args.custom:
     args.enable_ratings = True
     args.enable_runtime = True
     args.enable_round_num_name = True
-    args.enable_circuit_img = True
+    args.enable_imgs = True
     args.enable_race_mlt = True
     args.enable_fastest_lap = True
 else:
@@ -250,9 +250,12 @@ if args.enable_round_num_name:
 # ======================================================================================================================
 # Circuit image URL
 # ======================================================================================================================
-if args.enable_circuit_img:
+if args.enable_imgs:
     img_url = pd.read_csv("data/static_data/circuit_image_urls.csv").set_index("circuitId")
     circuits["imgUrl"] = img_url
+    img_url = pd.read_csv("data/static_data/driver_image_urls.csv").set_index("driverId")
+    drivers["imgUrl"] = img_url
+    print(drivers["imgUrl"].isna().sum())
 
 # ======================================================================================================================
 # Constructor per-race mean lap time (stored in driver_results)
@@ -362,7 +365,6 @@ if args.enable_fastest_lap:
         race_data = race_data.sort_values(by="rank")
         race_data["rank"] = race_data["rank"].astype(str).replace("0", "").str.rjust(2)
         race_data["avg_lap_time_rank"] = race_data["avg_lap_time_millis"].rank()
-        print(race_data.columns)
         for idx, row in race_data.iterrows():
             fastest_lap_data.append([race_id] + row.values.tolist())
         if i % 100 == 0:

@@ -1,6 +1,7 @@
 import itertools
 import logging
 import time
+import traceback
 from collections import defaultdict
 from io import BytesIO
 import numpy as np
@@ -50,8 +51,10 @@ def plot_image_url(image_url):
     :param image_url:
     :return:
     """
-    if image_url == "nan":
+    if image_url == "nan" or image_url == "":
         return Div(text="No image found.")
+    if "http" not in image_url:
+        image_url = "http://" + image_url
 
     try:
         # Get the image
@@ -87,7 +90,8 @@ def plot_image_url(image_url):
         image_view.outline_line_alpha = 0
 
         return image_view
-    except:
+    except Exception as e:
+        traceback.print_exc()
         return Div(text="Error retrieving image.")
 
 

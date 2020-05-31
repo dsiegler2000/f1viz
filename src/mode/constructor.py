@@ -139,7 +139,7 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
         "race_id",
         "year",
         "grid",
-        "fastest_lap_rank",
+        "avg_lap_rank",
         "points",
         "roundNum", "roundName",
         "wcc_current_standing", "wcc_current_standing_str",
@@ -219,13 +219,13 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
                 current_wcc_standing_str = ""
             race_fastest_lap_data = year_fastest_lap_data[year_fastest_lap_data["raceId"] == race_id]
             if race_fastest_lap_data.shape[0] > 0:
-                fastest_lap_rank = race_fastest_lap_data["rank"]
-                fastest_lap_rank = fastest_lap_rank.replace("  ", np.nan).astype(float).mean()
-                fastest_lap_rank = round(fastest_lap_rank, 1)
+                avg_lap_rank = race_fastest_lap_data["avg_lap_time_rank"]
+                avg_lap_rank = avg_lap_rank.astype(float).mean()
+                avg_lap_rank = round(avg_lap_rank, 1)
                 avg_lap_time_millis = race_fastest_lap_data["avg_lap_time_millis"].mean()
                 avg_lap_time_str = millis_to_str(avg_lap_time_millis)
             else:
-                fastest_lap_rank = np.nan
+                avg_lap_rank = np.nan
                 avg_lap_time_millis = np.nan
                 avg_lap_time_str = ""
             source = source.append({
@@ -238,7 +238,7 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
                 "race_id": race_id,
                 "year": year,
                 "grid": grid,
-                "fastest_lap_rank": fastest_lap_rank,
+                "avg_lap_rank": avg_lap_rank,
                 "wcc_current_standing": current_wcc_standing,
                 "wcc_current_standing_str": current_wcc_standing_str,
                 "wcc_final_standing": final_standing,
@@ -277,10 +277,10 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
     # Apply some smoothing
     source["grid_smoothed"] = source["grid"].ewm(alpha=smoothing_alpha).mean()
     source["finish_position_int_smoothed"] = source["finish_position_int"].ewm(alpha=smoothing_alpha).mean()
-    source["fastest_lap_rank_smoothed"] = source["fastest_lap_rank"].ewm(alpha=smoothing_alpha).mean()
+    source["avg_lap_rank_smoothed"] = source["avg_lap_rank"].ewm(alpha=smoothing_alpha).mean()
     source["grid"] = source["grid"].fillna("")
     source["finish_position_int"] = source["finish_position_int"].fillna(np.nan)
-    source["fastest_lap_rank_str"] = source["fastest_lap_rank"].fillna("")
+    source["avg_lap_rank_str"] = source["avg_lap_rank"].fillna("")
 
     source = source.sort_values(by=["year", "race_id"])
     constructor_name = get_constructor_name(cid)
@@ -319,30 +319,30 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
                                                line_alpha=0.6, **kwargs)
     grid_line = positions_plot.line(y="grid", color="orange", line_width=minor_line_width,
                                     line_alpha=0.6, **kwargs)
-    fastest_lap_rank_line = positions_plot.line(y="fastest_lap_rank", color="hotpink", line_width=minor_line_width,
-                                                line_alpha=0.7, **kwargs)
+    avg_lap_rank_line = positions_plot.line(y="avg_lap_rank", color="hotpink", line_width=minor_line_width,
+                                            line_alpha=0.7, **kwargs)
     finish_position_smoothed_line = positions_plot.line(y="finish_position_int_smoothed", color="yellow",
                                                         line_width=minor_line_width + 0.5, line_alpha=0.7,
                                                         line_dash="dashed", **kwargs)
     grid_smoothed_line = positions_plot.line(y="grid_smoothed", color="orange", line_width=minor_line_width + 0.5,
                                              line_alpha=0.7, line_dash="dashed", **kwargs)
-    fastest_lap_rank_smoothed_line = positions_plot.line(y="fastest_lap_rank_smoothed", color="hotpink",
-                                                         line_width=minor_line_width + 0.5, line_alpha=0.7,
-                                                         line_dash="dashed", **kwargs)
+    avg_lap_rank_smoothed_line = positions_plot.line(y="avg_lap_rank_smoothed", color="hotpink",
+                                                     line_width=minor_line_width + 0.5, line_alpha=0.7,
+                                                     line_dash="dashed", **kwargs)
 
     if smoothing_muted:
         finish_position_smoothed_line.muted = True
         grid_smoothed_line.muted = True
-        fastest_lap_rank_smoothed_line.muted = True
+        avg_lap_rank_smoothed_line.muted = True
     else:
         finish_position_line.muted = True
         grid_line.muted = True
-        fastest_lap_rank_line.muted = True
+        avg_lap_rank_line.muted = True
 
     legend.extend([LegendItem(label="Avg. Race Finish Position", renderers=[finish_position_line]),
                    LegendItem(label="Finish Pos. Smoothed", renderers=[finish_position_smoothed_line]),
-                   LegendItem(label="Avg. Fastest Lap Rank", renderers=[fastest_lap_rank_line]),
-                   LegendItem(label="Fastest Lap Rank Smoothed", renderers=[fastest_lap_rank_smoothed_line]),
+                   LegendItem(label="Avg. Lap Time Rank", renderers=[avg_lap_rank_line]),
+                   LegendItem(label="Avg. Lap Rank Smoothed", renderers=[avg_lap_rank_smoothed_line]),
                    LegendItem(label="Mean Grid Position", renderers=[grid_line]),
                    LegendItem(label="Grid Position Smoothed", renderers=[grid_smoothed_line])])
 
@@ -701,7 +701,8 @@ def generate_win_plot(positions_source, cid):
     :param cid: Constructor ID
     :return: Plot layout
     """
-    # TODO add support for top-n finishes
+    # TODO add support for top-n finishes and calculate n
+    # TODO add support for points and points per race
     return driver.generate_win_plot(positions_source, constructor_id=cid)
 
 
