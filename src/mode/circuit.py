@@ -160,7 +160,7 @@ def generate_dnf_plot(circuit_years, circuit_results, circuit_races, circuit_id)
         title=u"Number of DNFs \u2014 " + circuit_name,
         y_axis_label="",
         x_axis_label="Year",
-        x_range=Range1d(min_year, max_year, bounds=(min_year, max_year + 1)),
+        x_range=Range1d(min_year, max_year, bounds=(min_year, max_year + 3)),
         tools="pan,xbox_zoom,xwheel_zoom,reset,box_zoom,wheel_zoom,save",
         y_range=Range1d(0, max_drivers, bounds=(-1000, 1000))
     )
@@ -320,7 +320,7 @@ def generate_times_plot(circuit_years, circuit_quali, circuit_fastest_lap_data, 
         x_axis_label="Year",
         y_axis_label="Lap Time",
         y_range=DataRange1d(start=start, end=end, bounds=(start, end)),
-        x_range=Range1d(min_year, max_year, bounds=(min_year, max_year)),
+        x_range=Range1d(min_year, max_year, bounds=(min_year, max_year + 3)),
         tools="pan,xbox_zoom,xwheel_zoom,reset,box_zoom,wheel_zoom,save"
     )
 
@@ -430,7 +430,7 @@ def generate_spmfp_plot(circuit_years, circuit_races, circuit_results):
         title=u"Mean Start Position minus Finish Position \u2014 How many places do drivers make up on average?",
         x_axis_label="Year",
         y_axis_label="Mean start position minus finish position",
-        x_range=Range1d(min_year, max_year, bounds=(min_year, max_year)),
+        x_range=Range1d(min_year, max_year, bounds=(min_year, max_year + 3)),
         y_range=Range1d(min_y - 2, max_y + 2, bounds=(min_y - 2, max_y + 2)),
         tools="pan,xbox_zoom,xwheel_zoom,reset,box_zoom,wheel_zoom,save"
     )

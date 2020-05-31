@@ -5,16 +5,16 @@ from collections import defaultdict, OrderedDict
 import pandas as pd
 from bokeh.layouts import column, row
 from bokeh.models import Div, Spacer, CrosshairTool, Range1d, FixedTicker, LegendItem, Legend, HoverTool, TableColumn, \
-    DataTable, ColumnDataSource, LinearAxis, NumeralTickFormatter, Span, Label, CheckboxGroup, Title, \
-    DatetimeTickFormatter, Button
+    DataTable, ColumnDataSource, LinearAxis, NumeralTickFormatter, Span, Label, Title, DatetimeTickFormatter, Button, \
+    Slider
 from bokeh.plotting import figure
 from pandas import Series
 from data_loading.data_loader import load_constructors, load_results, load_constructor_standings, load_races, \
-    load_fastest_lap_data
+    load_fastest_lap_data, load_driver_standings
 from mode import driver
 from utils import get_constructor_name, PLOT_BACKGROUND_COLOR, position_text_to_str, get_driver_name, \
     get_circuit_name, int_to_ordinal, get_status_classification, rounds_to_str, nationality_to_flag, get_race_name, \
-    millis_to_str, DATETIME_TICK_KWARGS, rescale
+    millis_to_str, DATETIME_TICK_KWARGS, rescale, result_to_str
 import numpy as np
 
 constructors = load_constructors()
@@ -22,11 +22,7 @@ results = load_results()
 constructor_standings = load_constructor_standings()
 races = load_races()
 fastest_lap_data = load_fastest_lap_data()
-
-# TODO:
-#  refactor win plot to use driver.generate_win_plot
-#  add teammate comparison line plot
-#  add DNFs to stats div
+driver_standings = load_driver_standings()
 
 
 def get_layout(constructor_id=-1, **kwargs):
@@ -40,6 +36,14 @@ def get_layout(constructor_id=-1, **kwargs):
     constructor_years = constructor_races[constructor_races.index.isin(constructor_constructor_standings["raceId"])]
     constructor_years = constructor_years["year"].unique()
     constructor_fastest_lap_data = fastest_lap_data[fastest_lap_data["constructor_id"] == constructor_id]
+    c_driver_standings_idxs = []
+    for idx, results_row in constructor_results.iterrows():
+        rid = results_row["raceId"]
+        did = results_row["driverId"]
+        driver_standings_slice = driver_standings[(driver_standings["raceId"] == rid) &
+                                                  (driver_standings["driverId"] == did)]
+        c_driver_standings_idxs.extend(driver_standings_slice.index.values.tolist())
+    constructor_driver_standings = driver_standings.loc[c_driver_standings_idxs]
     logging.info(f"Generating layout for mode CONSTRUCTOR in constructor, constructor_id={constructor_id}")
 
     if len(constructor_years) == 0:
@@ -60,11 +64,15 @@ def get_layout(constructor_id=-1, **kwargs):
     # Win plot
     win_plot = generate_win_plot(positions_source, constructor_id)
 
+    # Teammate comparison plot
+    args = [constructor_results, constructor_races, constructor_driver_standings, constructor_years]
+    teammate_comparison_line_plot, comparison_source = generate_teammate_comparison_line_plot(*args)
+
     # Circuit performance table
     circuit_performance_table = generate_circuit_performance_table(constructor_results, constructor_races,
                                                                    constructor_id, consider_up_to=24)
 
-    # Driver performance graph and table
+    # Driver performance table
     driver_performance_layout, driver_performance_source = generate_driver_performance_table(constructor_races,
                                                                                              constructor_results)
 
@@ -83,6 +91,7 @@ def get_layout(constructor_id=-1, **kwargs):
                      positions_bar_plot, middle_spacer,
                      wcc_bar_plot, middle_spacer,
                      win_plot,
+                     teammate_comparison_line_plot,
                      circuit_performance_table,
                      driver_performance_layout,
                      constructor_stats],
@@ -139,15 +148,14 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
         "avg_lap_time_millis", "avg_lap_time_str",
         "avg_finish_pos", "avg_finish_pos_str"
     ])
+    name = get_constructor_name(cid)
     min_year = constructor_years.min()
     max_year = constructor_years.max()
-    name = get_constructor_name(cid)
     positions_plot = figure(
         title=u"Finishing Positions and Ranks \u2014 " + name,
         y_axis_label="Position",
         x_axis_label="Year",
         y_range=Range1d(0, 22, bounds=(0, 60)),
-        x_range=Range1d(min_year, max_year + 1, bounds=(min_year, max_year + 3)),
         tools="pan,xbox_zoom,xwheel_zoom,reset,box_zoom,wheel_zoom,save"
     )
     if show_driver_changes:
@@ -277,6 +285,9 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
     source = source.sort_values(by=["year", "race_id"])
     constructor_name = get_constructor_name(cid)
 
+    min_x = source["x"].min()
+    max_x = source["x"].max()
+    positions_plot.x_range = Range1d(min_x, max_x, bounds=(min_x, max_x + 3))
     if len(constructor_years) > 15:
         positions_plot.xaxis.ticker = FixedTicker(ticks=np.arange(min_year - 1, max_year + 2, 3))
     else:
@@ -637,7 +648,7 @@ def generate_driver_performance_table(constructor_races, constructor_results):
             pct = 0
         else:
             pct = 100 * source_row[column] / source_row["num_races"]
-        return str(source_row[column]) + f" ({str(round(pct, 1))}%)"
+        return (str(source_row[column]) + f" ({str(round(pct, 1))}%)").rjust(11)
 
     def add_ppr(source_row, column):
         if source_row["num_races"] == 0:
@@ -647,7 +658,7 @@ def generate_driver_performance_table(constructor_races, constructor_results):
         pts = source_row[column]
         if abs(int(pts) - pts) < 0.01:
             pts = int(pts)
-        return str(pts) + f" ({str(round(pct, 1))} pts/race)"
+        return (str(pts) + f" ({str(round(pct, 1))} pts/race)").rjust(23)
 
     source["num_poles_str"] = source.apply(lambda r: add_pct(r, "num_poles"), axis=1)
     source["num_wins_str"] = source.apply(lambda r: add_pct(r, "num_wins"), axis=1)
@@ -655,6 +666,7 @@ def generate_driver_performance_table(constructor_races, constructor_results):
     source["num_finishes_str"] = source.apply(lambda r: add_pct(r, "num_finishes"), axis=1)
     source["num_mechanical_dnf_str"] = source.apply(lambda r: add_pct(r, "num_mechanical_dnf"), axis=1)
     source["num_crash_dnf_str"] = source.apply(lambda r: add_pct(r, "num_crash_dnf"), axis=1)
+    # TODO fix sorting here
     source["total_points_str"] = source.apply(lambda r: add_ppr(r, "total_points"), axis=1)
 
     driver_performance_columns = [
@@ -690,137 +702,215 @@ def generate_win_plot(positions_source, cid):
     :return: Plot layout
     """
     # TODO add support for top-n finishes
-    # TODO refactor to use driver.generate_win_plot
-    logging.info("Generating win plot")
-    if isinstance(positions_source, dict):
-        return Div(text="")
-    win_source = pd.DataFrame(columns=["x", "n_races", "year",
-                                       "win_pct", "wins", "win_pct_str",
-                                       "podium_pct", "podiums", "podium_pct_str",
-                                       "dnf_pct", "dnfs", "dnf_pct_str",
-                                       "driver_names",
-                                       "wcc_final_standing",
-                                       "roundNum", "roundName"])
-    wins = 0
-    podiums = 0
-    dnfs = 0
-    n_races = 0
-    for idx, row in positions_source.sort_values(by="x").iterrows():
-        x = row["x"]
-        poses = row["finish_positions"]
-        for pos in poses:
-            if not np.isnan(pos):
-                wins += 1 if pos == 1 else 0
-                podiums += 1 if 3 >= pos > 0 else 0
-        dnfs += row["num_dnfs_this_race"]
-        n_races += 1
-        win_pct = wins / n_races
-        podium_pct = podiums / n_races
-        dnf_pct = dnfs / n_races
-        win_source = win_source.append({
-            "x": x,
-            "n_races": n_races,
-            "wins": wins,
-            "win_pct": win_pct,
-            "win_pct_str": str(round(100 * win_pct, 1)) + "%",
-            "podiums": podiums,
-            "podium_pct": podium_pct,
-            "podium_pct_str": str(round(100 * podium_pct, 1)) + "%",
-            "dnfs": dnfs,
-            "dnf_pct": dnf_pct,
-            "dnf_pct_str": str(round(100 * dnf_pct, 1)) + "%",
-            "driver_names": row["driver_names"],
-            "year": row["year"],
-            "wcc_final_standing": row["wcc_final_standing"],
-            "roundNum": row["roundNum"],
-            "roundName": row["roundName"],
-        }, ignore_index=True)
+    return driver.generate_win_plot(positions_source, constructor_id=cid)
 
-    constructor_name = get_constructor_name(cid)
-    min_year = positions_source["year"].min()
-    max_year = positions_source["year"].max()
-    max_podium = win_source["podiums"].max()
-    max_dnfs = win_source["dnfs"].max()
-    if max_podium == 0:
-        return Div()
-    win_plot = figure(
-        title=u"Wins and Podiums \u2014 " + constructor_name,
-        y_axis_label="",
-        x_axis_label="Year",
-        x_range=Range1d(min_year, max_year, bounds=(min_year, max_year + 1)),
-        tools="pan,xbox_zoom,xwheel_zoom,reset,box_zoom,wheel_zoom,save",
-        y_range=Range1d(0, max(max_podium, max_dnfs), bounds=(-1000, 1000))
+
+def generate_teammate_comparison_line_plot(constructor_results, constructor_races, constructor_driver_standings,
+                                           constructor_years, return_components_and_source=False, smoothed_muted=True,
+                                           highlight_driver_changes=False):
+    """
+    Teammate comparison line plot.
+    :param constructor_results: Constructor results
+    :param constructor_races: Constructor races
+    :param constructor_driver_standings: Constructor driver standings
+    :param constructor_years: Constructor years
+    :param return_components_and_source: If True, will return slider, plot, source
+    :param smoothed_muted: If True, smoothed lines will be muted by default
+    :param highlight_driver_changes: If True, driver change lines will be drawn
+    :return: Layout, source or slider, plot, source depending on `return_components_and_source`
+    """
+    logging.info("Generating teammate finish pos. vs driver finish pos line plot")
+    source = pd.DataFrame(columns=["x", "year",
+                                   "driver1_fp", "driver2_fp",
+                                   "driver1_fp_str", "driver2_fp_str",
+                                   "driver1_wdc_final_standing", "driver2_wdc_final_standing",
+                                   "driver1_name", "driver2_name",
+                                   "roundNum", "roundName"])
+
+    teammate_fp_plot = figure(title=u"Teammate Comparison Over Time \u2014 Horizontal lines show mean finish position, "
+                                    u"include DNFs",
+                              y_axis_label="Finish Position Difference (Driver - Teammate)",
+                              y_range=Range1d(0, 22, bounds=(0, 60)),
+                              tools="pan,box_zoom,reset,save")
+
+    prev_drivers = set()
+    round_num = 1
+    for year in constructor_years:
+        year_races = constructor_races[constructor_races["year"] == year]
+        year_results = constructor_results[constructor_results["raceId"].isin(year_races.index)]
+        x = year
+        if year_races.shape[0] == 0:
+            continue
+        dx = 1 / year_races.shape[0]
+        final_rid = year_races[year_races["round"] == year_races["round"].max()].index.values[0]
+        for rid in year_results["raceId"].unique():
+            race_results = year_results[year_results["raceId"] == rid]
+            dids = sorted(race_results["driverId"].unique().tolist())
+
+            def get_info(did):
+                driver_name = get_driver_name(did)
+                driver_results = race_results[race_results["driverId"] == did]
+                if driver_results.shape[0] > 0:
+                    driver_fp = driver_results["positionOrder"].values[0]
+                    driver_fp_str, _ = result_to_str(driver_fp, driver_results["statusId"].values[0])
+                    final_standing = constructor_driver_standings[(constructor_driver_standings["raceId"] == final_rid)
+                                                                  & (constructor_driver_standings["driverId"] == did)]
+                    final_standing = final_standing["position"]
+                    if final_standing.shape[0] == 0:
+                        final_standing = -1
+                    else:
+                        final_standing = int_to_ordinal(final_standing.values[0])
+                    return driver_name, driver_fp, driver_fp_str, final_standing
+                else:
+                    return "", np.nan, "", -1
+
+            if len(dids) > 0:
+                driver1_name, driver1_fp, driver1_fp_str, driver1_wdc_final_standing = get_info(dids[0])
+            else:
+                driver1_name = ""
+                driver1_fp = np.nan
+                driver1_fp_str = ""
+                driver1_wdc_final_standing = ""
+            if len(dids) > 1:
+                driver2_name, driver2_fp, driver2_fp_str, driver2_wdc_final_standing = get_info(dids[1])
+            else:
+                driver2_name = ""
+                driver2_fp = np.nan
+                driver2_fp_str = ""
+                driver2_wdc_final_standing = ""
+            source = source.append({
+                "x": x,
+                "driver1_fp": driver1_fp,
+                "driver2_fp": driver2_fp,
+                "driver1_fp_str": driver1_fp_str,
+                "driver2_fp_str": driver2_fp_str,
+                "driver1_wdc_final_standing": driver1_wdc_final_standing,
+                "driver2_wdc_final_standing": driver2_wdc_final_standing,
+                "driver1_name": driver1_name,
+                "driver2_name": driver2_name,
+                "roundNum": str(round_num),
+                "roundName": get_race_name(rid)
+            }, ignore_index=True)
+            x += dx
+            round_num += 1
+
+            # Mark driver changes
+            curr_drivers = set(dids)
+            if prev_drivers != curr_drivers:
+                new_drivers = curr_drivers - prev_drivers
+                y = 18
+                dy = -1.5
+                x_offset = 0.1 if len(constructor_years) > 5 else 0.02
+                for did in new_drivers:
+                    alpha = 0.7 if highlight_driver_changes else 0.1
+                    line = Span(line_color="white", location=x, dimension="height", line_alpha=alpha, line_width=3.2)
+                    if highlight_driver_changes:
+                        label = Label(x=x + x_offset, y=y, text=get_driver_name(did, include_flag=False, just_last=True),
+                                      render_mode="canvas", text_color="white", text_font_size="12pt", text_alpha=0.9,
+                                      angle=math.pi / 8)
+                        teammate_fp_plot.add_layout(label)
+                    teammate_fp_plot.add_layout(line)
+                    y += dy
+            prev_drivers = curr_drivers
+    source["fp_diff"] = source["driver1_fp"] - source["driver2_fp"]
+
+    source["driver1_fp_smoothed"] = source["driver1_fp"].ewm(alpha=0.05).mean()
+    source["driver2_fp_smoothed"] = source["driver2_fp"].ewm(alpha=0.05).mean()
+
+    column_source = ColumnDataSource(data=source)
+
+    subtitle = "Note that with driver changes (indicated by white vertical line), driver 1 and driver 2 may swap."
+    teammate_fp_plot.add_layout(Title(text=subtitle, text_font_style="italic"), "above")
+
+    min_x = source["x"].min()
+    max_x = source["x"].max()
+    teammate_fp_plot.x_range = Range1d(min_x, max_x, bounds=(min_x, max_x + 3))
+    teammate_fp_plot.xaxis.ticker = FixedTicker(ticks=np.arange(1950, 2050))
+    teammate_fp_plot.yaxis.ticker = FixedTicker(ticks=np.arange(5, 61, 5).tolist() + [1])
+
+    kwargs = dict(
+        x="x",
+        source=column_source,
+        line_width=2,
+        muted_alpha=0
     )
+    driver1_fp_line = teammate_fp_plot.line(y="driver1_fp", color="white", **kwargs)
+    driver1_fp_smoothed_line = teammate_fp_plot.line(y="driver1_fp_smoothed", color="white", line_dash="dashed",
+                                                     **kwargs)
+    driver2_fp_line = teammate_fp_plot.line(y="driver2_fp", color="yellow", **kwargs)
+    driver2_fp_smoothed_line = teammate_fp_plot.line(y="driver2_fp_smoothed", color="yellow", line_dash="dashed",
+                                                     **kwargs)
 
-    subtitle = "Win and podium percent is calculated as num. wins / num. races entered, and thus podium pct. may " \
-               "theoretically exceed 100%"
-    win_plot.add_layout(Title(text=subtitle, text_font_style="italic"), "above")
+    # Draw line at means
+    mean_driver_fp = source["driver1_fp"].mean()
+    mean_teammate_fp = source["driver2_fp"].mean()
+    line_kwargs = dict(
+        x=[-1000, 5000],
+        line_alpha=0.4,
+        line_width=2.5,
+        muted_alpha=0
+    )
+    driver1_mean_line = teammate_fp_plot.line(line_color="white", y=[mean_driver_fp] * 2, **line_kwargs)
+    driver2_mean_line = teammate_fp_plot.line(line_color="yellow", y=[mean_teammate_fp] * 2, **line_kwargs)
 
-    max_podium_pct = win_source["podium_pct"].max()
-    max_dnf_pct = win_source["dnf_pct"].max()
-    if max_podium > max_dnfs:
-        k = max_podium / max_podium_pct
-    elif max_dnf_pct > 0:
-        k = max_dnfs / max_dnf_pct
+    if smoothed_muted:
+        driver1_fp_line.muted = True
+        driver2_fp_line.muted = True
+        driver1_mean_line.muted = True
+        driver2_mean_line.muted = True
     else:
-        k = 1
-    win_source["podium_pct_scaled"] = k * win_source["podium_pct"]
-    win_source["win_pct_scaled"] = k * win_source["win_pct"]
-    win_source["dnf_pct_scaled"] = k * win_source["dnf_pct"]
+        driver1_fp_smoothed_line.muted = True
+        driver2_fp_smoothed_line.muted = True
 
-    # Other y axis
-    max_y = win_plot.y_range.end
-    y_range = Range1d(start=0, end=max_y / win_source["n_races"].max(), bounds=(-0.02, 1000))
-    win_plot.extra_y_ranges = {"percent_range": y_range}
-    axis = LinearAxis(y_range_name="percent_range")
-    axis.formatter = NumeralTickFormatter(format="0.0%")
-    win_plot.add_layout(axis, "right")
-
-    kwargs = {
-        "x": "x",
-        "line_width": 2,
-        "line_alpha": 0.7,
-        "source": win_source,
-        "muted_alpha": 0.05
-    }
-    races_line = win_plot.line(y="n_races", color="white", **kwargs)
-    podiums_line = win_plot.line(y="podiums", color="yellow", **kwargs)
-    podium_pct_line = win_plot.line(y="podium_pct_scaled", color="yellow", line_dash="dashed", **kwargs)
-    dnfs_line = win_plot.line(y="dnfs", color="aqua", **kwargs)
-    dnf_pct_line = win_plot.line(y="dnf_pct_scaled", color="aqua", line_dash="dashed", **kwargs)
-    kwargs["line_width"] = 3
-    wins_line = win_plot.line(y="wins", color="green", **kwargs)
-    win_pct_line = win_plot.line(y="win_pct_scaled", color="green", line_dash="dashed", **kwargs)
-
-    legend = [LegendItem(label="Number of Races", renderers=[races_line]),
-              LegendItem(label="Number of Wins", renderers=[wins_line]),
-              LegendItem(label="Win Percentage", renderers=[win_pct_line]),
-              LegendItem(label="Number of Podiums", renderers=[podiums_line]),
-              LegendItem(label="Podium Percentage", renderers=[podium_pct_line]),
-              LegendItem(label="Number of DNFs", renderers=[dnfs_line]),
-              LegendItem(label="DNF Percentage", renderers=[dnf_pct_line])]
-
+    # Legend
+    legend = [LegendItem(label="Driver 1 Finish Pos.", renderers=[driver1_fp_line, driver1_mean_line]),
+              LegendItem(label="Finish Pos. Smoothed", renderers=[driver1_fp_smoothed_line]),
+              LegendItem(label="Driver 2 Finish Pos.", renderers=[driver2_fp_line, driver2_mean_line]),
+              LegendItem(label="Finish Pos. Smoothed", renderers=[driver2_fp_smoothed_line])]
     legend = Legend(items=legend, location="top_right", glyph_height=15, spacing=2, inactive_fill_color="gray")
-    win_plot.add_layout(legend, "right")
-    win_plot.legend.click_policy = "mute"
-    win_plot.legend.label_text_font_size = "12pt"
+    teammate_fp_plot.add_layout(legend, "right")
+    teammate_fp_plot.legend.click_policy = "mute"
+    teammate_fp_plot.legend.label_text_font_size = "12pt"
+
+    # Smoothing slider
+    def smoothing_cb(new):
+        alpha = 1 - new
+        if alpha < 0.01:
+            alpha = 0.01
+        if alpha > 0.99:
+            source["driver1_fp_smoothed"] = source["driver1_fp"]
+            source["driver2_fp_smoothed"] = source["driver2_fp"]
+        else:
+            source["driver1_fp_smoothed"] = source["driver1_fp"].ewm(alpha=alpha).mean()
+            source["driver2_fp_smoothed"] = source["driver2_fp"].ewm(alpha=alpha).mean()
+        column_source.patch({
+            "driver1_fp_smoothed": [(slice(source["driver1_fp_smoothed"].shape[0]), source["driver1_fp_smoothed"])],
+            "driver2_fp_smoothed": [(slice(source["driver2_fp_smoothed"].shape[0]), source["driver2_fp_smoothed"])],
+        })
+
+    smoothing_slider = Slider(start=0, end=1, value=0.95, step=.01, title="Smoothing Amount, 0=no "
+                                                                          "smoothing, 1=heavy smoothing")
+    smoothing_slider.on_change("value", lambda attr, old, new: smoothing_cb(new))
 
     # Hover tooltip
-    win_plot.add_tools(HoverTool(show_arrow=False, tooltips=[
-        ("Number of Races", "@n_races"),
-        ("Number of Wins", "@wins (@win_pct_str)"),
-        ("Number of Podiums", "@podiums (@podium_pct_str)"),
-        ("Number of DNFs", "@dnfs (@dnf_pct_str)"),
-        ("Drivers", "@driver_names"),
-        ("Year", "@year"),
+    teammate_fp_plot.add_tools(HoverTool(show_arrow=False, tooltips=[
+        ("Finish Position", "@driver1_fp"),
+        ("Driver 1", "@driver1_name"),
+        ("Driver 1 Finish Pos.", "@driver1_fp_str"),
+        ("Driver 1 Final Pos. this year", "@driver1_wdc_final_standing"),
+        ("Driver 2", "@driver2_name"),
+        ("Driver 2 Finish Pos.", "@driver2_fp_str"),
+        ("Driver 2 Final Pos. this year", "@driver2_wdc_final_standing"),
         ("Round", "@roundNum - @roundName"),
-        ("Final Position this year", "@wcc_final_standing")
     ]))
 
     # Crosshair tooltip
-    win_plot.add_tools(CrosshairTool(line_color="white", line_alpha=0.6))
+    teammate_fp_plot.add_tools(CrosshairTool(line_color="white", line_alpha=0.6))
 
-    return win_plot
+    if return_components_and_source:
+        return smoothing_slider, teammate_fp_plot, source
+    else:
+        return column([smoothing_slider, teammate_fp_plot], sizing_mode="stretch_width"), source
 
 
 def generate_stats_layout(constructor_years, constructor_races, performance_source, constructor_results,
@@ -898,6 +988,18 @@ def generate_stats_layout(constructor_years, constructor_races, performance_sour
     else:
         championships_str = str(num_championships) + championships_str[:-2] + ")"
 
+    classifications = constructor_results["statusId"].apply(get_status_classification)
+    num_mechanical_dnfs = classifications[classifications == "mechanical"].shape[0]
+    num_crash_dnfs = classifications[classifications == "crash"].shape[0]
+    num_finishes = classifications[classifications == "finished"].shape[0]
+    mechanical_dnfs_str = str(num_mechanical_dnfs)
+    crash_dnfs_str = str(num_crash_dnfs)
+    finishes_str = str(num_finishes)
+    if num_races > 0:
+        mechanical_dnfs_str += " (" + str(round(100 * num_mechanical_dnfs / num_races, 1)) + "%)"
+        crash_dnfs_str += " (" + str(round(100 * num_crash_dnfs / num_races, 1)) + "%)"
+        finishes_str += " (" + str(round(100 * num_finishes / num_races, 1)) + "%)"
+
     # Constructor the HTML
     header_template = """
     <h2 style="text-align: center;"><b>{}</b></h2>
@@ -926,6 +1028,9 @@ def generate_stats_layout(constructor_years, constructor_races, performance_sour
         constructor_stats += template.format("First Win: ".ljust(20), first_win_name)
         constructor_stats += template.format("Last Win: ".ljust(20), last_win_name)
     constructor_stats += template.format("Last Entry: ".ljust(20), last_race_name)
+    constructor_stats += template.format("Num. Mechanical DNFs: ".ljust(22), mechanical_dnfs_str)
+    constructor_stats += template.format("Num. Crash DNFs: ".ljust(22), crash_dnfs_str)
+    constructor_stats += template.format("Num Finishes".ljust(22), finishes_str)
 
     return Div(text=constructor_stats)
 

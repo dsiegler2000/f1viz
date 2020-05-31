@@ -175,7 +175,7 @@ def generate_lap_time_plot(cd_lap_times, cd_rids, circuit_id, driver_id, constru
                        y_axis_label="% Occurrence",
                        x_axis_label="Lap Time",
                        y_range=Range1d(0, max_y, bounds=(0, max_y)),
-                       x_range=Range1d(min_x, max_x, bounds=(min_x, max_x)),
+                       x_range=Range1d(min_x, max_x, bounds=(min_x, max_x + 3)),
                        tools="pan,box_zoom,wheel_zoom,reset,save"
                        )
     subtitle = "Only lap times within 2 standard deviations of the mean are shown, means marked with horizontal line"
@@ -479,7 +479,6 @@ def generate_stats_layout(cd_years, cd_races, cd_results, cd_fastest_lap_data, p
     num_podiums = podium_results.shape[0]
     if num_podiums > 0:
         rids = podium_results["raceId"]
-        # todo something here is messed up, check for ferrari too
         years = list(set(cd_races.loc[rids.values, "year"].values.tolist()))
         years = rounds_to_str(years)
         num_podiums_str = str(num_podiums) + " (" + years + ")"

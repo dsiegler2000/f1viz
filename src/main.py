@@ -61,6 +61,7 @@ mode = "default"
 #  Do simple refactoring, namely, adding common plots to common_plots.py
 #  Change all mean lap time ranks to be mean lap time percent
 #  Add the top-n support for all win plots as well as the calculate 95th percentile and set that as n feature
+#  Add smoothing slider to positions plots
 #  Start on the all_years mode
 
 
@@ -160,7 +161,6 @@ footer = Div(text=open(os.path.join("src", "footer.html")).read(), sizing_mode="
 
 # Season search bar
 year_completions = ["<select year>", "All Years"] + [str(y) for y in races.sort_values(by="year", ascending=False)["year"].unique()]
-year_completions.remove("2020")
 year_input = Select(options=year_completions)
 
 # Circuit / race

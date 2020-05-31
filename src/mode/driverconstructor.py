@@ -617,13 +617,13 @@ def generate_teammate_comparison_line_plot(positions_source, constructor_results
 
     column_source = ColumnDataSource(data=source)
 
-    min_year = source["year"].min()
-    max_year = source["year"].max()
+    min_x = source["x"].min()
+    max_x = source["x"].max()
     teammate_fp_plot = figure(title=u"Teammate Comparison Over Time (T.M. stands for teammate) \u2014 Horizontal lines "
                                     u"show mean finish position, include DNFs",
                               x_axis_label="Year",
                               y_axis_label="Finish Position",
-                              x_range=Range1d(min_year, max_year, bounds=(min_year, max_year + 3)),
+                              x_range=Range1d(min_x, max_x, bounds=(min_x, max_x + 3)),
                               y_range=Range1d(0, 22, bounds=(0, 60)),
                               tools="pan,box_zoom,reset,save")
     teammate_fp_plot.xaxis.ticker = FixedTicker(ticks=np.arange(1950, 2050))

@@ -25,7 +25,12 @@ races = load_races()
 fastest_lap_data = load_fastest_lap_data()
 status = load_status()
 
-# todo wow, this is a thick one, do 2nd pass
+# todo
+#  add teammate comparison line plot
+#  add num fastest laps to stats div
+#  add header                                                                                                   √
+#  change fastest lap rank to avg lap rank (do this in constructor too, and pre-calculate the rank)
+#   this should be pretty simple, already made an avg_lap_time_rank column in fastest lap data
 
 
 # todo at a minimum:
@@ -81,8 +86,12 @@ def get_layout(driver_id=-1, **kwargs):
     driver_stats_layout = generate_driver_stats_layout(driver_years, driver_races, performance_source, driver_results,
                                                        driver_id)
 
+    # Header
+    header = Div(text=f"<h2><b>{get_driver_name(driver_id)}</b></h2><br>")
+
     middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
-    layout = column([positions_plot, middle_spacer,
+    layout = column([header,
+                     positions_plot, middle_spacer,
                      position_dist, middle_spacer,
                      wdc_position_dist, middle_spacer,
                      win_plot, middle_spacer,
@@ -240,12 +249,14 @@ def generate_positions_plot(driver_years, driver_driver_standings, driver_result
 
     source = source.sort_values(by=["year", "race_id"])
     driver_name = get_driver_name(driver_id)
+    min_x = source["x"].min()
+    max_x = source["x"].max()
     positions_plot = figure(
         title=u"Finishing Positions and Ranks \u2014 " + (title if title else driver_name),
         y_axis_label="Position",
         x_axis_label="Year",
         y_range=Range1d(0, 22, bounds=(0, 60)),
-        x_range=Range1d(min_year, max_year, bounds=(min_year, max_year + 3)),
+        x_range=Range1d(min_x, max_x, bounds=(min_x, max_x + 3)),
         tools="pan,xbox_zoom,xwheel_zoom,reset,box_zoom,wheel_zoom,save"
     )
 
@@ -387,12 +398,12 @@ def generate_circuit_performance_table(driver_results, driver_races, driver_id, 
         circuit_name = get_circuit_name(cid)
         wins = int(scores_row[0])
         wins_years = circuit_years[cid][0]
-        wins_str = str(wins)
+        wins_str = str(wins).rjust(2)
         if int(wins) > 0:
             wins_str += " (" + rounds_to_str(wins_years) + ")"
         podiums = int(scores_row[0] + scores_row[1] + scores_row[2])
         podiums_years = wins_years + circuit_years[cid][1] + circuit_years[cid][2]
-        podiums_str = str()
+        podiums_str = str(podiums).rjust(2)
         if int(podiums) > 0:
             podiums_str += " (" + rounds_to_str(podiums_years) + ")"
         other_places = ""
@@ -772,36 +783,50 @@ def generate_team_performance_layout(driver_races, positions_source, driver_resu
                   sizing_mode="stretch_width"), source
 
 
-def generate_win_plot(positions_source, driver_id=None):
+def generate_win_plot(positions_source, driver_id=None, constructor_id=None):
     """
     Plots number of races, win percentage, number of wins, podium percentage, and number of podiums on the same plot
     (2 different axes on each side).
     :param positions_source: Positions source
     :param driver_id: Driver ID, if left None then the "subtitle" won't be included
+    :param constructor_id: Constructor ID, must be set to use constructor mode
     :return: Plot layout
     """
     # TODO refactor to add support for top-n finishes too and dynamically come up with n (like top 6),
     #  see circuitdriver.generate_win_plot and Trello
-    # TODO refactor to add support for points and points per race percent
-    # TODO refactor to add support for DNF info
+    # TODO refactor to add support for points and points per race percent (not really needed cuz points systems change?)
     logging.info("Generating win plot")
     if isinstance(positions_source, dict):
         return Div(text="")
-    win_source = pd.DataFrame(columns=["x", "n_races", "win_pct", "wins", "podium_pct", "podiums",
-                                       "constructor_name", "year", "wdc_final_standing", "roundNum", "roundName",
-                                       "win_pct_str", "podium_pct_str"])
+    win_source = pd.DataFrame(columns=["x", "n_races",
+                                       "win_pct", "wins", "win_pct_str",
+                                       "podium_pct", "podiums", "podium_pct_str",
+                                       "dnf_pct", "dnfs", "dnf_pct_str",
+                                       "constructor_name", "year", "wdc_final_standing", "wdc_final_standing_str",
+                                       "roundNum", "roundName"])
     wins = 0
     podiums = 0
+    dnfs = 0
     n_races = 0
     for idx, row in positions_source.sort_values(by="x").iterrows():
         x = row["x"]
-        pos = row["finish_position_int"]
-        if not np.isnan(pos):
-            wins += 1 if pos == 1 else 0
-            podiums += 1 if 3 >= pos > 0 else 0
+        if constructor_id:
+            poses = row["finish_positions"]
+            for pos in poses:
+                if not np.isnan(pos):
+                    wins += 1 if pos == 1 else 0
+                    podiums += 1 if 3 >= pos > 0 else 0
+            dnfs += row["num_dnfs_this_race"]
+        else:
+            pos = row["finish_position_int"]
+            if not np.isnan(pos):
+                wins += 1 if pos == 1 else 0
+                podiums += 1 if 3 >= pos > 0 else 0
         n_races += 1
         win_pct = wins / n_races
         podium_pct = podiums / n_races
+        dnf_pct = dnfs / n_races
+        championship_final_standing = row["wdc_final_standing" if constructor_id is None else "wcc_final_standing"]
         win_source = win_source.append({
             "x": x,
             "n_races": n_races,
@@ -809,43 +834,59 @@ def generate_win_plot(positions_source, driver_id=None):
             "win_pct": win_pct,
             "podiums": podiums,
             "podium_pct": podium_pct,
+            "dnfs": dnfs,
+            "dnf_pct": dnf_pct,
+            "dnf_pct_str": str(round(100 * dnf_pct, 1)) + "%",
             "constructor_name": row["constructor_name"],
             "year": row["year"],
-            "wdc_final_standing": row["wdc_final_standing"],
+            "wdc_final_standing": championship_final_standing,
+            "wdc_final_standing_str": int_to_ordinal(championship_final_standing),
             "roundNum": row["roundNum"],
             "roundName": row["roundName"],
             "win_pct_str": str(round(100 * win_pct, 1)) + "%",
             "podium_pct_str": str(round(100 * podium_pct, 1)) + "%"
         }, ignore_index=True)
 
-    min_year = positions_source["year"].min()
-    max_year = positions_source["year"].max()
+    min_x = positions_source["x"].min()
+    max_x = positions_source["x"].max()
     title = "Wins and Podiums"
     if driver_id:
         driver_name = get_driver_name(driver_id)
         title += u"\u2014 " + driver_name
+    elif constructor_id:
+        constructor_name = get_constructor_name(constructor_id)
+        title += u"\u2014 " + constructor_name
+    max_podium = win_source["podiums"].max()
+    max_dnfs = win_source["dnfs"].max()
     win_plot = figure(
         title=title,
         y_axis_label="",
         x_axis_label="Year",
-        x_range=Range1d(min_year, max_year, bounds=(min_year - 1, max_year + 3)),
+        x_range=Range1d(min_x, max_x, bounds=(min_x, max_x + 3)),
         tools="pan,xbox_zoom,reset,box_zoom,wheel_zoom,save",
-        y_range=Range1d(0, win_source["podiums"].max(), bounds=(-20, 1000))
+        y_range=Range1d(0, max(max_podium, max_dnfs), bounds=(-20, 1000))
     )
-
+    if constructor_id:
+        subtitle = "Win and podium percent is calculated as num. wins / num. races entered, and thus podium pct. may " \
+                   "theoretically exceed 100%"
+        win_plot.add_layout(Title(text=subtitle, text_font_style="italic"), "above")
     max_podium_pct = win_source["podium_pct"].max()
-    max_podium = win_source["podiums"].max()
+    max_dnf_pct = win_source["dnf_pct"].max()
     if max_podium == 0:
-        return Div()  # Theoretically this case could be handled but not really useful
-    if max_podium_pct > 0:
+        return Div()  # Theoretically this case could be handled but not really useful,
+        # will have to be handled when doing the top-n calculate
+    if max_podium > max_dnfs:
         k = max_podium / max_podium_pct
+    elif max_dnf_pct > 0:
+        k = max_dnfs / max_dnf_pct
     else:
         k = 1
     win_source["podium_pct_scaled"] = k * win_source["podium_pct"]
     win_source["win_pct_scaled"] = k * win_source["win_pct"]
+    win_source["dnf_pct_scaled"] = k * win_source["dnf_pct"]
 
     # Other y axis
-    y_range = Range1d(start=0, end=max_podium_pct, bounds=(-0.02, 1000))
+    y_range = Range1d(start=0, end=max(max_podium_pct, max_dnf_pct), bounds=(-0.02, 1000))
     win_plot.extra_y_ranges = {"percent_range": y_range}
     axis = LinearAxis(y_range_name="percent_range")
     axis.formatter = NumeralTickFormatter(format="0.0%")
@@ -870,21 +911,32 @@ def generate_win_plot(positions_source, driver_id=None):
               LegendItem(label="Number of Podiums", renderers=[podiums_line]),
               LegendItem(label="Podium Percentage", renderers=[podium_pct_line])]
 
+    if constructor_id:
+        dnfs_line = win_plot.line(y="dnfs", color="aqua", **kwargs)
+        dnf_pct_line = win_plot.line(y="dnf_pct_scaled", color="aqua", line_dash="dashed", **kwargs)
+        legend.extend([
+            LegendItem(label="Number of DNFs", renderers=[dnfs_line]),
+            LegendItem(label="DNF Percentage", renderers=[dnf_pct_line])
+        ])
+
     legend = Legend(items=legend, location="top_right", glyph_height=15, spacing=2, inactive_fill_color="gray")
     win_plot.add_layout(legend, "right")
     win_plot.legend.click_policy = "mute"
     win_plot.legend.label_text_font_size = "12pt"
 
     # Hover tooltip
-    win_plot.add_tools(HoverTool(show_arrow=False, tooltips=[
+    tooltips = [
         ("Number of Races", "@n_races"),
         ("Number of Wins", "@wins (@win_pct_str)"),
         ("Number of Podiums", "@podiums (@podium_pct_str)"),
         ("Constructor", "@constructor_name"),
         ("Year", "@year"),
         ("Round", "@roundNum - @roundName"),
-        ("Final Position this year", "@wdc_final_standing")
-    ]))
+        ("Final Position this year", "@wdc_final_standing_str")
+    ]
+    if constructor_id:
+        tooltips.append(("Number of DNFs", "@dnfs (@dnf_pct_str)"))
+    win_plot.add_tools(HoverTool(show_arrow=False, tooltips=tooltips))
 
     # Crosshair tooltip
     win_plot.add_tools(CrosshairTool(line_color="white", line_alpha=0.6))

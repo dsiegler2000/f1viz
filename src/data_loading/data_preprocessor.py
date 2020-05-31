@@ -115,6 +115,7 @@ if __name__ == "__main__":
     races = read_csv("races.csv")
     races["time"] = races["time"].replace(r"\N", "00:00:00")
     races["date"] = races["date"].str.replace(re.escape(r"\N"), "")
+    races = races[races["year"] < 2020]
     print_check(races)
     races["datetime"] = pd.to_datetime(races["date"].str.cat(races["time"], sep=" "))
     races["datetime"] = races["datetime"].fillna(pd.Timestamp("19900101"))

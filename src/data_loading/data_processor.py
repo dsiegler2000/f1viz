@@ -361,6 +361,8 @@ if args.enable_fastest_lap:
             race_data["rank"] = race_data["fastest_lap_time_millis"].rank(na_option="bottom").astype(int)
         race_data = race_data.sort_values(by="rank")
         race_data["rank"] = race_data["rank"].astype(str).replace("0", "").str.rjust(2)
+        race_data["avg_lap_time_rank"] = race_data["avg_lap_time_millis"].rank()
+        print(race_data.columns)
         for idx, row in race_data.iterrows():
             fastest_lap_data.append([race_id] + row.values.tolist())
         if i % 100 == 0:
@@ -369,7 +371,8 @@ if args.enable_fastest_lap:
     fastest_lap_data = pd.DataFrame(data=fastest_lap_data, columns=["raceId", "driver_id", "name",
                                                                     "constructor_id", "constructor_name",
                                                                     "fastest_lap_time_millis", "fastest_lap_time_str",
-                                                                    "avg_lap_time_millis", "avg_lap_time_str", "rank"])
+                                                                    "avg_lap_time_millis", "avg_lap_time_str", "rank",
+                                                                    "avg_lap_time_rank"])
     fastest_lap_data["rank"] = fastest_lap_data["rank"].apply(lambda x: str(x).rjust(2))  # TODO why do I do this??
     fastest_lap_data.to_csv("data/fastest_lap_data.csv", encoding="utf-8")
 

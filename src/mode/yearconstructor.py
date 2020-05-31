@@ -22,6 +22,13 @@ races = load_races()
 fastest_lap_data = load_fastest_lap_data()
 status = load_status()
 
+# TODO
+#  header
+#  stats stretching too far (see mercedes 2016)
+#  also repeats in podiums in stats
+#  win plot % axis isn't scaled properly
+#  results table height
+
 
 def get_layout(year_id=-1, constructor_id=-1, **kwargs):
     if year_id < 1958:
@@ -386,189 +393,17 @@ def generate_teammate_comparison_line_plot(yc_results, year_races, yc_driver_sta
     :param year_races: Year races
     :param yc_driver_standings: YC driver standings
     :param year_id: Year
-    :return: Layout
+    :return: Layout, source
     """
-    logging.info("Generating teammate finish pos. vs driver finish pos line plot")
-    source = pd.DataFrame(columns=["x", "year",
-                                   "driver1_fp", "driver2_fp",
-                                   "driver1_fp_str", "driver2_fp_str",
-                                   "driver1_wdc_final_standing", "driver2_wdc_final_standing"
-                                   "driver1_name", "driver2_name",
-                                   "roundNum", "roundName"])
-
-    min_year = year_id
-    max_year = year_id
-    teammate_fp_plot = figure(title=u"Teammate Comparison Over Time \u2014 Horizontal lines show mean finish position, "
-                                    u"include DNFs",
-                              x_axis_label="Year",
-                              y_axis_label="Finish Position Difference (Driver - Teammate)",
-                              x_range=Range1d(min_year, max_year + 1, bounds=(min_year, max_year + 1)),
-                              y_range=Range1d(0, 22, bounds=(0, 60)),
-                              tools="pan,box_zoom,reset,save")
-
-    x = -1
-    prev_drivers = set()
-    final_rid = year_races[year_races["round"] == year_races["round"].max()].index.values[0]
-    for rid in yc_results["raceId"].unique():
-        x += 1
-        race_results = yc_results[yc_results["raceId"] == rid]
-        dids = sorted(race_results["driverId"].unique().tolist())
-
-        def get_info(did):
-            driver_name = get_driver_name(did)
-            driver_results = race_results[race_results["driverId"] == did]
-            if driver_results.shape[0] > 0:
-                driver_fp = driver_results["positionOrder"].values[0]
-                driver_fp_str, _ = result_to_str(driver_fp, driver_results["statusId"].values[0])
-                final_standing = yc_driver_standings[(yc_driver_standings["raceId"] == final_rid) &
-                                                     (yc_driver_standings["driverId"] == did)]["position"]
-                if final_standing.shape[0] == 0:
-                    final_standing = -1
-                else:
-                    final_standing = int_to_ordinal(final_standing.values[0])
-                return driver_name, driver_fp, driver_fp_str, final_standing
-            else:
-                return "", np.nan, "", -1
-
-        if len(dids) > 0:
-            driver1_name, driver1_fp, driver1_fp_str, driver1_wdc_final_standing = get_info(dids[0])
-        else:
-            driver1_name = ""
-            driver1_fp = np.nan
-            driver1_fp_str = ""
-            driver1_wdc_final_standing = ""
-        if len(dids) > 1:
-            driver2_name, driver2_fp, driver2_fp_str, driver2_wdc_final_standing = get_info(dids[1])
-        else:
-            driver2_name = ""
-            driver2_fp = np.nan
-            driver2_fp_str = ""
-            driver2_wdc_final_standing = ""
-        source = source.append({
-            "x": x,
-            "driver1_fp": driver1_fp,
-            "driver2_fp": driver2_fp,
-            "driver1_fp_str": driver1_fp_str,
-            "driver2_fp_str": driver2_fp_str,
-            "driver1_wdc_final_standing": driver1_wdc_final_standing,
-            "driver2_wdc_final_standing": driver2_wdc_final_standing,
-            "driver1_name": driver1_name,
-            "driver2_name": driver2_name,
-            "roundNum": x,
-            "roundName": get_race_name(rid)
-        }, ignore_index=True)
-
-        # Mark driver changes
-        curr_drivers = set(dids)
-        if prev_drivers != curr_drivers:
-            new_drivers = curr_drivers - prev_drivers
-            y = 18
-            dy = -1.5
-            for did in new_drivers:
-                line = Span(line_color="white", location=x, dimension="height", line_alpha=0.7, line_width=3.2)
-                label = Label(x=x + 0.1, y=y, text=get_driver_name(did, include_flag=False, just_last=True),
-                              render_mode="canvas", text_color="white", text_font_size="12pt", text_alpha=0.9,
-                              angle=math.pi / 8)
-                teammate_fp_plot.add_layout(line)
-                teammate_fp_plot.add_layout(label)
-                y += dy
-        prev_drivers = curr_drivers
-
-    source["fp_diff"] = source["driver1_fp"] - source["driver2_fp"]
-
-    source["driver1_fp_smoothed"] = source["driver1_fp"].ewm(alpha=0.5).mean()
-    source["driver2_fp_smoothed"] = source["driver2_fp"].ewm(alpha=0.5).mean()
-
-    column_source = ColumnDataSource(data=source)
-
-    subtitle = "Note that with driver changes, driver 1 and driver 2 may swap."
-    teammate_fp_plot.add_layout(Title(text=subtitle, text_font_style="italic"), "above")
-
-    teammate_fp_plot.xaxis.ticker = FixedTicker(ticks=np.arange(1950, 2050))
-    teammate_fp_plot.yaxis.ticker = FixedTicker(ticks=np.arange(5, 61, 5).tolist() + [1])
-
-    kwargs = dict(
-        x="x",
-        source=column_source,
-        line_width=2,
-        muted_alpha=0
-    )
-    driver1_fp_line = teammate_fp_plot.line(y="driver1_fp", color="white", **kwargs)
-    driver1_fp_smoothed_line = teammate_fp_plot.line(y="driver1_fp_smoothed", color="white", line_dash="dashed",
-                                                     **kwargs)
-    driver2_fp_line = teammate_fp_plot.line(y="driver2_fp", color="yellow", **kwargs)
-    driver2_fp_smoothed_line = teammate_fp_plot.line(y="driver2_fp_smoothed", color="yellow", line_dash="dashed",
-                                                     **kwargs)
-
-    # Draw line at means
-    mean_driver_fp = source["driver1_fp"].mean()
-    mean_teammate_fp = source["driver2_fp"].mean()
-    line_kwargs = dict(
-        x=[-1000, 5000],
-        line_alpha=0.4,
-        line_width=2.5,
-        muted_alpha=0
-    )
-    driver1_mean_line = teammate_fp_plot.line(line_color="white", y=[mean_driver_fp] * 2, **line_kwargs)
-    driver2_mean_line = teammate_fp_plot.line(line_color="yellow", y=[mean_teammate_fp] * 2, **line_kwargs)
-
-    driver1_fp_smoothed_line.muted = True
-    driver2_fp_smoothed_line.muted = True
-
-    # Legend
-    legend = [LegendItem(label="Driver 1 Finish Pos.", renderers=[driver1_fp_line, driver1_mean_line]),
-              LegendItem(label="Finish Pos. Smoothed", renderers=[driver1_fp_smoothed_line, driver2_mean_line]),
-              LegendItem(label="Driver 2 Finish Pos.", renderers=[driver2_fp_line]),
-              LegendItem(label="Finish Pos. Smoothed", renderers=[driver2_fp_smoothed_line])]
-    legend = Legend(items=legend, location="top_right", glyph_height=15, spacing=2, inactive_fill_color="gray")
-    teammate_fp_plot.add_layout(legend, "right")
-    teammate_fp_plot.legend.click_policy = "mute"
-    teammate_fp_plot.legend.label_text_font_size = "12pt"
-
-    # Smoothing slider
-    def smoothing_cb(new):
-        alpha = 1 - new
-        if alpha < 0.01:
-            alpha = 0.01
-        if alpha > 0.99:
-            source["driver1_fp_smoothed"] = source["driver1_fp"]
-            source["driver2_fp_smoothed"] = source["driver2_fp"]
-        else:
-            source["driver1_fp_smoothed"] = source["driver1_fp"].ewm(alpha=alpha).mean()
-            source["driver2_fp_smoothed"] = source["driver2_fp"].ewm(alpha=alpha).mean()
-        column_source.patch({
-            "driver1_fp_smoothed": [(slice(source["driver1_fp_smoothed"].shape[0]), source["driver1_fp_smoothed"])],
-            "driver2_fp_smoothed": [(slice(source["driver2_fp_smoothed"].shape[0]), source["driver2_fp_smoothed"])],
-        })
-
-    smoothing_slider = Slider(start=0, end=1, value=0.5, step=.01, title="Smoothing Amount, 0=no "
-                                                                         "smoothing, 1=heavy smoothing")
-    smoothing_slider.on_change("value", lambda attr, old, new: smoothing_cb(new))
-
-    # Hover tooltip
-    teammate_fp_plot.add_tools(HoverTool(show_arrow=False, tooltips=[
-        ("Finish Position", "@driver1_fp"),
-        ("Driver 1", "@driver1_name"),
-        ("Driver 1 Finish Pos.", "@driver1_fp_str"),
-        ("Driver 1 Final Pos. this year", "@driver1_wdc_final_standing"),
-        ("Driver 2", "@driver2_name"),
-        ("Driver 2 Finish Pos.", "@driver2_fp_str"),
-        ("Driver 2 Final Pos. this year", "@driver2_wdc_final_standing"),
-        ("Round", "@roundNum - @roundName"),
-    ]))
-
-    # Crosshair tooltip
-    teammate_fp_plot.add_tools(CrosshairTool(line_color="white", line_alpha=0.6))
-
-    # x axis override
-    x_min = source["x"].min() - 0.001
-    x_max = source["x"].max() + 0.001
-    teammate_fp_plot.x_range = Range1d(x_min, x_max, bounds=(x_min, x_max))
+    kwargs = dict(smoothed_muted=False,
+                  return_components_and_source=True,
+                  highlight_driver_changes=True)
+    slider, teammate_fp_plot, source = constructor.generate_teammate_comparison_line_plot(
+        yc_results, year_races, yc_driver_standings, np.array([year_id]), **kwargs)
     teammate_fp_plot.xaxis.ticker = FixedTicker(ticks=source["x"])
     teammate_fp_plot.xaxis.major_label_overrides = {row["x"]: row["roundName"] for idx, row in source.iterrows()}
     teammate_fp_plot.xaxis.major_label_orientation = 0.8 * math.pi / 2
-
-    return column([smoothing_slider, teammate_fp_plot], sizing_mode="stretch_width"), source
+    return column([slider, teammate_fp_plot], sizing_mode="stretch_width"), source
 
 
 def generate_stats_layout(positions_source, yc_results, comparison_source, year_id, constructor_id):
