@@ -80,8 +80,8 @@ def get_layout(driver_id=-1, download_image=True, **kwargs):
                                                                                    driver_results)
 
     # Driver stats
-    driver_stats_layout = generate_driver_stats_layout(driver_years, driver_races, performance_source, driver_results,
-                                                       driver_id)
+    driver_stats_layout = generate_stats_layout(driver_years, driver_races, performance_source, driver_results,
+                                                driver_id)
 
     # Header
     header = Div(text=f"<h2><b>{get_driver_name(driver_id)}</b></h2><br>")
@@ -89,7 +89,6 @@ def get_layout(driver_id=-1, download_image=True, **kwargs):
     # Driver image
     if download_image:
         image_url = str(drivers.loc[driver_id, "imgUrl"])
-        print(image_url)
         image_view = plot_image_url(image_url)
     else:
         image_view = Div()
@@ -874,7 +873,7 @@ def generate_win_plot(positions_source, driver_id=None, constructor_id=None):
         x_axis_label="Year",
         x_range=Range1d(min_x, max_x, bounds=(min_x, max_x + 3)),
         tools="pan,xbox_zoom,reset,box_zoom,wheel_zoom,save",
-        y_range=Range1d(0, max(max_podium, max_dnfs), bounds=(-20, 1000))
+        y_range=Range1d(0, max(max_podium, max_dnfs), bounds=(0, 1000))
     )
     if constructor_id:
         subtitle = "Win and podium percent is calculated as num. wins / num. races entered, and thus podium pct. may " \
@@ -1085,7 +1084,7 @@ def generate_mltr_fp_scatter(driver_results, driver_races, driver_driver_standin
                              include_driver_name=True, color_drivers=False):
     """
     Plot scatter of mean lap time rank (x) vs finish position (y) to get a sense of what years the driver out-drove the
-    car
+    car.
     :param driver_results: Driver results
     :param driver_races: Driver races
     :param driver_driver_standings: Driver driver standings
@@ -1192,6 +1191,7 @@ def generate_mltr_fp_scatter(driver_results, driver_races, driver_driver_standin
                                text_color="white",
                                text_font_size="10pt")
     if include_year_labels:
+        print("here")
         labels = LabelSet(text="year", **marker_label_kwargs)
         mltr_fp_scatter.add_layout(labels)
     if include_race_labels:
@@ -1246,7 +1246,7 @@ def generate_teammate_comparison_line_plot(positions_source, constructor_results
     return column([slider, plot], sizing_mode="stretch_width")
 
 
-def generate_driver_stats_layout(driver_years, driver_races, performance_source, driver_results, driver_id):
+def generate_stats_layout(driver_years, driver_races, performance_source, driver_results, driver_id):
     """
     Includes some information not found in the "Career Total" category of the team performance table.
     :param driver_years: Driver years

@@ -28,6 +28,8 @@ qualifying = load_qualifying()
 constructor_mean_lap_times = load_constructor_mean_lap_times()
 fastest_lap_data = load_fastest_lap_data()
 
+# TODO consider adding a stats div
+
 
 def get_layout(year_id=-1, **kwargs):
     if year_id not in seasons.index.unique():

@@ -11,7 +11,7 @@ from data_loading.data_loader import load_drivers, load_results, load_driver_sta
     load_fastest_lap_data, load_constructor_standings
 from mode import driver, constructor
 from utils import get_constructor_name, get_driver_name, PLOT_BACKGROUND_COLOR, rounds_to_str, int_to_ordinal, \
-    position_text_to_str, get_race_name
+    position_text_to_str, get_race_name, result_to_str, plot_image_url, vdivider
 
 # Note, DC stands for driverconstructor
 
@@ -23,7 +23,7 @@ races = load_races()
 fastest_lap_data = load_fastest_lap_data()
 
 
-def get_layout(driver_id=-1, constructor_id=-1, **kwargs):
+def get_layout(driver_id=-1, constructor_id=-1, download_image=True, **kwargs):
     # Check that the combo is valid
     constructor_results = results[results["constructorId"] == constructor_id]
     dc_results = constructor_results[constructor_results["driverId"] == driver_id]
@@ -44,8 +44,6 @@ def get_layout(driver_id=-1, constructor_id=-1, **kwargs):
     # Positions plot
     positions_plot, positions_source = generate_positions_plot(dc_years, dc_driver_standings, dc_results,
                                                                dc_fastest_lap_data, driver_id, constructor_id)
-
-    # Mark teammate change
     mark_teammate_changes(positions_source, constructor_results, driver_id, positions_plot)
 
     # Win plot
@@ -59,7 +57,11 @@ def get_layout(driver_id=-1, constructor_id=-1, **kwargs):
         positions_source, constructor_results, driver_id)
 
     # Teammate finish pos vs driver finish pos line plot
-    teammate_comparison_line = generate_teammate_comparison_line_plot(positions_source, constructor_results, driver_id)
+    slider, teammate_comparison_line, source = generate_teammate_comparison_line_plot(positions_source,
+                                                                                      constructor_results, driver_id,
+                                                                                      return_components_and_source=True)
+    mark_teammate_changes(positions_source, constructor_results, driver_id, teammate_comparison_line)
+    teammate_comparison_line = column([slider, teammate_comparison_line], sizing_mode="stretch_width")
 
     # Finishing position bar plot
     finishing_position_bar_plot = generate_finishing_position_bar_plot(dc_results)
@@ -84,21 +86,33 @@ def get_layout(driver_id=-1, constructor_id=-1, **kwargs):
     stats_layout = generate_stats_layout(dc_years, dc_races, dc_results, positions_source, wcc_position_source,
                                          teammate_diff_source, driver_id, constructor_id)
 
-    header = Div(text=f"<h2><b>{get_driver_name(driver_id)} at {get_constructor_name(constructor_id)}</b></h2>")
+    # Driver image
+    # TODO make this an image of this driver at this constructor
+    if download_image:
+        image_url = str(drivers.loc[driver_id, "imgUrl"])
+        image_view = plot_image_url(image_url)
+    else:
+        image_view = Div()
+
+    header = get_driver_name(driver_id) + " at "
+    header += get_constructor_name(constructor_id)
+    header += " (" + rounds_to_str(dc_years) + ")"
+    header = Div(text=f"<h2><b>{header}</b></h2>")
 
     middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
+    divider = vdivider()
     layout = column([header,
                      positions_plot, middle_spacer,
                      win_plot, middle_spacer,
-                     teammate_comparison_line, middle_spacer,
                      row([teammatefp_fp_scatter, teammate_diff_plot], sizing_mode="stretch_width"),
                      explanation_div, middle_spacer,
+                     teammate_comparison_line, middle_spacer,
                      finishing_position_bar_plot, middle_spacer,
                      wdc_position_bar_plot, middle_spacer,
                      wcc_position_bar_plot, middle_spacer,
                      row([spvfp_scatter, mltr_fp_scatter], sizing_mode="stretch_width"),
                      circuit_performance_table,
-                     stats_layout],
+                     row([image_view, divider, stats_layout], sizing_mode="stretch_both")],
                     sizing_mode="stretch_width")
 
     logging.info("Finished generating layout for mode DRIVERCONSTRUCTOR")
@@ -119,8 +133,8 @@ def generate_positions_plot(dc_years, dc_driver_standings, dc_results, dc_fastes
     :param constructor_id: Constructor ID
     :return: Positions plot layout, positions source
     """
-    title = get_driver_name(driver_id, include_flag=False) + " at "
-    title += get_constructor_name(constructor_id, include_flag=False)
+    title = get_driver_name(driver_id) + " at "
+    title += get_constructor_name(constructor_id)
     title += " (" + rounds_to_str(dc_years) + ")"
     positions_plot, positions_source = driver.generate_positions_plot(dc_years, dc_driver_standings, dc_results,
                                                                       dc_fastest_lap_data, driver_id, title=title)
@@ -156,6 +170,7 @@ def mark_teammate_changes(positions_source, constructor_results, driver_id, fig)
                 teammate_results = constructor_results[constructor_results["driverId"] == teammate_did]
                 if teammate_results.shape[0] > 5:
                     x = row["x"]
+                    print(f"MARKING AT {x}")
                     line = Span(line_color="white", location=x, dimension="height", line_alpha=0.4, line_width=3.2)
                     fig.add_layout(line)
                     label = Label(x=x + 0.1, y=18, text=get_driver_name(teammate_did, include_flag=False, just_last=True),
@@ -173,7 +188,6 @@ def generate_spvfp_scatter(dc_results, dc_races, driver_driver_standings):
     :param driver_driver_standings: Driver driver standings
     :return: Start pos. vs finish pos. scatter layout
     """
-    # TODO is this really necessary to have in this mode?
     return driver.generate_spvfp_scatter(dc_results, dc_races, driver_driver_standings)
 
 
@@ -187,7 +201,7 @@ def generate_mltr_fp_scatter(dc_results, dc_races, driver_driver_standings, driv
     :param driver_id: Driver ID
     :return: Mean lap time rank vs finish position scatter plot layout
     """
-    return driver.generate_mltr_fp_scatter(dc_results, dc_races, driver_driver_standings, driver_id)
+    return driver.generate_mltr_fp_scatter(dc_results, dc_races, driver_driver_standings)
 
 
 def generate_circuit_performance_table(dc_results, dc_races, driver_id, constructor_id):
@@ -200,7 +214,6 @@ def generate_circuit_performance_table(dc_results, dc_races, driver_id, construc
     :param constructor_id: Constructor ID
     :return: Circuit performance table layout, source
     """
-    # TODO is this really necessary to have in this mode?
     title = f"<h2><b>What were {get_driver_name(driver_id, include_flag=False, just_last=True)}'s Best Circuits with " \
             f"{get_constructor_name(constructor_id, include_flag=False)}?</b></h2>"
     return driver.generate_circuit_performance_table(dc_results, dc_races, driver_id, title=title)
@@ -213,7 +226,6 @@ def generate_win_plot(positions_source):
     :param positions_source: Positions source
     :return: Win plot layout
     """
-    # TODO is this really necessary to have in this mode?
     return driver.generate_win_plot(positions_source)
 
 
@@ -223,7 +235,6 @@ def generate_finishing_position_bar_plot(dc_results):
     :param dc_results: DC results
     :return: Finish position bar plot layout
     """
-    # TODO is this really necessary to have in this mode?
     return driver.generate_finishing_position_bar_plot(dc_results, plot_height=300)
 
 
@@ -233,7 +244,6 @@ def generate_wdc_position_bar_plot(positions_source):
     :param positions_source: Positions source
     :return: WDC position bar plot layout
     """
-    # TODO is this really necessary to have in this mode?
     return driver.generate_wdc_position_bar_plot(positions_source, plot_height=300)
 
 
@@ -259,7 +269,7 @@ def generate_wcc_position_bar_plot(dc_years, constructor_constructor_standings):
     return constructor.generate_wcc_position_bar_plot(source, plot_height=300, color="orange"), source
 
 
-def generate_teammatefp_fp_scatter(positions_source, constructor_results, driver_id, include_year_labels=True,
+def generate_teammatefp_fp_scatter(positions_source, constructor_results, driver_id, include_year_labels=False,
                                    include_race_labels=False):
     """
     Scatter plot of teammate finish position vs driver finish position along with a y=x line to show if he is beating
@@ -556,6 +566,9 @@ def generate_teammate_diff_comparison_scatter(positions_source, constructor_resu
         ("Round", "@roundNum - @roundName")
     ]))
 
+    # Crosshair tooltip
+    teammate_diff_scatter.add_tools(CrosshairTool(line_color="white", line_alpha=0.6))
+
     return teammate_diff_scatter, explanation, source
 
 
@@ -593,17 +606,19 @@ def generate_teammate_comparison_line_plot(positions_source, constructor_results
                 teammate_name = get_driver_name(teammate_did)
                 prev_teammate_did = teammate_did
             driver_fp = row["finish_position_int"]
+            driver_fp_str = row["finish_position_str"]
             teammate_results = race_results[race_results["driverId"] == teammate_did]
             if teammate_results.shape[0] > 0:
                 teammate_fp = teammate_results["positionOrder"].values[0]
-                # TODO add DNFs to the FP strings
+                teammate_status_id = teammate_results["statusId"].values[0]
+                teammate_fp_str, _ = result_to_str(teammate_fp, teammate_status_id)
                 source = source.append({
                     "race_id": rid,
                     "x": x,
                     "driver_fp": driver_fp,
                     "teammate_fp": teammate_fp,
-                    "driver_fp_str": int_to_ordinal(driver_fp),
-                    "teammate_fp_str": int_to_ordinal(teammate_fp),
+                    "driver_fp_str": driver_fp_str,
+                    "teammate_fp_str": teammate_fp_str,
                     "year": row["year"],
                     "roundNum": row["roundNum"],
                     "roundName": row["roundName"],
@@ -765,10 +780,17 @@ def generate_stats_layout(dc_years, dc_races, dc_results, positions_source, wcc_
         last_win_year = races.loc[first_win_rid, "year"]
         last_win_name = str(last_win_year) + " " + get_race_name(last_win_rid)
 
-    num_podiums_str = str(positions_source[positions_source["finish_position_int"] <= 3].shape[0])
-    num_wins_str = str(positions_source[positions_source["finish_position_int"] == 1].shape[0])
-    career_points = str(dc_results["points"].sum())
+    num_podiums = positions_source[positions_source["finish_position_int"] <= 3].shape[0]
+    num_podiums_str = str(num_podiums)
+    num_wins = positions_source[positions_source["finish_position_int"] == 1].shape[0]
+    num_wins_str = str(num_wins)
     num_races = dc_results.shape[0]
+    num_points = dc_results["points"].sum()
+    num_points_str = str(num_points)
+    if num_races > 0:
+        num_podiums_str += " (" + str(round(num_podiums / num_races, 1)) + "%)"
+        num_wins_str += " (" + str(round(num_wins / num_races, 1)) + "%)"
+        num_points_str += " (" + str(round(num_points / num_races, 1)) + "points / race)"
     mean_sp = round(driver_results["grid"].mean(), 1)
     mean_fp = round(driver_results["positionOrder"].mean(), 1)
     teammates = ", ".join(teammate_diff_source["teammate_name"].unique())
@@ -784,9 +806,9 @@ def generate_stats_layout(dc_years, dc_races, dc_results, positions_source, wcc_
         mean_teammate_gap_str = mean_teammate_gap_pos
         if not np.isnan(mean_teammate_gap_time):
             if mean_teammate_gap_time < 0:
-                mean_teammate_gap_time = str(int(mean_teammate_gap_time)) + "ms faster"
+                mean_teammate_gap_time = str(abs(int(mean_teammate_gap_time))) + "ms faster"
             else:
-                mean_teammate_gap_time = str(int(mean_teammate_gap_time)) + "ms slower"
+                mean_teammate_gap_time = str(abs(int(mean_teammate_gap_time))) + "ms slower"
             mean_teammate_gap_str += " (" + mean_teammate_gap_time + ")"
 
     num_championships = 0
@@ -832,7 +854,7 @@ def generate_stats_layout(dc_years, dc_races, dc_results, positions_source, wcc_
 
     constructor_name = get_constructor_name(constructor_id)
     dc_stats = header_template.format(f"{get_driver_name(driver_id)}'s Stats at {constructor_name}")
-    dc_stats += template.format("Active Years: ".ljust(22), years_active)
+    dc_stats += template.format("Years At Constructor: ".ljust(22), years_active)
     dc_stats += template.format("Entries: ".ljust(22), num_races)
     if num_championships == 0:
         dc_stats += template.format("Highest WDC Finish: ".ljust(22), championships_str)
@@ -844,7 +866,7 @@ def generate_stats_layout(dc_years, dc_races, dc_results, positions_source, wcc_
         dc_stats += template.format("WCC Championships: ".ljust(22), wcc_championships_str)
     dc_stats += template.format("Wins: ".ljust(22), num_wins_str)
     dc_stats += template.format("Podiums: ".ljust(22), num_podiums_str)
-    dc_stats += template.format("Points: ".ljust(22), career_points)
+    dc_stats += template.format("Points: ".ljust(22), num_points_str)
     dc_stats += template.format("Avg. Start Pos.: ".ljust(22), mean_sp)
     dc_stats += template.format("Avg. Finish Pos.: ".ljust(22), mean_fp)
     dc_stats += template.format("First Entry: ".ljust(22), first_race_name)

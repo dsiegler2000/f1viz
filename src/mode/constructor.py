@@ -720,6 +720,7 @@ def generate_teammate_comparison_line_plot(constructor_results, constructor_race
     :param highlight_driver_changes: If True, driver change lines will be drawn
     :return: Layout, source or slider, plot, source depending on `return_components_and_source`
     """
+    # TODO add mean lap time percent to this plot
     logging.info("Generating teammate finish pos. vs driver finish pos line plot")
     source = pd.DataFrame(columns=["x", "year",
                                    "driver1_fp", "driver2_fp",
