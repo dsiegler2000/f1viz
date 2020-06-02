@@ -85,12 +85,6 @@ def load_constructor_colors():
 
 
 @lru_cache(maxsize=None)
-def load_constructor_mean_lap_times():
-    logging.info("Loading constructor mean lap times for the first time")
-    return pd.read_csv("data/constructor_mean_lap_times.csv")
-
-
-@lru_cache(maxsize=None)
 def load_fastest_lap_data():
     logging.info("Loading fastest lap data for the first time")
     return pd.read_csv("data/fastest_lap_data.csv", index_col=0)

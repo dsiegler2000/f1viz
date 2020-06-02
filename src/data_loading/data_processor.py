@@ -23,7 +23,6 @@ parser.add_argument("--enable_ratings", nargs="?", const=True, default=False, he
 parser.add_argument("--enable_runtime", nargs="?", const=True, default=False, help="Runtime.")
 parser.add_argument("--enable_round_num_name", nargs="?", const=True, default=False, help="Round number and name.")
 parser.add_argument("--enable_imgs", nargs="?", const=True, default=False, help="Image.")
-parser.add_argument("--enable_race_mlt", nargs="?", const=True, default=False, help="Race mean lap time.")
 parser.add_argument("--enable_fastest_lap", nargs="?", const=True, default=False, help="Fastest lap info.")
 
 args = parser.parse_args()
@@ -33,7 +32,6 @@ if not args.custom:
     args.enable_runtime = True
     args.enable_round_num_name = True
     args.enable_imgs = True
-    args.enable_race_mlt = True
     args.enable_fastest_lap = True
 else:
     args.load_from_data = True
@@ -256,46 +254,6 @@ if args.enable_imgs:
     img_url = pd.read_csv("data/static_data/driver_image_urls.csv").set_index("driverId")
     drivers["imgUrl"] = img_url
     print(drivers["imgUrl"].isna().sum())
-
-# ======================================================================================================================
-# Constructor per-race mean lap time (stored in driver_results)
-# ======================================================================================================================
-if args.enable_race_mlt:
-    print("On mean lap time")
-    constructor_df = pd.DataFrame(columns=["raceId", "constructorId", "constructor_name", "mean_time", "rank"])
-    i = 0
-    counter = 0
-    for race_id in races.index:
-        counter += 1
-        if counter % 100 == 0:
-            print(f"{counter} / {races.shape[0]}")
-        race_laps = lap_times[lap_times["raceId"] == race_id]
-        race_results = results[results["raceId"] == race_id]
-        constructor_laps = defaultdict(lambda: [])
-        for driver_id in race_laps["driverId"].unique():
-            cid = race_results[race_results["driverId"] == driver_id]["constructorId"]
-            if cid.shape[0] > 0:
-                cid = cid.values[0]
-            else:
-                continue
-            constructor_laps[cid].extend(race_laps[race_laps["driverId"] == driver_id]["milliseconds"].values.tolist())
-
-        for cid, times in constructor_laps.items():
-            constructor_df = constructor_df.append({
-                "raceId": race_id,
-                "constructorId": cid,
-                "constructor_name": get_constructor_name(cid),
-                "mean_time": np.mean(times),
-                "rank": 0.0
-            }, ignore_index=True)
-            constructor_laps[cid] = i
-            i += 1
-        race_source = constructor_df[constructor_df["raceId"] == race_id].drop(columns=["raceId"])
-        race_source = race_source.set_index("constructorId")
-        ranks = race_source["mean_time"].rank()
-        for cid, idx in constructor_laps.items():
-            constructor_df.at[idx, "rank"] = int(ranks.loc[cid])
-    constructor_df.to_csv("data/constructor_mean_lap_times.csv", encoding="utf-8")
 
 # ======================================================================================================================
 # Fastest lap info

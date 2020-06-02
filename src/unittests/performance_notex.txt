@@ -20,24 +20,27 @@ Completed generate_race_stats_layout in  526.1707305908203 milliseconds
 The long time for generate_race_stats_layout is from downloading the image from the web
 
 year.py
-count      70.000000
-mean     1912.822945
-std       442.382750
-min      1166.359186
-25%      1638.840079
-50%      1772.091627
-75%      2125.991940
-max      3231.806993
-95% RUN TIME: 2400ms
-For 2003:
-Completed generate_wdc_plot in  411.99493408203125 milliseconds
-Completed generate_constructors_championship_plot in  75.73604583740234 milliseconds
-Completed generate_position_mlt_scatter in  166.71228408813477 milliseconds
-Completed generate_position_mfms_scatter in  173.13194274902344 milliseconds
-Completed generate_teams_and_drivers in  121.90604209899902 milliseconds
-Completed generate_races_info in  116.6982650756836 milliseconds
-Completed generate_wdc_results in  609.0319156646729 milliseconds
-Completed generate_dnf_table in  137.15410232543945 milliseconds
+count       58.000000
+mean      9690.588310
+std       2132.952965
+min       5605.004072
+25%       8233.016729
+50%       9380.416036
+75%      10466.423392
+max      15543.149948
+95% RUN TIME: 11000ms WOW THAT'S BAD!
+For 2017:
+Completed generate_wdc_plot in  610.396146774292 milliseconds
+Completed generate_wcc_plot in  127.74872779846191 milliseconds
+Completed generate_mltr_position_scatter in  170.424222946167 milliseconds
+Completed generate_msp_position_scatter in  191.82085990905762 milliseconds
+Completed generate_spvfp_scatter in  3022.8230953216553 milliseconds
+Completed generate_wcc_results_table in  67.41905212402344 milliseconds
+Completed generate_wins_pie_plots in  43.395042419433594 milliseconds
+Completed generate_teams_and_drivers_table in  144.00005340576172 milliseconds
+Completed generate_races_info_table in  165.70806503295898 milliseconds
+Completed generate_wdc_results_table in  4012.066125869751 milliseconds
+Completed generate_win_plots in  847.5992679595947 milliseconds
 
 driver.py
 count      848.000000

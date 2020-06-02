@@ -1056,21 +1056,19 @@ def generate_spvfp_scatter(driver_results, driver_races, driver_driver_standings
                              border_line_color="white",
                              border_line_alpha=0.7)
     label1 = Label(x=1, y=21, text=" Finish lower than started ", **text_label_kwargs)
-    label2 = Label(x=15, y=0, text=" Finish higher than start ", **text_label_kwargs)
+    label2 = Label(x=15, y=0.25, text=" Finish higher than start ", **text_label_kwargs)
     spvfp_scatter.add_layout(label1)
     spvfp_scatter.add_layout(label2)
 
     # Hover tooltip
     tooltips = [
+        ("Driver Name", "@driver_name"),
+        ("Constructor Name", "@constructor_name"),
         ("Starting Position", "@sp_str"),
         ("Finishing Position", "@fp_str"),
         ("Round", "@roundNum - @roundName"),
         ("Year", "@year")
     ]
-    if include_constructor_name:
-        tooltips.append(("Constructor Name", "@constructor_name"))
-    if include_driver_name:
-        tooltips.insert(0, ("Driver Name", "@driver_name"))
     spvfp_scatter.add_tools(HoverTool(show_arrow=False, tooltips=tooltips))
 
     # Crosshair
@@ -1204,7 +1202,7 @@ def generate_mltr_fp_scatter(driver_results, driver_races, driver_driver_standin
                              border_line_color="white",
                              border_line_alpha=0.7)
     label1 = Label(x=1, y=21, text=" Finish lower than expected ", **text_label_kwargs)
-    label2 = Label(x=13, y=0, text=" Finish higher than expected ", **text_label_kwargs)
+    label2 = Label(x=13, y=0.25, text=" Finish higher than expected ", **text_label_kwargs)
     mltr_fp_scatter.add_layout(label1)
     mltr_fp_scatter.add_layout(label2)
 

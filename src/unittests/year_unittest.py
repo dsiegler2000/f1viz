@@ -2,9 +2,10 @@ import logging
 import traceback
 from data_loading.data_loader import load_races, load_seasons, load_driver_standings, load_constructor_standings, \
     load_results, load_lap_times, load_qualifying, load_fastest_lap_data
-from mode.year import get_layout, generate_wdc_plot, generate_wcc_plot, \
-    generate_position_mlt_scatter, generate_position_mfms_scatter, generate_teams_and_drivers, generate_races_info, \
-    generate_wdc_results, generate_dnf_table
+from mode.year import get_layout, generate_wdc_plot, generate_wcc_plot, generate_teams_and_drivers_table, \
+    generate_races_info_table, generate_wdc_results_table, generate_dnf_table, generate_win_plots, \
+    generate_mltr_position_scatter, generate_msp_position_scatter, generate_spvfp_scatter, generate_wcc_results_table, \
+    generate_wins_pie_plots
 import time
 import pandas as pd
 
@@ -28,7 +29,7 @@ results = load_results()
 lap_times = load_lap_times()
 qualifying = load_qualifying()
 fastest_lap_data = load_fastest_lap_data()
-year_id = 2003
+year_id = 2017
 
 # Generate some useful slices
 year_races = races[races["year"] == year_id]
@@ -39,31 +40,54 @@ year_laps = lap_times[lap_times["raceId"].isin(year_races.index)]
 year_qualifying = qualifying[qualifying["raceId"].isin(year_races.index)]
 year_fastest_lap_data = fastest_lap_data[fastest_lap_data["raceId"].isin(year_races.index)]
 
-logging.info(f"Generating layout for mode YEAR in year, year_id={year_id}")
-
+# Generate WDC plot
 generate_wdc_plot = time_decorator(generate_wdc_plot)
-generate_wdc_plot(year_driver_standings, year_results)
+wdc_plot = generate_wdc_plot(year_driver_standings, year_results)
 
-generate_constructors_championship_plot = time_decorator(generate_wcc_plot)
-generate_constructors_championship_plot(year_constructor_standings, year_results)
+# Generate constructor's plot
+generate_wcc_plot = time_decorator(generate_wcc_plot)
+constructors_plot = generate_wcc_plot(year_constructor_standings, year_results)
 
-generate_position_mlt_scatter = time_decorator(generate_position_mlt_scatter)
-generate_position_mlt_scatter(year_laps, year_results, year_driver_standings, year_constructor_standings)
+# Generate position vs mean lap time rank plot
+generate_mltr_position_scatter = time_decorator(generate_mltr_position_scatter)
+position_mltr_scatter = generate_mltr_position_scatter(year_fastest_lap_data, year_results,
+                                                       year_driver_standings, year_constructor_standings)
 
-generate_position_mfms_scatter = time_decorator(generate_position_mfms_scatter)
-generate_position_mfms_scatter(year_results, year_driver_standings)
+# Generate mean finish start position vs WDC finish position scatter plot
+generate_msp_position_scatter = time_decorator(generate_msp_position_scatter)
+msp_position_scatter = generate_msp_position_scatter(year_results, year_driver_standings)
 
-generate_teams_and_drivers = time_decorator(generate_teams_and_drivers)
-generate_teams_and_drivers(year_results, year_races)
+# Start pos vs finish pos scatter plot
+generate_spvfp_scatter = time_decorator(generate_spvfp_scatter)
+spvpfp_scatter = generate_spvfp_scatter(year_results, year_races, year_driver_standings)
 
-generate_races_info = time_decorator(generate_races_info)
-generate_races_info(year_races, year_qualifying, year_results, year_fastest_lap_data)
+# WCC results table
+generate_wcc_results_table = time_decorator(generate_wcc_results_table)
+wcc_results_table = generate_wcc_results_table(year_results, year_races, year_constructor_standings)
 
-generate_wdc_results = time_decorator(generate_wdc_results)
-generate_wdc_results(year_results, year_driver_standings, year_races)
+# Wins pie chart
+generate_wins_pie_plots = time_decorator(generate_wins_pie_plots)
+wins_pie_chart = generate_wins_pie_plots(year_results)
 
-generate_dnf_table = time_decorator(generate_dnf_table)
-generate_dnf_table(year_results)
+# Generate the teams and drivers table
+generate_teams_and_drivers_table = time_decorator(generate_teams_and_drivers_table)
+teams_and_drivers = generate_teams_and_drivers_table(year_results, year_races)
+
+# Generate races info
+generate_races_info_table = time_decorator(generate_races_info_table)
+races_info = generate_races_info_table(year_races, year_qualifying, year_results, year_fastest_lap_data)
+
+# Generate WDC table
+generate_wdc_results_table = time_decorator(generate_wdc_results_table)
+wdc_table, driver_win_source, constructor_win_source = generate_wdc_results_table(year_results,
+                                                                                  year_driver_standings, year_races)
+
+# Win plots
+generate_win_plots = time_decorator(generate_win_plots)
+win_plots = generate_win_plots(driver_win_source, constructor_win_source)
+
+# Generate DNF table
+dnf_table = generate_dnf_table(year_results)
 
 n = races["year"].unique().shape[0]
 i = 1

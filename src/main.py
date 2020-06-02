@@ -58,11 +58,10 @@ mode = "default"
 #   Make sure the mode has a header
 #  Get rid of axis sharing on whatever mode that is
 #  Add axis overrides to position plot, SP v FP, MLTR vs FP, and any other plots to make the axes ordinal (1st, 2nd...)
-#  Do simple refactoring, namely, adding common plots to common_plots.py
 #  Change all mean lap time ranks to be mean lap time percent (except in position plot)
 #  Add the top-n support for all win plots as well as the calculate 95th percentile and set that as n feature
 #  Add smoothing slider to positions plots
-#  Start on the all_years mode
+#  Start on the all_years or home mode
 
 
 def update():
@@ -211,8 +210,7 @@ curdoc().add_root(lay)
 curdoc().title = "F1Viz"
 curdoc().theme = "dark_minimal"
 
-driver_input.value = "Lewis Hamilton"
-constructor_input.value = "Mercedes"
+year_input.value = "2018"
 
 update()
 
