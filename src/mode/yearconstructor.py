@@ -361,8 +361,6 @@ def generate_spvfp_scatter(yc_results, yc_races, yc_driver_standings):
     kwargs = dict(
         include_year_labels=False,
         include_race_labels=True,
-        include_constructor_name=False,
-        include_driver_name=True,
         color_drivers=True
     )
     return driver.generate_spvfp_scatter(yc_results, yc_races, yc_driver_standings, **kwargs)
@@ -379,8 +377,6 @@ def generate_mltr_fp_scatter(yc_results, yc_races, yc_driver_standings):
     kwargs = dict(
         include_year_labels=False,
         include_race_labels=True,
-        include_constructor_name=False,
-        include_driver_name=True,
         color_drivers=True
     )
     return driver.generate_mltr_fp_scatter(yc_results, yc_races, yc_driver_standings, **kwargs)

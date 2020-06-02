@@ -7,10 +7,13 @@ from data_loading.data_loader import load_circuits, load_lap_times, load_races, 
     load_fastest_lap_data
 import pandas as pd
 import numpy as np
-from bokeh.models import HoverTool, Div, Legend, LegendItem, ColumnDataSource, Range1d, CheckboxGroup, Spacer, \
+from bokeh.models import HoverTool, Div, Legend, LegendItem, ColumnDataSource, Range1d, Spacer, \
     CrosshairTool, DataRange1d, Span, TableColumn, DataTable, DatetimeTickFormatter, HTMLTemplateFormatter
 from bokeh.models.tickers import FixedTicker
-from utils import get_line_thickness, ColorDashGenerator, plot_image_url, DATETIME_TICK_KWARGS
+
+from mode import driver
+from utils import get_line_thickness, ColorDashGenerator, plot_image_url, DATETIME_TICK_KWARGS, int_to_ordinal, \
+    get_race_name, result_to_str, position_text_to_str
 from utils import millis_to_str, get_driver_name, get_constructor_name, PLOT_BACKGROUND_COLOR, \
     vdivider, hdivider
 from datetime import datetime
@@ -32,13 +35,19 @@ UP_ARROW = "^"
 DOWN_ARROW = "v"
 SIDE_ARROW = ">"
 
-# TODO second pass here :)
+# TODO
+#  remove axis sharing!                                                                                         √
+#  fix lap time plot y axis/panning                                                                             √
+#  add ordinals                                                                                                 √
+#  why is the gap plot off by a bit sometimes? (see brazil 2019, the very end)                                  √
+#  figure out why all these warnings happen (try playing with gap plot)?                                        √
+#  add SP v FP and MLTR vs FP
 
 # TODO
-#   Make sure tables are sortable
-#   Make sure second axes are scaled properly
-#   Make sure using ordinals (1st, 2nd, 3rd) on everything
-#   Make sure the mode has a header
+#   Make sure tables are sortable                                                                           √
+#   Make sure second axes are scaled properly                                                               √
+#   Make sure using ordinals (1st, 2nd, 3rd) on everything                                                  √
+#   Make sure the mode has a header                                                                         √
 
 
 def get_layout(year_id=-1, circuit_id=-1, **kwargs):
@@ -67,67 +76,45 @@ def get_layout(year_id=-1, circuit_id=-1, **kwargs):
     gap_plot, cached_driver_map = generate_gap_plot(race_laps, race_results)
 
     # Generate position plot
-    position_plot_linked = generate_position_plot(race_laps, cached_driver_map, linking_plot=gap_plot)
-    position_plot_unlinked = generate_position_plot(race_laps, cached_driver_map)
+    position_plot = generate_position_plot(race_laps, cached_driver_map)
 
     # Generate the lap time plot
-    lap_time_plot_linked_layout, lap_time_plot_linked = generate_lap_time_plot(race_laps, cached_driver_map,
-                                                                               linking_plot=gap_plot)
-    lap_time_plot_unlinked_layout, lap_time_plot_unlinked = generate_lap_time_plot(race_laps, cached_driver_map)
+    lap_time_plot_layout, lap_time_plot = generate_lap_time_plot(race_laps, cached_driver_map)
 
     # Generate the pit stop plot
     pit_stop_plot = generate_pit_stop_plot(race_pit_stops, cached_driver_map, race_laps)
 
-    all_plots = [gap_plot,
-                 position_plot_linked, position_plot_unlinked,
-                 lap_time_plot_linked, lap_time_plot_unlinked,
-                 pit_stop_plot]
+    all_plots = [gap_plot, position_plot, lap_time_plot, pit_stop_plot]
+
+    # Start position vs finish position
+    spvfp_scatter = generate_spvfp_scatter(race_results, race, race_driver_standings)
+
+    # Mean lap time rank vs finish position
+    mltr_fp_scatter = generate_mltr_fp_scatter(race_results, race, race_driver_standings)
 
     # Mark safety car and fastest lap
     sc_disclaimer_div = detect_mark_safety_car_end(race_laps, race, race_results, all_plots)
-    mark_fastest_lap(race_results, [lap_time_plot_linked, lap_time_plot_unlinked])
 
     # Generate race stats
     race_stats_layout = generate_stats_layout(race_quali, race_results, race_laps, circuit_id,
                                               race_driver_standings, race_constructor_standings,
                                               race_fastest_lap_data, race_id)
 
-    # Axis sharing
-    def update_axis_sharing(share):
-        if share:
-            layout.children.remove(plots_unlinked)
-            layout.children.insert(2, plots_linked)
-        else:
-            # Set the proper ranges
-            position_plot_unlinked.x_range.start = position_plot_linked.x_range.start
-            position_plot_unlinked.x_range.end = position_plot_linked.x_range.end
-            lap_time_plot_unlinked.x_range.start = position_plot_linked.x_range.start
-            lap_time_plot_unlinked.x_range.end = position_plot_linked.x_range.end
-
-            # Actually swap out the layout
-            layout.children.remove(plots_linked)
-            layout.children.insert(2, plots_unlinked)
-
-    checkbox_button_group = CheckboxGroup(labels=["Shared Axes"], active=[0])
-    checkbox_button_group.on_change("active", lambda attr, old, new: update_axis_sharing(len(new) != 0))
-
     # Create a header
-    title = str(race["year"].values[0]) + " " + race["name"].values[0]
+    title = get_race_name(race_id, include_year=True)
     header = Div(text=f"<h2><b>What did the {title} look like?</b></h2><br><i>Yellow dashed vertical lines show the "
-                      f"start of a safety car period, orange vertical lines show the end*. The white line marks the "
-                      f"fastest lap of the race.</i>")
+                      f"start of a safety car period, orange vertical lines show the end*.</i>")
 
     # Bring it all together
-    # TODO sometimes this is stretched too far
     middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
-
-    plots_linked = column(gap_plot, middle_spacer, position_plot_linked, middle_spacer,
-                          lap_time_plot_linked_layout, middle_spacer, pit_stop_plot, sizing_mode="stretch_width")
-
-    plots_unlinked = column(gap_plot, middle_spacer, position_plot_unlinked, middle_spacer,
-                            lap_time_plot_unlinked_layout, middle_spacer, pit_stop_plot, sizing_mode="stretch_width")
-
-    layout = column(header, checkbox_button_group, plots_linked, sc_disclaimer_div, race_stats_layout,
+    layout = column(header,
+                    gap_plot, middle_spacer,
+                    position_plot, middle_spacer,
+                    lap_time_plot_layout, middle_spacer,
+                    pit_stop_plot, middle_spacer,
+                    row([spvfp_scatter, mltr_fp_scatter], sizing_mode="stretch_width"),
+                    sc_disclaimer_div,
+                    race_stats_layout,
                     sizing_mode="stretch_width")
 
     logging.info("Finished generating layout for mode YEARCIRCUIT")
@@ -167,7 +154,7 @@ def generate_stats_layout(race_quali, race_results, race_laps, circuit_id, race_
     wdc_impact_table = generate_wdc_impact_table(race_driver_standings, race_id)
 
     # Championship standings after race - constructors
-    constructors_impact_table = generate_constructors_impact_table(race_constructor_standings, race_id)
+    constructors_impact_table = generate_wcc_impact_table(race_constructor_standings, race_id)
 
     championship_impact_title = Div(text="<h2><b>Championship Standings after Race</b></h2>")
 
@@ -231,19 +218,17 @@ def generate_stats_layout(race_quali, race_results, race_laps, circuit_id, race_
         race_stats += template.format("Time: ".ljust(13), fastest_lap_time + " on lap " + str(fastest_lap_number))
     if len(podium_info) > 0:
         race_stats += header_template.format("Podium")
-        race_stats += template.format("First: ".ljust(13), podium_info[0][0] + " at " + podium_info[0][1])
-        race_stats += template.format("Second: ".ljust(13), podium_info[1][0] + " at " + podium_info[1][1])
-        race_stats += template.format("Third: ".ljust(13), podium_info[1][0] + " at " + podium_info[1][1])
+        race_stats += template.format("First: ".ljust(13), podium_info[0][0] + " (" + podium_info[0][1]) + ")"
+        race_stats += template.format("Second: ".ljust(13), podium_info[1][0] + " (" + podium_info[1][1]) + ")"
+        race_stats += template.format("Third: ".ljust(13), podium_info[2][0] + " (" + podium_info[2][1]) + ")"
 
     stats_div = Div(text=race_stats)
 
     divider = vdivider()
-    first_row = row([image_view, divider, quali_table], sizing_mode="stretch_both")
-    second_row = row([impacts, divider, results_table], sizing_mode="stretch_both")
-    third_row = row([fastest_lap_table, divider, stats_div], sizing_mode="stretch_both")
-
-    divider = hdivider(line_thickness=0, border_thickness=0)  # TODO determine if a border looks good here
-    return column(first_row, second_row, third_row)
+    return column([row([image_view, divider, quali_table], sizing_mode="stretch_both"),
+                   row([impacts, divider, results_table], sizing_mode="stretch_both"),
+                   row([fastest_lap_table, divider, stats_div], sizing_mode="stretch_both"),
+                   Div(height=100)], sizing_mode="stretch_width")
 
 
 def generate_fastest_lap_table(race_results, race_laps, race_fastest_lap_data):
@@ -262,13 +247,13 @@ def generate_fastest_lap_table(race_results, race_laps, race_fastest_lap_data):
     fastest_lap_columns = [
         TableColumn(field="rank", title="Rank", width=75),
         TableColumn(field="name", title="Driver", width=200),
-        TableColumn(field="constructor", title="Constructor", width=200),
+        TableColumn(field="constructor_name", title="Constructor", width=200),
         TableColumn(field="fastest_lap_time_str", title="Fastest Lap Time", width=150),
         TableColumn(field="avg_lap_time_str", title="Mean Lap Time", width=150),
     ]
 
     race_fastest_lap_data = race_fastest_lap_data.copy()
-    race_fastest_lap_data["rank"] = race_fastest_lap_data["rank"].replace("  ", "UNK")
+    race_fastest_lap_data["rank"] = race_fastest_lap_data["rank"].replace("  ", "~").apply(int_to_ordinal)
     race_fastest_lap_data = race_fastest_lap_data.sort_values(by="rank")
     race_fastest_lap_data["fastest_lap_time_str"] = race_fastest_lap_data["fastest_lap_time_str"].fillna("")
     race_fastest_lap_data["avg_lap_time_str"] = race_fastest_lap_data["avg_lap_time_str"].fillna("")
@@ -299,7 +284,7 @@ def generate_fastest_lap_table(race_results, race_laps, race_fastest_lap_data):
     return column(c, sizing_mode="stretch_width"), fastest_lap_info
 
 
-def generate_constructors_impact_table(race_constructor_standings, race_id):
+def generate_wcc_impact_table(race_constructor_standings, race_id):
     """
     Generates a table that describes the impact this race had on the constructors's championship.
     :param race_constructor_standings: Constructor's standings for this race
@@ -350,7 +335,7 @@ def generate_constructors_impact_table(race_constructor_standings, race_id):
                     position_change = DOWN_ARROW + " " + str(abs(position_diff))
             data["position_change"].append(position_change)
 
-        data["position"].append(position)
+        data["position"].append(int_to_ordinal(position).rjust(4))
         data["name"].append(name)
         data["points"].append(str(points).rjust(2))
 
@@ -420,7 +405,7 @@ def generate_wdc_impact_table(race_driver_standings, race_id):
                     position_change = DOWN_ARROW + " " + str(abs(position_diff))
             data["position_change"].append(position_change)
 
-        data["position"].append(position)
+        data["position"].append(int_to_ordinal(position).rjust(4))
         data["name"].append(name)
         data["points"].append(str(points).rjust(2))
 
@@ -472,33 +457,26 @@ def generate_results_table(race_results):
         grid = result_row["grid"]
         if grid <= 0:
             grid = "PL"
-        finishing_position = result_row["positionText"].lower()
-        if finishing_position == "r":
-            finishing_position = "RET"
-        if finishing_position == "f":
-            finishing_position = "DNQ"
-        if finishing_position == "n":
-            finishing_position = "NC"
-        if finishing_position == "d":
-            finishing_position = "DSQ"
-        if finishing_position == "e":
-            finishing_position = "DSQ"
-        finishing_position = finishing_position.rjust(2)
+        finishing_position = position_text_to_str(result_row["positionText"])
+        finishing_position = finishing_position.rjust(3)
         laps = result_row["laps"]
         laps = str(laps) if laps > 0 else ""
         timeretired = result_row["milliseconds"]
-        if not np.isnan(timeretired):  # Finished within a lap
+        status = result_row["statusId"]
+        status_str = statuses.loc[result_row["statusId"], "status"]
+        if status == 1 and "laps" not in status_str.lower():  # Finished within a lap
             if first_time is None:
                 first_time = timeretired
                 timeretired = millis_to_str(timeretired)
             else:
                 delta = timeretired - first_time
                 timeretired = "+ " + millis_to_str(delta, format_seconds=True)
+                timeretired = timeretired.rjust(10)
         else:  # Either retired or finished more than a lap behind
             timeretired = statuses.loc[result_row["statusId"], "status"]
         points = result_row["points"]
         if float(points) - int(points) > 0.01:
-            points = str(float(points))
+            points = str(float(points)).rjust(2)
         elif points <= 0.01:
             points = ""
         else:
@@ -507,8 +485,8 @@ def generate_results_table(race_results):
 
         data["name"].append(name)
         data["constructor_name"].append(constructor_name)
-        data["grid"].append(str(grid).rjust(2))
-        data["finishing_position"].append(finishing_position)
+        data["grid"].append(int_to_ordinal(grid).rjust(4))
+        data["finishing_position"].append(int_to_ordinal(finishing_position).rjust(4))
         data["laps"].append(str(laps).rjust(2))
         data["timeretired"].append(timeretired)
         data["points"].append(points)
@@ -534,9 +512,9 @@ def generate_results_table(race_results):
     results_row = row([results_table], sizing_mode="stretch_both")
 
     # Get the podium info
-    first = data[data["finishing_position"] == " 1"]
-    second = data[data["finishing_position"] == " 2"]
-    third = data[data["finishing_position"] == " 3"]
+    first = data[data["finishing_position"] == " 1st"]
+    second = data[data["finishing_position"] == " 2nd"]
+    third = data[data["finishing_position"] == " 3rd"]
 
     first_name = first["name"].values[0] if first.shape[0] > 0 else None
     second_name = second["name"].values[0] if second.shape[0] > 0 else None
@@ -622,19 +600,22 @@ def generate_quali_table(race_quali, race_results, highlight_dids=None):
         if q1_happened:
             # Position, name, constructor, q1, q2, q3 times, final grid position
             time = millis_to_str(quali_row["q1"].values[0])
+            time = "~" if time is "" else time
             data["q1"].append(time)
             if q2_happened:
                 time = millis_to_str(quali_row["q2"].values[0])
+                time = "~" if time is "" else time
                 data["q2"].append(time)
                 if q3_happened:
                     time = millis_to_str(quali_row["q3"].values[0])
+                    time = "~" if time is "" else time
                     data["q3"].append(time)
 
         data["driver_id"].append(driver_id)
         data["name"].append(name)
-        data["quali_position"].append(str(quali_position).rjust(2))
+        data["quali_position"].append(int_to_ordinal(quali_position).rjust(4))
         data["constructor_name"].append(constructor_name)
-        data["final_grid"].append(str(final_grid).rjust(2))
+        data["final_grid"].append(int_to_ordinal(final_grid).rjust(4))
         if include_driver_num:
             data["driver_num"].append(str(driver_num).rjust(2))
 
@@ -849,17 +830,15 @@ def generate_pit_stop_plot(race_pit_stops, cached_driver_map, race_laps):
 
     data = ColumnDataSource(data=data)
 
-    plot_kwargs = {
-        "title": u"Pit stop plot \u2014 every time a driver pits",
-        "x_axis_label": "Lap",
-        "y_axis_label": "Lap time",
-        "x_range": Range1d(0, max_laps + 1, bounds=(0, max_laps + 1)),
-        "plot_height": 30 * len(cached_driver_map),
-        "tools": "reset,save",
-    }
     pit_stop_plot = figure(
-        **plot_kwargs
+        title=u"Pit stop plot \u2014 every time a driver pits",
+        x_axis_label="Lap",
+        y_axis_label="Lap Time",
+        x_range=Range1d(0.5, max_laps + 1, bounds=(0.5, max_laps + 1)),
+        plot_height=30 * len(cached_driver_map),
+        tools="reset,save"
     )
+    pit_stop_plot.xaxis.ticker = np.arange(0, 100, 5).tolist() + [1]
     pit_stop_plot.yaxis.ticker = np.arange(0, 50)
 
     renders = pit_stop_plot.vbar_stack(driver_names, x="laps", width=1, source=data, color=colors,
@@ -886,13 +865,12 @@ def generate_pit_stop_plot(race_pit_stops, cached_driver_map, race_laps):
     return pit_stop_plot
 
 
-def generate_lap_time_plot(race_laps, cached_driver_map, linking_plot=None, stdev_range=(1, 1), include_hist=True,
-                           highlight_dids=None, muted_dids=None):
+def generate_lap_time_plot(race_laps, cached_driver_map, stdev_range=(1, 1), include_hist=True, highlight_dids=None,
+                           muted_dids=None):
     """
     Generates a plot of lap times.
     :param race_laps: Race laps
     :param cached_driver_map: The map of driver info
-    :param linking_plot: Plot to link the x axis to
     :param stdev_range: Used to determine y axis default range, defines min and max range in terms of standard
     deviations from the mean lap time
     :param include_hist: If True, will include the histogram of lap time distribution on the side, if False then won't
@@ -927,21 +905,20 @@ def generate_lap_time_plot(race_laps, cached_driver_map, linking_plot=None, stde
         "y_axis_label": "Lap Time",
         "y_range": DataRange1d(start=pd.to_datetime(mean_time - stdev_range[0] * stdev, unit="ms"),
                                end=pd.to_datetime(mean_time + stdev_range[1] * stdev, unit="ms")),
-        "tools": "pan,xbox_zoom,xwheel_zoom,reset,box_zoom,wheel_zoom,save",
+        "tools": "pan,xbox_zoom,xwheel_zoom,ywheel_zoom,reset,box_zoom,wheel_zoom,save",
         "plot_height": 30 * len(cached_driver_map)
     }
-    if linking_plot:
-        lap_time_plot = figure(
-            x_range=linking_plot.x_range,
-            **plot_kwargs
-        )
-        lap_time_plot.add_tools(linking_plot.tools[-2])  # Add the crosshair tool
-    else:
-        max_laps = race_laps["lap"].max()
-        lap_time_plot = figure(
-            x_range=Range1d(1, max_laps, bounds=(-50, max_laps + 50)),
-            **plot_kwargs
-        )
+    max_laps = race_laps["lap"].max()
+    lap_time_plot = figure(
+        title=u"Lap time plot \u2014 Driver's lap time for every lap",
+        x_axis_label="Lap",
+        y_axis_label="Lap Time",
+        x_range=Range1d(1, max_laps, bounds=(1, max_laps + 50)),
+        y_range=DataRange1d(start=pd.to_datetime(mean_time - stdev_range[0] * stdev, unit="ms"),
+                            end=pd.to_datetime(mean_time + stdev_range[1] * stdev, unit="ms")),
+        tools="pan,xbox_zoom,xwheel_zoom,reset,box_zoom,wheel_zoom,save",
+        plot_height=30 * len(cached_driver_map)
+    )
     lap_time_plot.xaxis.ticker = FixedTicker(ticks=[1] + list(np.arange(0, 500, 5)))
 
     # Set up the y axis
@@ -984,7 +961,9 @@ def generate_lap_time_plot(race_laps, cached_driver_map, linking_plot=None, stde
         source = ColumnDataSource(data=dict(x=x, y=y,
                                             name=[name] * n,
                                             positions=driver_positions,
+                                            positions_str=driver_positions.apply(int_to_ordinal),
                                             finish_position=[finish_position] * n,
+                                            finish_position_str=[int_to_ordinal(finish_position)] * n,
                                             constructor=[constructor_name] * n,
                                             lap_time=driver_lap_times))
         line_width = get_line_thickness(finish_position)
@@ -1006,17 +985,17 @@ def generate_lap_time_plot(race_laps, cached_driver_map, linking_plot=None, stde
     lap_time_plot.legend.click_policy = "mute"
     lap_time_plot.legend.label_text_font_size = "12pt"  # The default font size
 
+    lap_time_plot.add_tools(CrosshairTool(dimensions="both", line_color="white", line_alpha=0.6))
+
     # Add the hover tooltip
     lap_time_plot.add_tools(HoverTool(show_arrow=False, tooltips=[
         ("Name", "@name"),
         ("Lap", "@x"),
-        ("Current Position", "@positions"),
-        ("Final Position", "@finish_position"),
+        ("Current Position", "@positions_str"),
+        ("Final Position", "@finish_position_str"),
         ("Lap Time", "@lap_time"),
         ("Constructor", "@constructor"),
     ]))
-
-    lap_time_plot.add_tools(CrosshairTool(dimensions="both", line_color="white", line_alpha=0.6))
 
     y = race_laps["milliseconds"]
     vhist, vedges = np.histogram(y, bins=500)
@@ -1048,12 +1027,11 @@ def generate_lap_time_plot(race_laps, cached_driver_map, linking_plot=None, stde
     return layout, lap_time_plot
 
 
-def generate_position_plot(race_laps, cached_driver_map, linking_plot=None, highlight_dids=None, muted_dids=None):
+def generate_position_plot(race_laps, cached_driver_map, highlight_dids=None, muted_dids=None):
     """
     Generates a position vs. time plot.
     :param race_laps: Lap times for this race
     :param cached_driver_map: Map storing some info on each driver
-    :param linking_plot: The plot to link axes with, or none if not linking axes
     :param highlight_dids: Driver IDs to highlight
     :param muted_dids: Driver IDs to have initially muted
     :return: The position plot or a Spacer if there is an error
@@ -1067,26 +1045,15 @@ def generate_position_plot(race_laps, cached_driver_map, linking_plot=None, high
     if race_laps.shape[0] == 0:
         return Spacer(width=0, height=0, background=PLOT_BACKGROUND_COLOR)
 
-    plot_kwargs = {
-        "title": u"Position plot \u2014 Driver's position over time",
-        "x_axis_label": "Lap",
-        "y_axis_label": "Position",
-        "plot_height": 30 * len(cached_driver_map),
-        "y_range": Range1d(0, 22)
-    }
-    if linking_plot:
-        position_plot = figure(
-            tools="pan,xbox_zoom,xwheel_zoom,reset,box_zoom,wheel_zoom,save",
-            x_range=linking_plot.x_range,
-            **plot_kwargs
-        )
-        position_plot.add_tools(linking_plot.tools[-2])  # Add the crosshair tool
-    else:
-        max_laps = race_laps["lap"].max()
-        position_plot = figure(
-            x_range=Range1d(1, max_laps, bounds=(-50, max_laps + 50)),
-            **plot_kwargs
-        )
+    max_laps = race_laps["lap"].max()
+    position_plot = figure(
+        title=u"Position plot \u2014 Driver's position over time",
+        x_axis_label="Lap",
+        y_axis_label="Position",
+        x_range=Range1d(1, max_laps, bounds=(1, max_laps + 50)),
+        y_range=Range1d(0, 22, bounds=(0, 60)),
+        plot_height=30 * len(cached_driver_map)
+    )
     position_plot.xaxis.ticker = FixedTicker(ticks=[1] + list(np.arange(10, 200, 10)))
     position_plot.yaxis.ticker = FixedTicker(ticks=[1] + list(np.arange(5, 60, 5)))
 
@@ -1119,7 +1086,9 @@ def generate_position_plot(race_laps, cached_driver_map, linking_plot=None, high
         source = ColumnDataSource(data=dict(x=x, y=y,
                                             name=[name] * n,
                                             positions=driver_positions,
+                                            positions_str=driver_positions.apply(int_to_ordinal),
                                             finish_position=[finish_position] * n,
+                                            finish_position_str=[int_to_ordinal(finish_position)] * n,
                                             constructor=[constructor_name] * n))
         line_width = get_line_thickness(finish_position)
         if driver_id in highlight_dids:
@@ -1140,17 +1109,16 @@ def generate_position_plot(race_laps, cached_driver_map, linking_plot=None, high
     position_plot.legend.click_policy = "mute"
     position_plot.legend.label_text_font_size = "12pt"  # The default font size
 
+    position_plot.add_tools(CrosshairTool(dimensions="both", line_color="white", line_alpha=0.6))
+
     # Add the hover tooltip
     position_plot.add_tools(HoverTool(show_arrow=False, tooltips=[
         ("Name", "@name"),
         ("Lap", "@x"),
-        ("Current Position", "@positions"),
-        ("Final Position", "@finish_position"),
+        ("Current Position", "@positions_str"),
+        ("Final Position", "@finish_position_str"),
         ("Constructor", "@constructor"),
     ]))
-
-    # Crosshair
-    position_plot.add_tools(CrosshairTool(dimensions="both", line_color="white", line_alpha=0.6))
 
     return position_plot
 
@@ -1206,12 +1174,13 @@ def generate_gap_plot(race_laps, race_results, highlight_dids=None, muted_dids=N
         x_axis_label="Lap",
         y_axis_label="seconds",
         tools="pan,xbox_zoom,xwheel_zoom,reset,box_zoom,wheel_zoom,save",
-        x_range=Range1d(1, max_laps, bounds=(-50, max_laps + 50)),
+        x_range=Range1d(1, max_laps, bounds=(1, max_laps + 50)),
         y_range=(-180, gaps["gap"].max()),  # Cut off the plot at gap of -180
         plot_height=30 * dids.shape[0]
     )
     gap_plot.add_tools(CrosshairTool(dimensions="both", line_color="white", line_alpha=0.6))
     gap_plot.xaxis.ticker = FixedTicker(ticks=[1] + list(np.arange(0, max_laps, 5)))
+    gap_plot.renderers.extend([Span(location=0, line_color="white", dimension="width", line_alpha=0.5, line_width=2)])
 
     # We want the color scheme to be same team means same color, but the two drivers have solid vs. dashed lines
     cached_driver_map = {}  # driverId: legend entry
@@ -1279,7 +1248,9 @@ def generate_gap_plot(race_laps, race_results, highlight_dids=None, muted_dids=N
                                             gap=gap_text,
                                             lap_times=driver_lap_times,
                                             positions=driver_positions,
+                                            positions_str=driver_positions.apply(int_to_ordinal),
                                             finish_position=[finish_position] * n,
+                                            finish_position_str=[int_to_ordinal(finish_position)] * n,
                                             name=[name] * n,
                                             constructor=[constructor_name] * n))
         line_width = get_line_thickness(finish_position)
@@ -1310,14 +1281,38 @@ def generate_gap_plot(race_laps, race_results, highlight_dids=None, muted_dids=N
     gap_plot.add_tools(HoverTool(show_arrow=False, tooltips=[
         ("Name", "@name"),
         ("Lap", "@x"),
-        ("Current Position", "@positions"),
-        ("Final Position", "@finish_position"),
+        ("Current Position", "@positions_str"),
+        ("Final Position", "@finish_position_str"),
         ("Constructor", "@constructor"),
         ("Lap time", "@lap_times"),
         ("Gap to winner", "@gap"),
     ]))
 
     return gap_plot, cached_driver_map
+
+
+def generate_spvfp_scatter(race_results, race, race_driver_standings):
+    """
+    Start position vs finish position scatter
+    :param race_results: Race results
+    :param race: Slice of races.csv containing this race and this race only
+    :param race_driver_standings: Race driver standings
+    :return: Plot layout
+    """
+    return driver.generate_spvfp_scatter(race_results, race, race_driver_standings, include_driver_name_labels=True,
+                                         color_drivers=True)
+
+
+def generate_mltr_fp_scatter(race_results, race, race_driver_standings):
+    """
+    Mean lap time rank vs finish position scatter
+    :param race_results: Race results
+    :param race: Slice of races.csv containing this race and this race only
+    :param race_driver_standings: Race driver standings
+    :return: Plot layout
+    """
+    return driver.generate_mltr_fp_scatter(race_results, race, race_driver_standings,
+                                           include_driver_name_lables=True, color_drivers=True)
 
 
 def generate_error_layout(year_id, circuit_id):

@@ -599,8 +599,7 @@ def generate_spvfp_scatter(year_results, year_races, year_driver_standings):
     :param year_driver_standings: Year driver races
     :return: Start pos vs finish pos scatter layout
     """
-    return driver.generate_spvfp_scatter(year_results, year_races, year_driver_standings, include_driver_name=False,
-                                         color_drivers=True)
+    return driver.generate_spvfp_scatter(year_results, year_races, year_driver_standings, color_drivers=True)
 
 
 def generate_win_plots(driver_win_source, constructor_win_source):

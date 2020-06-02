@@ -101,8 +101,9 @@ def svg_to_pil(url):
     :param url: URL
     :return: PIL image
     """
-    logger = logging.getLogger("svglib")
-    logger.disabled = True
+    loggers = [logging.getLogger("svglib"), logging.getLogger("svglib.svglib")]
+    for l in loggers:
+        l.disabled = True
     out = BytesIO()
     drawing = svg2rlg(BytesIO(requests.get(url).content))
     renderPM.drawToFile(drawing, out, fmt="PNG", bg=0x2F2F2F)
@@ -350,7 +351,7 @@ def str_to_millis(s):
 
 def position_text_to_str(pos):
     """
-    DEPRECATED
+    DEPRECATED (mostly)
     :param pos:
     :return:
     """

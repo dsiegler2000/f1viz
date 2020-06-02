@@ -193,7 +193,7 @@ def generate_spvfp_scatter(cc_results, cc_races, cc_driver_standings):
     :return: Start pos vs finish pos scatter plot
     """
     return driver.generate_spvfp_scatter(cc_results, cc_races, cc_driver_standings, include_year_labels=True,
-                                         include_driver_name=True, color_drivers=True)
+                                         color_drivers=True)
 
 
 def generate_mltr_fp_scatter(cc_results, cc_races, cc_driver_standings):

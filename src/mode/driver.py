@@ -954,8 +954,7 @@ def generate_win_plot(positions_source, driver_id=None, constructor_id=None):
 
 
 def generate_spvfp_scatter(driver_results, driver_races, driver_driver_standings, include_year_labels=False,
-                           include_race_labels=False, include_constructor_name=False, include_driver_name=True,
-                           color_drivers=False):
+                           include_race_labels=False, include_driver_name_labels=False, color_drivers=False):
     """
     Plot a scatter of quali position vs finish position and draw the y=x line
     :param driver_results: Driver results
@@ -963,8 +962,7 @@ def generate_spvfp_scatter(driver_results, driver_races, driver_driver_standings
     :param driver_driver_standings: Driver driver standings
     :param include_year_labels: Whether to include year labels
     :param include_race_labels: Whether to include race flag as labels
-    :param include_constructor_name: Whether to include the constructor name in the tooltip
-    :param include_driver_name: Whether to include the driver name in the tooltip
+    :param include_driver_name_labels: Whether to include driver name as labels
     :param color_drivers: Whether to color based on which driver it is
     :return: Start pos. vs finish pos. scatter layout
     """
@@ -981,7 +979,7 @@ def generate_spvfp_scatter(driver_results, driver_races, driver_driver_standings
     source = pd.DataFrame(columns=["sp", "sp_str",
                                    "fp", "fp_str",
                                    "marker", "color", "size",
-                                   "year", "constructor_name", "driver_name",
+                                   "year", "constructor_name", "driver_name", "short_name",
                                    "roundNum", "roundName", "roundFlag"])
     color_gen = ColorDashGenerator()
     for idx, row in driver_results.iterrows():
@@ -1025,6 +1023,7 @@ def generate_spvfp_scatter(driver_results, driver_races, driver_driver_standings
             "size": size,
             "constructor_name": constructor_name,
             "driver_name": driver_name,
+            "short_name": get_driver_name(did, just_last=True, include_flag=False),
             "roundNum": round_num,
             "roundName": round_name,
             "roundFlag": round_name[:2]
@@ -1048,6 +1047,9 @@ def generate_spvfp_scatter(driver_results, driver_races, driver_driver_standings
         spvfp_scatter.add_layout(labels)
     if include_race_labels:
         labels = LabelSet(text="roundFlag", **marker_label_kwargs)
+        spvfp_scatter.add_layout(labels)
+    if include_driver_name_labels:
+        labels = LabelSet(text="short_name", **marker_label_kwargs)
         spvfp_scatter.add_layout(labels)
 
     text_label_kwargs = dict(render_mode="canvas",
@@ -1078,8 +1080,8 @@ def generate_spvfp_scatter(driver_results, driver_races, driver_driver_standings
 
 
 def generate_mltr_fp_scatter(driver_results, driver_races, driver_driver_standings,
-                             include_year_labels=False, include_race_labels=False, include_constructor_name=False,
-                             include_driver_name=True, color_drivers=False):
+                             include_year_labels=False, include_race_labels=False, include_driver_name_lables=False,
+                             color_drivers=False):
     """
     Plot scatter of mean lap time rank (x) vs finish position (y) to get a sense of what years the driver out-drove the
     car.
@@ -1088,14 +1090,13 @@ def generate_mltr_fp_scatter(driver_results, driver_races, driver_driver_standin
     :param driver_driver_standings: Driver driver standings
     :param include_year_labels: Whether to include the year labels
     :param include_race_labels: Whether to include race flag as labels
-    :param include_constructor_name: Whether to include the constructor name in the tooltip
-    :param include_driver_name: Whether to include the driver name in the tooltip
+    :param include_driver_name_lables: Whether to include driver name as labels
     :param color_drivers: Whether to color based on which driver it is
     :return: Mean lap time rank vs finish position scatter plot layout
     """
     # TODO change this method to use mean lap time percent, where percent is compared to fastest mean lap time
     logging.info("Generating mean lap time rank vs finish pos scatter plot")
-    source = pd.DataFrame(columns=["year", "constructor_name", "driver_name",
+    source = pd.DataFrame(columns=["year", "constructor_name", "driver_name", "short_name",
                                    "fp", "fp_str",
                                    "mltr", "mltr_str", "mlt_str",
                                    "marker", "color", "size",
@@ -1160,6 +1161,7 @@ def generate_mltr_fp_scatter(driver_results, driver_races, driver_driver_standin
             "fp_str": fp_str,
             "constructor_name": constructor_name,
             "driver_name": driver_name,
+            "short_name": get_driver_name(did, just_last=True, include_flag=False),
             "roundNum": round_num,
             "roundName": round_name,
             "roundFlag": round_name[:2]
@@ -1189,11 +1191,13 @@ def generate_mltr_fp_scatter(driver_results, driver_races, driver_driver_standin
                                text_color="white",
                                text_font_size="10pt")
     if include_year_labels:
-        print("here")
         labels = LabelSet(text="year", **marker_label_kwargs)
         mltr_fp_scatter.add_layout(labels)
     if include_race_labels:
         labels = LabelSet(text="roundFlag", **marker_label_kwargs)
+        mltr_fp_scatter.add_layout(labels)
+    if include_driver_name_lables:
+        labels = LabelSet(text="short_name", **marker_label_kwargs)
         mltr_fp_scatter.add_layout(labels)
 
     text_label_kwargs = dict(render_mode="canvas",
@@ -1208,16 +1212,14 @@ def generate_mltr_fp_scatter(driver_results, driver_races, driver_driver_standin
 
     # Hover tooltip
     tooltips = [
+        ("Driver Name", "@driver_name"),
+        ("Constructor Name", "@constructor_name"),
         ("Year", "@year"),
         ("Avg. Lap Time", "@mlt_str"),
         ("Avg. Lap Time Rank", "@mltr_str"),
         ("Finishing Position", "@fp_str"),
         ("Round", "@roundNum - @roundName")
     ]
-    if include_constructor_name:
-        tooltips.append(("Constructor Name", "@constructor_name"))
-    if include_driver_name:
-        tooltips.insert(0, ("Driver Name", "@driver_name"))
     mltr_fp_scatter.add_tools(HoverTool(show_arrow=False, tooltips=tooltips))
 
     # Crosshair

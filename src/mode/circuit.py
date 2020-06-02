@@ -89,8 +89,7 @@ def generate_spvfp_scatter(circuit_results, circuit_races, circuit_driver_standi
     :param circuit_driver_standings: Circuit driver standings
     :return: Scatter plot layout
     """
-    return driver.generate_spvfp_scatter(circuit_results, circuit_races, circuit_driver_standings,
-                                         include_driver_name=True, color_drivers=True)
+    return driver.generate_spvfp_scatter(circuit_results, circuit_races, circuit_driver_standings, color_drivers=True)
 
 
 def generate_mltr_fp_scatter(circuit_results, circuit_races, circuit_driver_standings):
@@ -101,8 +100,7 @@ def generate_mltr_fp_scatter(circuit_results, circuit_races, circuit_driver_stan
     :param circuit_driver_standings: Circuit driver standings
     :return: Mean lap time vs finish pos scatter layout
     """
-    return driver.generate_mltr_fp_scatter(circuit_results, circuit_races, circuit_driver_standings,
-                                           include_driver_name=False, color_drivers=True)
+    return driver.generate_mltr_fp_scatter(circuit_results, circuit_races, circuit_driver_standings, color_drivers=True)
 
 
 def generate_dnf_plot(circuit_years, circuit_results, circuit_races, circuit_id):

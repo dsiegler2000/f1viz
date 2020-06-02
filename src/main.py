@@ -61,6 +61,7 @@ mode = "default"
 #  Change all mean lap time ranks to be mean lap time percent (except in position plot)
 #  Add the top-n support for all win plots as well as the calculate 95th percentile and set that as n feature
 #  Add smoothing slider to positions plots
+#  Add the plots checklists for efficiency, make it into a class so it's easy to implement, pass the plots+description
 #  Start on the all_years or home mode
 
 
@@ -205,6 +206,9 @@ else:
         s.on_change("value", lambda attr, old, new: update())
 
 lay = column([header, search_bars_layout, mode_lay, footer], sizing_mode="scale_width")
+
+year_input.value = "2019"
+circuit_input.value = "Circuit Gilles Villeneuve"
 
 curdoc().add_root(lay)
 curdoc().title = "F1Viz"

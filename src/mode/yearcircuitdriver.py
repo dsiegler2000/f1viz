@@ -20,6 +20,8 @@ fastest_lap_data = load_fastest_lap_data()
 driver_standings = load_driver_standings()
 races = load_races()
 
+# TODO remove weather from stats when it is null (see Canada 2019 lewis)
+
 
 def get_layout(year_id=-1, circuit_id=-1, driver_id=-1, download_image=True, **kwargs):
     # Generate slices

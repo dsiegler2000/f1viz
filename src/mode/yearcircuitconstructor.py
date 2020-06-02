@@ -20,6 +20,14 @@ fastest_lap_data = load_fastest_lap_data()
 driver_standings = load_driver_standings()
 constructor_standings = load_constructor_standings()
 
+# TODO second pass
+
+# TODO
+#   Make sure tables are sortable
+#   Make sure second axes are scaled properly
+#   Make sure using ordinals (1st, 2nd, 3rd) on everything
+#   Make sure the mode has a header
+
 
 def get_layout(year_id=-1, circuit_id=-1, constructor_id=-1, download_image=False, **kwargs):
     # Generate slices

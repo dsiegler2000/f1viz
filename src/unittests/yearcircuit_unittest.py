@@ -3,7 +3,8 @@ import traceback
 from data_loading.data_loader import load_races, load_lap_times, load_results, load_qualifying, load_pit_stops, \
     load_driver_standings, load_constructor_standings, load_fastest_lap_data
 from mode.yearcircuit import get_layout, generate_gap_plot, generate_position_plot, generate_lap_time_plot, \
-    generate_pit_stop_plot, detect_mark_safety_car_end, mark_fastest_lap, generate_stats_layout
+    generate_pit_stop_plot, detect_mark_safety_car_end, mark_fastest_lap, generate_stats_layout, generate_spvfp_scatter, \
+    generate_mltr_fp_scatter
 import time
 import pandas as pd
 
@@ -42,37 +43,41 @@ race_driver_standings = driver_standings[driver_standings["raceId"] == race_id]
 race_constructor_standings = constructor_standings[constructor_standings["raceId"] == race_id]
 race_fastest_lap_data = fastest_lap_data[fastest_lap_data["raceId"] == race_id]
 
+# Generate the gap plot
 generate_gap_plot = time_decorator(generate_gap_plot)
 gap_plot, cached_driver_map = generate_gap_plot(race_laps, race_results)
 
+# Generate position plot
 generate_position_plot = time_decorator(generate_position_plot)
-position_plot_linked = generate_position_plot(race_laps, cached_driver_map, linking_plot=gap_plot)
-position_plot_unlinked = generate_position_plot(race_laps, cached_driver_map)
+position_plot = generate_position_plot(race_laps, cached_driver_map)
 
+# Generate the lap time plot
 generate_lap_time_plot = time_decorator(generate_lap_time_plot)
-lap_time_plot_linked_layout, lap_time_plot_linked = generate_lap_time_plot(race_laps, cached_driver_map,
-                                                                           linking_plot=gap_plot)
-lap_time_plot_unlinked_layout, lap_time_plot_unlinked = generate_lap_time_plot(race_laps, cached_driver_map)
+lap_time_plot_layout, lap_time_plot = generate_lap_time_plot(race_laps, cached_driver_map)
 
+# Generate the pit stop plot
 generate_pit_stop_plot = time_decorator(generate_pit_stop_plot)
 pit_stop_plot = generate_pit_stop_plot(race_pit_stops, cached_driver_map, race_laps)
 
-all_plots = [gap_plot,
-             position_plot_linked, position_plot_unlinked,
-             lap_time_plot_linked, lap_time_plot_unlinked,
-             pit_stop_plot]
+all_plots = [gap_plot, position_plot, lap_time_plot, pit_stop_plot]
+
+# Start position vs finish position
+generate_spvfp_scatter = time_decorator(generate_spvfp_scatter)
+spvfp_scatter = generate_spvfp_scatter(race_results, race, race_driver_standings)
+
+# Mean lap time rank vs finish position
+generate_mltr_fp_scatter = time_decorator(generate_mltr_fp_scatter)
+mltr_fp_scatter = generate_mltr_fp_scatter(race_results, race, race_driver_standings)
 
 # Mark safety car and fastest lap
 detect_mark_safety_car_end = time_decorator(detect_mark_safety_car_end)
-mark_fastest_lap = time_decorator(mark_fastest_lap)
 sc_disclaimer_div = detect_mark_safety_car_end(race_laps, race, race_results, all_plots)
-mark_fastest_lap(race_results, [lap_time_plot_linked, lap_time_plot_unlinked])
 
 # Generate race stats
-generate_race_stats_layout = time_decorator(generate_stats_layout)
-race_stats_layout = generate_race_stats_layout(race_quali, race_results, race_laps, circuit_id,
-                                               race_driver_standings, race_constructor_standings,
-                                               race_fastest_lap_data, race_id)
+generate_stats_layout = time_decorator(generate_stats_layout)
+race_stats_layout = generate_stats_layout(race_quali, race_results, race_laps, circuit_id,
+                                          race_driver_standings, race_constructor_standings,
+                                          race_fastest_lap_data, race_id)
 
 n = races.shape[0]
 

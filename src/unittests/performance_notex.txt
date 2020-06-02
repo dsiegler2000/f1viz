@@ -1,22 +1,21 @@
-yearcircuit.py
-count    1033.000000
-mean      682.528917
-std       482.161403
-min         4.315853
-25%       178.763866
-50%       645.722151
-75%      1025.765896
-max      3650.756121
-95% RUN TIME: 1200ms
-Completed generate_gap_plot in  200.9730339050293 milliseconds
-Completed generate_position_plot in  52.14715003967285 milliseconds
-Completed generate_position_plot in  69.40722465515137 milliseconds
-Completed generate_lap_time_plot in  80.17516136169434 milliseconds
-Completed generate_lap_time_plot in  78.83477210998535 milliseconds
-Completed generate_pit_stop_plot in  0.11301040649414062 milliseconds
-Completed detect_mark_safety_car_end in  36.79490089416504 milliseconds
-Completed mark_fastest_lap in  0.4279613494873047 milliseconds
-Completed generate_race_stats_layout in  526.1707305908203 milliseconds
+yearcircuit.py (INCLUDING IMAGE DOWNLOAD)
+count     1018.000000
+mean      1122.157077
+std       1008.382157
+min        241.977930
+25%        671.477258
+50%       1042.018890
+75%       1358.584046
+max      21951.270103
+95% RUN TIME: 2000ms
+Completed generate_gap_plot in  192.23308563232422 milliseconds
+Completed generate_position_plot in  78.7668228149414 milliseconds
+Completed generate_lap_time_plot in  97.22614288330078 milliseconds
+Completed generate_pit_stop_plot in  0.09703636169433594 milliseconds
+Completed generate_spvfp_scatter in  160.59207916259766 milliseconds
+Completed generate_mltr_fp_scatter in  184.61012840270996 milliseconds
+Completed detect_mark_safety_car_end in  42.21701622009277 milliseconds
+Completed generate_stats_layout in  604.7000885009766 milliseconds
 The long time for generate_race_stats_layout is from downloading the image from the web
 
 year.py
@@ -72,7 +71,7 @@ min         59.808969
 50%       3750.223279
 75%       9113.109827
 max      35419.412851
-95% RUN TIME: 1400ms (note this includes an image download)
+95% RUN TIME: 10000ms WOW THAT'S BAD!
 For Monza, a circuit with many races:
 Completed generate_times_plot in  666.4690971374512 milliseconds
 Completed generate_dnf_plot in  483.3638668060303 milliseconds

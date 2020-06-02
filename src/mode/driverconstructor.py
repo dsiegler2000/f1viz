@@ -170,7 +170,6 @@ def mark_teammate_changes(positions_source, constructor_results, driver_id, fig)
                 teammate_results = constructor_results[constructor_results["driverId"] == teammate_did]
                 if teammate_results.shape[0] > 5:
                     x = row["x"]
-                    print(f"MARKING AT {x}")
                     line = Span(line_color="white", location=x, dimension="height", line_alpha=0.4, line_width=3.2)
                     fig.add_layout(line)
                     label = Label(x=x + 0.1, y=18, text=get_driver_name(teammate_did, include_flag=False, just_last=True),
