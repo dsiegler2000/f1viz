@@ -15,11 +15,6 @@ from utils import millis_to_str, get_driver_name, get_constructor_name, PLOT_BAC
     vdivider, hdivider
 from datetime import datetime
 
-"""
-This file is fully working and tested on all circuit and year combinations as of 05-05-2020, 11:30PM. The only known 
-issue is with race ID 917, which I think has a slight data flaw.
-"""
-
 circuits = load_circuits()
 lap_times = load_lap_times()
 races = load_races()
@@ -36,6 +31,14 @@ fastest_lap_data = load_fastest_lap_data()
 UP_ARROW = "^"
 DOWN_ARROW = "v"
 SIDE_ARROW = ">"
+
+# TODO second pass here :)
+
+# TODO
+#   Make sure tables are sortable
+#   Make sure second axes are scaled properly
+#   Make sure using ordinals (1st, 2nd, 3rd) on everything
+#   Make sure the mode has a header
 
 
 def get_layout(year_id=-1, circuit_id=-1, **kwargs):

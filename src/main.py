@@ -210,8 +210,6 @@ curdoc().add_root(lay)
 curdoc().title = "F1Viz"
 curdoc().theme = "dark_minimal"
 
-year_input.value = "2018"
-
 update()
 
 logging.info("Initialized")
