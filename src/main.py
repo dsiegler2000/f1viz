@@ -207,9 +207,6 @@ else:
 
 lay = column([header, search_bars_layout, mode_lay, footer], sizing_mode="scale_width")
 
-year_input.value = "2019"
-circuit_input.value = "Circuit Gilles Villeneuve"
-
 curdoc().add_root(lay)
 curdoc().title = "F1Viz"
 curdoc().theme = "dark_minimal"
