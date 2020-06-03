@@ -77,7 +77,8 @@ detect_mark_overtakes = time_decorator(detect_mark_overtakes)
 disclaimer_overtakes = detect_mark_overtakes(ycd_laps, race_laps, plots)
 
 # Mark pit stops
-mark_pit_stops(ycd_pit_stop_data, [gap_plot, lap_time_plot])
+mark_pit_stops = time_decorator(mark_pit_stops)
+mark_pit_stops(ycd_pit_stop_data, [gap_plot, lap_time_plot], driver_id)
 
 # Quali table
 generate_quali_table = time_decorator(generate_quali_table)

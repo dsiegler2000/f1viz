@@ -22,12 +22,18 @@ races = load_races()
 fastest_lap_data = load_fastest_lap_data()
 status = load_status()
 
-# TODO
+# TODO do me next
 #  header
 #  stats stretching too far (see mercedes 2016)
 #  also repeats in podiums in stats
 #  win plot % axis isn't scaled properly
 #  results table height
+
+# TODO
+#   Make sure tables are sortable
+#   Make sure second axes are scaled properly
+#   Make sure using ordinals (1st, 2nd, 3rd) on everything
+#   Make sure the mode has a header
 
 
 def get_layout(year_id=-1, constructor_id=-1, **kwargs):

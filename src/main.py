@@ -212,10 +212,6 @@ curdoc().add_root(lay)
 curdoc().title = "F1Viz"
 curdoc().theme = "dark_minimal"
 
-year_input.value = "2018"
-circuit_input.value = "Circuit de Spa-Francorchamps"
-driver_input.value = "Lewis Hamilton"
-
 update()
 
 logging.info("Initialized")

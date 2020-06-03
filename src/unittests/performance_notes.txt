@@ -223,13 +223,15 @@ max      1706.433058
 (Note this above doesn't include the image download)
 95% TIME: 1100ms
 For Kimi at Monaco in 2015 (generate_stats_layout INCLUDES the image download)
-Completed generate_gap_plot in  214.09320831298828 milliseconds
-Completed generate_position_plot in  54.97288703918457 milliseconds
-Completed generate_lap_time_plot in  106.37593269348145 milliseconds
-Completed detect_mark_safety_car in  42.085886001586914 milliseconds
-Completed mark_fastest_lap in  1.7170906066894531 milliseconds
-Completed detect_mark_overtakes in  157.5758457183838 milliseconds
-Completed generate_quali_table in  63.802242279052734 milliseconds
+Completed generate_gap_plot in  212.63790130615234 milliseconds
+Completed generate_position_plot in  77.79407501220703 milliseconds
+Completed generate_lap_time_plot in  85.9520435333252 milliseconds
+Completed detect_mark_safety_car in  36.68928146362305 milliseconds
+Completed mark_fastest_lap in  1.5239715576171875 milliseconds
+Completed detect_mark_overtakes in  145.36285400390625 milliseconds
+Completed mark_pit_stops in  2.9137134552001953 milliseconds
+Completed generate_quali_table in  59.63897705078125 milliseconds
+Completed generate_stats_layout in  443.5620307922363 milliseconds
 
 yearcircuitconstructor.py (note, I randomly sub-sample 15% of the IDs each time as testing every ID combo would be impossible)
 count    1764.000000
