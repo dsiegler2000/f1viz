@@ -10,10 +10,9 @@ import numpy as np
 from bokeh.models import HoverTool, Div, Legend, LegendItem, ColumnDataSource, Range1d, Spacer, \
     CrosshairTool, DataRange1d, Span, TableColumn, DataTable, DatetimeTickFormatter, HTMLTemplateFormatter
 from bokeh.models.tickers import FixedTicker
-
 from mode import driver
 from utils import get_line_thickness, ColorDashGenerator, plot_image_url, DATETIME_TICK_KWARGS, int_to_ordinal, \
-    get_race_name, result_to_str, position_text_to_str
+    get_race_name, position_text_to_str
 from utils import millis_to_str, get_driver_name, get_constructor_name, PLOT_BACKGROUND_COLOR, \
     vdivider, hdivider
 from datetime import datetime
@@ -898,16 +897,6 @@ def generate_lap_time_plot(race_laps, cached_driver_map, stdev_range=(1, 1), inc
                                 (race_laps["milliseconds"] - mean_time > -1 * stdev)]
     mean_time = np.mean(no_outliers["milliseconds"])
     stdev = np.std(no_outliers["milliseconds"])
-
-    plot_kwargs = {
-        "title": u"Lap time plot \u2014 Driver's lap time for every lap",
-        "x_axis_label": "Lap",
-        "y_axis_label": "Lap Time",
-        "y_range": DataRange1d(start=pd.to_datetime(mean_time - stdev_range[0] * stdev, unit="ms"),
-                               end=pd.to_datetime(mean_time + stdev_range[1] * stdev, unit="ms")),
-        "tools": "pan,xbox_zoom,xwheel_zoom,ywheel_zoom,reset,box_zoom,wheel_zoom,save",
-        "plot_height": 30 * len(cached_driver_map)
-    }
     max_laps = race_laps["lap"].max()
     lap_time_plot = figure(
         title=u"Lap time plot \u2014 Driver's lap time for every lap",
@@ -1180,7 +1169,7 @@ def generate_gap_plot(race_laps, race_results, highlight_dids=None, muted_dids=N
     )
     gap_plot.add_tools(CrosshairTool(dimensions="both", line_color="white", line_alpha=0.6))
     gap_plot.xaxis.ticker = FixedTicker(ticks=[1] + list(np.arange(0, max_laps, 5)))
-    gap_plot.renderers.extend([Span(location=0, line_color="white", dimension="width", line_alpha=0.5, line_width=2)])
+    gap_plot.line(x=[-1000, 1000], y=[0, 0], line_color="white", line_alpha=0.4, line_width=2)
 
     # We want the color scheme to be same team means same color, but the two drivers have solid vs. dashed lines
     cached_driver_map = {}  # driverId: legend entry
@@ -1277,6 +1266,7 @@ def generate_gap_plot(race_laps, race_results, highlight_dids=None, muted_dids=N
     gap_plot.add_layout(legend, "right")
     gap_plot.legend.click_policy = "mute"
     gap_plot.legend.label_text_font_size = "12pt"  # The default font size
+
     # Add the hover tooltip
     gap_plot.add_tools(HoverTool(show_arrow=False, tooltips=[
         ("Name", "@name"),
@@ -1285,7 +1275,7 @@ def generate_gap_plot(race_laps, race_results, highlight_dids=None, muted_dids=N
         ("Final Position", "@finish_position_str"),
         ("Constructor", "@constructor"),
         ("Lap time", "@lap_times"),
-        ("Gap to winner", "@gap"),
+        ("Gap to winner", "@gap")
     ]))
 
     return gap_plot, cached_driver_map

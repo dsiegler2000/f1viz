@@ -22,7 +22,7 @@ driver_standings = load_driver_standings()
 # TODO this really needs a box to check for "generate SP v FP plot" and "generate MLTR vs FP plot" for efficiency
 
 
-def get_layout(circuit_id=-1, **kwargs):
+def get_layout(circuit_id=-1, download_image=True, **kwargs):
     circuit_races = races[races["circuitId"] == circuit_id]
     circuit_rids = circuit_races.index
     circuit_years = sorted(circuit_races["year"].values.tolist())
@@ -55,7 +55,7 @@ def get_layout(circuit_id=-1, **kwargs):
 
     # Circuit stats
     circuit_stats = generate_stats_layout(circuit_id, circuit_years, circuit_fastest_lap_data, circuit_results,
-                                          circuit_races)
+                                          circuit_races, download_image=download_image)
 
     # Winner's table
     winners_table = generate_winners_table(circuit_years, circuit_results, circuit_races)
@@ -581,7 +581,8 @@ def generate_circuit_results_table(circuit_years, circuit_races, circuit_results
     return column([title_div, fast_row], sizing_mode="stretch_width")
 
 
-def generate_stats_layout(circuit_id, circuit_years, circuit_fastest_lap_data, circuit_results, circuit_races):
+def generate_stats_layout(circuit_id, circuit_years, circuit_fastest_lap_data, circuit_results, circuit_races,
+                          download_image=True):
     """
     Generates a layout of the circuit image along with some basic stats on the track
     :param circuit_id: Circuit ID
@@ -589,16 +590,21 @@ def generate_stats_layout(circuit_id, circuit_years, circuit_fastest_lap_data, c
     :param circuit_fastest_lap_data: Circuit fastest lap data
     :param circuit_results: Circuit results
     :param circuit_races: Circuit races
+    :param download_image: Whether to download the image
     :return: Race stats layout
     """
     logging.info("Generating circuit stats layout")
 
-    # Track image
     circuit_row = circuits.loc[circuit_id]
-    image_url = str(circuit_row["imgUrl"])
-    image_view = plot_image_url(image_url)
-    disclaimer = Div(text="The image is of the current configuration of the track.")
-    image_view = column([image_view, disclaimer], sizing_mode="stretch_both")
+
+    # Track image
+    if download_image:
+        image_url = str(circuit_row["imgUrl"])
+        image_view = plot_image_url(image_url)
+        disclaimer = Div(text="The image is of the current configuration of the track.")
+        image_view = column([image_view, disclaimer], sizing_mode="stretch_both")
+    else:
+        image_view = Div()
 
     # Circuit stats
     header_template = """

@@ -1,5 +1,7 @@
 import logging
 import math
+from collections import defaultdict
+
 from bokeh.layouts import column, row
 from bokeh.models import Spacer, Div, Span, Label
 from data_loading.data_loader import load_results, load_lap_times, load_pit_stops, load_qualifying, load_circuits, \
@@ -231,10 +233,11 @@ def mark_pit_stops(ycd_pit_stop_data, plots, driver_id, cached_driver_map=None, 
     :param cached_driver_map: Must be passed if `show_name is True`
     :param h_pct: Percent of the height to write the safety car time
     :param show_name: Whether to show the driver name
-    :return: None
+    :return: Line dict, which maps driver ID to a list of pit stop lines for use on the legend
     """
     if ycd_pit_stop_data.shape[0] == 0:
         return
+    line_dict = defaultdict(list)
     for idx, row in ycd_pit_stop_data.iterrows():
         lap = row["lap"]
         millis = row["milliseconds"]
@@ -245,24 +248,34 @@ def mark_pit_stops(ycd_pit_stop_data, plots, driver_id, cached_driver_map=None, 
         label_kwargs = dict(render_mode="canvas",
                             text_color="hotpink",
                             text_font_size="10pt",
+                            text_alpha=0.7,
                             angle=0.4 * math.pi)
 
         if driver_id and cached_driver_map:
             line_dash = cached_driver_map[driver_id][3]
         else:
             line_dash = "solid"
-        line = Span(location=lap, dimension="height", line_color="hotpink", line_width=3, line_dash=line_dash)
+        line_kwargs = dict(
+            x=[lap, lap],
+            y=[-1000, 1000],
+            line_color="hotpink",
+            line_width=2,
+            line_dash=line_dash,
+            line_alpha=0.7
+        )
         driver_name = get_driver_name(driver_id, include_flag=False, just_last=True)
         for p in plots:
             r = (p.y_range.end - p.y_range.start)
             y = p.y_range.start + h_pct * r
             dy = 0.09 * r
             time_label = Label(x=lap + 0.5, y=y, text=time_str, **label_kwargs)
-            p.renderers.extend([line])
+            line = p.line(**line_kwargs)
+            line_dict[driver_id].append(line)
             p.add_layout(time_label)
             if show_name:
                 name_label = Label(x=lap + 0.6, y=y - dy, text=driver_name, **label_kwargs)
                 p.add_layout(name_label)
+    return line_dict
 
 
 def mark_fastest_lap(ycd_results, plots):
@@ -465,7 +478,7 @@ def generate_stats_layout(ycd_results, ycd_pit_stop_data, ycd_fastest_lap_data, 
 
     ycd_stats += template.format("Circuit Name: ".ljust(22), circuit_str)
     ycd_stats += template.format("Date: ".ljust(22), date_str)
-    if weather_str != "":
+    if weather_str != "" and weather_str.lower() != "nan":
         ycd_stats += template.format("Weather: ".ljust(22), weather_str)
     if not np.isnan(rating):
         ycd_stats += template.format("Rating: ".ljust(22), rating_str)

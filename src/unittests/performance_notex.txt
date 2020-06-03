@@ -73,14 +73,14 @@ min         59.808969
 max      35419.412851
 95% RUN TIME: 10000ms WOW THAT'S BAD!
 For Monza, a circuit with many races:
-Completed generate_times_plot in  666.4690971374512 milliseconds
-Completed generate_dnf_plot in  483.3638668060303 milliseconds
-Completed generate_spmfp_plot in  277.7059078216553 milliseconds
-Completed generate_spvfp_scatter in  14064.428091049194 milliseconds
-Completed generate_mltr_fp_scatter in  16614.52078819275 milliseconds
-Completed generate_circuit_results_table in  720.5429077148438 milliseconds
-Completed generate_stats_layout in  305.64212799072266 milliseconds
-Completed generate_winners_table in  141.7398452758789 milliseconds
+Completed generate_times_plot in  564.2271041870117 milliseconds
+Completed generate_dnf_plot in  568.9318180084229 milliseconds
+Completed generate_spmfp_plot in  320.94597816467285 milliseconds
+Completed generate_spvfp_scatter in  14129.858016967773 milliseconds
+Completed generate_mltr_fp_scatter in  17126.442909240723 milliseconds
+Completed generate_circuit_results_table in  706.88796043396 milliseconds
+Completed generate_stats_layout in  372.0271587371826 milliseconds
+Completed generate_winners_table in  149.85394477844238 milliseconds
 
 constructor.py
 count      210.000000

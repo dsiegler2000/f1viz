@@ -20,16 +20,8 @@ fastest_lap_data = load_fastest_lap_data()
 driver_standings = load_driver_standings()
 constructor_standings = load_constructor_standings()
 
-# TODO second pass
 
-# TODO
-#   Make sure tables are sortable
-#   Make sure second axes are scaled properly
-#   Make sure using ordinals (1st, 2nd, 3rd) on everything
-#   Make sure the mode has a header
-
-
-def get_layout(year_id=-1, circuit_id=-1, constructor_id=-1, download_image=False, **kwargs):
+def get_layout(year_id=-1, circuit_id=-1, constructor_id=-1, download_image=True, **kwargs):
     # Generate slices
     year_races = races[races["year"] == year_id]
     race = year_races[year_races["circuitId"] == circuit_id]
@@ -66,11 +58,11 @@ def get_layout(year_id=-1, circuit_id=-1, constructor_id=-1, download_image=Fals
 
     plots = [gap_plot, position_plot, lap_time_plot]
 
-    # Mark safety car
-    disclaimer_sc = detect_mark_safety_car(race_laps, race, race_results, plots)
-
     # Mark pit stops
     mark_pit_stops(ycc_pit_stop_data, driver_ids, cached_driver_map, plots)
+
+    # Mark safety car
+    disclaimer_sc = detect_mark_safety_car(race_laps, race, race_results, plots)
 
     # Quali table
     quali_table, quali_source = generate_quali_table(race_quali, race_results, driver_ids)
@@ -83,7 +75,7 @@ def get_layout(year_id=-1, circuit_id=-1, constructor_id=-1, download_image=Fals
     constructor_name = get_constructor_name(constructor_id)
     race_name = get_race_name(rid, include_year=True)
     header = Div(text=f"<h2><b>What did {constructor_name}'s {race_name} look like?</b></h2><br><i>Yellow dashed "
-                      f"vertical lines show the start of a safety car period, orange vertical lines show the end*. "
+                      f"vertical lines show the start of a safety car period, orange vertical lines show the end.*"
                       f"<br>The white line marks the fastest lap of the race."
                       f"<br>Pink lines show pit stops along with how long was spent in the pits.")
 
@@ -289,7 +281,7 @@ def generate_stats_layout(ycc_results, ycc_pit_stop_data, ycc_fastest_lap_data, 
 
     ycc_stats += template.format("Circuit Name: ".ljust(22), circuit_str)
     ycc_stats += template.format("Date: ".ljust(22), date_str)
-    if weather_str != "":
+    if weather_str != "" and weather_str.lower() != "nan":
         ycc_stats += template.format("Weather: ".ljust(22), weather_str)
     if not np.isnan(rating):
         ycc_stats += template.format("Rating: ".ljust(22), rating_str)
@@ -341,11 +333,11 @@ def generate_stats_layout(ycc_results, ycc_pit_stop_data, ycc_fastest_lap_data, 
             quali_pos = ycd_quali_row["quali_position"]
             quali_pos_str = int_to_ordinal(quali_pos)
             quali_time_str = ""
-            if "q1" in ycd_quali_source.columns and ycd_quali_row["q1"] != "":
+            if "q1" in ycd_quali_source.columns and ycd_quali_row["q1"] != "~":
                 quali_time_str = ycd_quali_row["q1"]
-            if "q2" in ycd_quali_source.columns and ycd_quali_row["q2"] != "":
+            if "q2" in ycd_quali_source.columns and ycd_quali_row["q2"] != "~":
                 quali_time_str = ycd_quali_row["q2"]
-            if "q3" in ycd_quali_source.columns and ycd_quali_row["q3"] != "":
+            if "q3" in ycd_quali_source.columns and ycd_quali_row["q3"] != "~":
                 quali_time_str = ycd_quali_row["q3"]
         else:
             quali_pos_str = ""

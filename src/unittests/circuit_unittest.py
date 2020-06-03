@@ -79,7 +79,7 @@ for circuit_id in circuits.index.unique():
         print(f"Testing circuit ID {circuit_id}, {name}, {i} / {n}")
         i += 1
         start = time.time()
-        get_layout(circuit_id=circuit_id)
+        get_layout(circuit_id=circuit_id, download_image=False)
         end = time.time()
         elapsed = 1000 * (end - start)
         print(f"Completed in  {elapsed} milliseconds")
