@@ -313,10 +313,11 @@ def generate_stats_layout(ycc_results, ycc_pit_stop_data, ycc_fastest_lap_data, 
             num_pit_stops_str = ""
         if ycd_results.shape[0] > 0:
             ycd_results_row = ycd_results.iloc[0]
-            grid_str = int_to_ordinal(ycd_results_row["grid"])
+            grid_str = int_to_ordinal(ycd_results_row["grid"]).strip()
             fp_str, _ = result_to_str(ycd_results_row["positionOrder"], ycd_results_row["statusId"])
+            fp_str = fp_str.strip()
             laps_str = str(ycd_results_row["laps"])
-            runtime_str = millis_to_str(ycd_results_row["milliseconds"])
+            runtime_str = millis_to_str(ycd_results_row["milliseconds"]).strip()
             points = ycd_results_row["points"]
             if abs(int(points) - points) < 0.01:
                 points = int(points)
@@ -331,7 +332,7 @@ def generate_stats_layout(ycc_results, ycc_pit_stop_data, ycc_fastest_lap_data, 
         if ycd_quali_source.shape[0] > 0:
             ycd_quali_row = ycd_quali_source.iloc[0]
             quali_pos = ycd_quali_row["quali_position"]
-            quali_pos_str = int_to_ordinal(quali_pos)
+            quali_pos_str = int_to_ordinal(quali_pos).strip()
             quali_time_str = ""
             if "q1" in ycd_quali_source.columns and ycd_quali_row["q1"] != "~":
                 quali_time_str = ycd_quali_row["q1"]

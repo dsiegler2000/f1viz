@@ -1,7 +1,6 @@
 import logging
 import math
 from collections import defaultdict
-
 from bokeh.layouts import column, row
 from bokeh.models import Spacer, Div, Span, Label
 from data_loading.data_loader import load_results, load_lap_times, load_pit_stops, load_qualifying, load_circuits, \
@@ -21,8 +20,6 @@ circuits = load_circuits()
 fastest_lap_data = load_fastest_lap_data()
 driver_standings = load_driver_standings()
 races = load_races()
-
-# TODO remove weather from stats when it is null (see Canada 2019 lewis)
 
 
 def get_layout(year_id=-1, circuit_id=-1, driver_id=-1, download_image=True, **kwargs):
@@ -407,10 +404,11 @@ def generate_stats_layout(ycd_results, ycd_pit_stop_data, ycd_fastest_lap_data, 
         ycd_results_row = ycd_results.iloc[0]
         constructor_id = ycd_results_row["constructorId"]
         constructor_str = get_constructor_name(constructor_id)
-        grid_str = int_to_ordinal(ycd_results_row["grid"])
+        grid_str = int_to_ordinal(ycd_results_row["grid"]).strip()
         fp_str, _ = result_to_str(ycd_results_row["positionOrder"], ycd_results_row["statusId"])
+        fp_str = fp_str.strip()
         laps_str = str(ycd_results_row["laps"])
-        runtime_str = millis_to_str(ycd_results_row["milliseconds"])
+        runtime_str = millis_to_str(ycd_results_row["milliseconds"]).strip()
         points = ycd_results_row["points"]
         if abs(int(points) - points) < 0.01:
             points = int(points)
@@ -427,7 +425,7 @@ def generate_stats_layout(ycd_results, ycd_pit_stop_data, ycd_fastest_lap_data, 
                 if "ret" in tm_fp_str.lower():
                     teammate_strs.append(tm_name + " " + tm_fp_str)
                 else:
-                    teammate_strs.append(tm_name + " finished " + tm_fp_str + " (" + tm_time_str + ")")
+                    teammate_strs.append(tm_name + " finished " + tm_fp_str.strip() + " (" + tm_time_str.strip() + ")")
         teammate_str = ", ".join(teammate_strs)
     else:
         constructor_str = ""
@@ -441,7 +439,7 @@ def generate_stats_layout(ycd_results, ycd_pit_stop_data, ycd_fastest_lap_data, 
     if ycd_quali_source.shape[0] > 0:
         ycd_quali_row = ycd_quali_source.iloc[0]
         quali_pos = ycd_quali_row["quali_position"]
-        quali_pos_str = int_to_ordinal(quali_pos)
+        quali_pos_str = int_to_ordinal(quali_pos).strip()
         quali_time_str = ""
         if "q1" in ycd_quali_source.columns and ycd_quali_row["q1"] != "":
             quali_time_str = ycd_quali_row["q1"]
@@ -449,6 +447,7 @@ def generate_stats_layout(ycd_results, ycd_pit_stop_data, ycd_fastest_lap_data, 
             quali_time_str = ycd_quali_row["q2"]
         if "q3" in ycd_quali_source.columns and ycd_quali_row["q3"] != "":
             quali_time_str = ycd_quali_row["q3"]
+        quali_time_str = quali_time_str.strip()
     else:
         quali_pos_str = ""
         quali_time_str = ""
@@ -458,7 +457,7 @@ def generate_stats_layout(ycd_results, ycd_pit_stop_data, ycd_fastest_lap_data, 
             fastest_lap_str = ""
         else:
             fastest_lap_str = ycd_fastest_lap_data_row["fastest_lap_time_str"] + " (" + \
-                              int_to_ordinal(ycd_fastest_lap_data_row["rank"]) + " fastest this race)"
+                              int_to_ordinal(ycd_fastest_lap_data_row["rank"]).strip() + " fastest this race)"
         avg_lap_time_str = millis_to_str(ycd_fastest_lap_data_row["avg_lap_time_millis"])
     else:
         fastest_lap_str = ""

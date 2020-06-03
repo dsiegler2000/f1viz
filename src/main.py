@@ -56,12 +56,13 @@ mode = "default"
 #   Make sure second axes are scaled properly
 #   Make sure using ordinals (1st, 2nd, 3rd) on everything
 #   Make sure the mode has a header
-#  Get rid of axis sharing on whatever mode that is
+#  Get rid of axis sharing on whatever mode that is                                                                 √
 #  Add axis overrides to position plot, SP v FP, MLTR vs FP, and any other plots to make the axes ordinal (1st, 2nd...)
 #  Change all mean lap time ranks to be mean lap time percent (except in position plot)
 #  Add the top-n support for all win plots as well as the calculate 95th percentile and set that as n feature
 #  Add smoothing slider to positions plots
 #  Add the plots checklists for efficiency, make it into a class so it's easy to implement, pass the plots+description
+#  Check all stats divs for things that need to be `strip`-ed
 #  Start on the all_years or home mode
 
 
@@ -210,6 +211,10 @@ lay = column([header, search_bars_layout, mode_lay, footer], sizing_mode="scale_
 curdoc().add_root(lay)
 curdoc().title = "F1Viz"
 curdoc().theme = "dark_minimal"
+
+year_input.value = "2018"
+circuit_input.value = "Circuit de Spa-Francorchamps"
+driver_input.value = "Lewis Hamilton"
 
 update()
 

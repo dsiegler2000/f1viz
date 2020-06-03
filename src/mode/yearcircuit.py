@@ -968,6 +968,20 @@ def generate_lap_time_plot(race_laps, cached_driver_map, stdev_range=(1, 1), inc
         legend_item = LegendItem(label=name, renderers=[line], index=legend_index)
         legend.append(legend_item)
 
+    # Add drivers who completed < 1 lap to the legend
+    for driver_id in set(cached_driver_map.keys()) - set(race_laps["driverId"].unique()):
+        if driver_id not in cached_driver_map.keys():
+            continue
+        position = cached_driver_map[driver_id][1] + 1
+        color = cached_driver_map[driver_id][2]
+        line_dash = cached_driver_map[driver_id][3]
+        dummy_line = lap_time_plot.line(x=[1], y=[0], color=color, line_dash=line_dash,
+                                        line_width=2, line_alpha=0.7, muted_alpha=0.08)
+        if driver_id in muted_dids:
+            dummy_line.muted = True
+        legend_item = LegendItem(label=get_driver_name(driver_id), renderers=[dummy_line], index=position - 1)
+        legend.append(legend_item)
+
     legend = sorted(legend, key=lambda l: l.index)
     legend = Legend(items=legend, location="top_right", glyph_height=15, spacing=2, inactive_fill_color="gray")
     lap_time_plot.add_layout(legend, "right")
@@ -1090,6 +1104,18 @@ def generate_position_plot(race_laps, cached_driver_map, highlight_dids=None, mu
             line.muted = True
 
         legend_item = LegendItem(label=name, renderers=[line], index=legend_index)
+        legend.append(legend_item)
+    for driver_id in set(cached_driver_map.keys()) - set(race_laps["driverId"].unique()):
+        if driver_id not in cached_driver_map.keys():
+            continue
+        position = cached_driver_map[driver_id][1] + 1
+        color = cached_driver_map[driver_id][2]
+        line_dash = cached_driver_map[driver_id][3]
+        dummy_line = position_plot.line(x=[1], y=[0], color=color, line_dash=line_dash,
+                                        line_width=2, line_alpha=0.7, muted_alpha=0.08)
+        if driver_id in muted_dids:
+            dummy_line.muted = True
+        legend_item = LegendItem(label=get_driver_name(driver_id), renderers=[dummy_line], index=position - 1)
         legend.append(legend_item)
 
     legend = sorted(legend, key=lambda l: l.index)
@@ -1259,6 +1285,24 @@ def generate_gap_plot(race_laps, race_results, highlight_dids=None, muted_dids=N
         legend.append(legend_item)
         cached_driver_map[driver_id] = [name, position - 1, color, line_dash,  # drawing and hover stuff
                                         driver_positions, finish_position, constructor_name, driver_lap_times]
+
+    # Add the drivers who didn't finish a full lap
+    for driver_id in set(race_results["driverId"].unique()) - set(gaps["driverId"].unique()):
+        driver_results = race_results[race_results["driverId"] == driver_id]
+        if driver_results.shape[0] == 0:
+            continue
+        position = driver_results["positionOrder"].values[0]
+        constructor_id = driver_results["constructorId"].values[0]
+        color, line_dash = color_dash_gen.get_color_dash(driver_id, constructor_id)
+        dummy_line = gap_plot.line(x=[1], y=[0], color=color, line_dash=line_dash,
+                                   line_width=2, line_alpha=0.7, muted_alpha=0.08)
+        if driver_id in muted_dids:
+            dummy_line.muted = True
+        name = get_driver_name(driver_id)
+        legend_item = LegendItem(label=name, renderers=[dummy_line], index=position - 1)
+        legend.append(legend_item)
+        cached_driver_map[driver_id] = [name, position - 1, color, line_dash,  # drawing and hover stuff
+                                        [], "DNF", get_constructor_name(constructor_id), []]
 
     # Make and place the legend
     legend = sorted(legend, key=lambda l: l.index)
