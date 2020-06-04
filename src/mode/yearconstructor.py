@@ -22,19 +22,6 @@ races = load_races()
 fastest_lap_data = load_fastest_lap_data()
 status = load_status()
 
-# TODO do me next
-#  header
-#  stats stretching too far (see mercedes 2016)
-#  also repeats in podiums in stats
-#  win plot % axis isn't scaled properly
-#  results table height
-
-# TODO
-#   Make sure tables are sortable
-#   Make sure second axes are scaled properly
-#   Make sure using ordinals (1st, 2nd, 3rd) on everything
-#   Make sure the mode has a header
-
 
 def get_layout(year_id=-1, constructor_id=-1, **kwargs):
     if year_id < 1958:
@@ -103,10 +90,16 @@ def get_layout(year_id=-1, constructor_id=-1, **kwargs):
     # Stats layout
     stats_layout = generate_stats_layout(positions_source, yc_results, comparison_source, year_id, constructor_id)
 
+    # Header
+    constructor_name = get_constructor_name(constructor_id)
+    # todo add notes about colors and stuff
+    header = Div(text=f"<h2><b>What did {constructor_name}'s {year_id} season look like?</b></h2>")
+
     logging.info("Finished generating layout for mode YEARCONSTRUCTOR")
 
     middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
-    layout = column([wcc_plot, middle_spacer,
+    layout = column([header,
+                     wcc_plot, middle_spacer,
                      positions_plot, middle_spacer,
                      win_plot, middle_spacer,
                      finishing_position_bar_plot, middle_spacer,
@@ -177,7 +170,6 @@ def generate_positions_plot(yc_constructor_standings, yc_results, yc_fastest_lap
                                                                            yc_results, yc_fastest_lap_data,
                                                                            constructor_id, **kwargs)
 
-    # TODO refactor to make this into it's own method
     # Add the axis overrides
     x_min = positions_source["x"].min() - 0.001
     x_max = positions_source["x"].max() + 0.001
@@ -203,7 +195,6 @@ def generate_win_plot(positions_source, constructor_id):
     win_plot = constructor.generate_win_plot(positions_source, constructor_id)
 
     # Override axes
-    # TODO refactor this into it's own method
     if not isinstance(win_plot, Div):
         x_min = positions_source["x"].min() - 0.001
         x_max = positions_source["x"].max() + 0.001
@@ -340,7 +331,7 @@ def generate_results_table(yc_results, yc_fastest_lap_data, year_results, year_f
     else:
         results_columns.insert(0, TableColumn(field="race_name", title="Race Name", width=100))
     results_table = DataTable(source=ColumnDataSource(data=source), columns=results_columns, index_position=None,
-                              height=30 * yc_results.shape[0] if height is None else height)
+                              height=28 * yc_results.shape[0] if height is None else height)
     title = Div(text=f"<h2><b>Results for each race</b></h2><br><i>The fastest lap time and average lap time gaps "
                      f"shown are calculated based on the gap to the fastest of all drivers and fastest average of "
                      f"all drivers in that race respectively.</i>")
@@ -473,7 +464,8 @@ def generate_stats_layout(positions_source, yc_results, comparison_source, year_
     if num_podiums == 0:
         podiums_str = str(num_podiums)
     else:
-        podiums_str = str(num_podiums) + " (" + ", ".join(podiums_slice["raceId"].apply(get_race_name)) + ")"
+        race_names = ", ".join([get_race_name(rid) for rid in podiums_slice["raceId"].unique()])
+        podiums_str = str(num_podiums) + " (" + race_names + ")"
         if len(podiums_str) > 120:
             split = podiums_str.split(" ")
             split.insert(int(len(split) / 2), "<br>    " + "".ljust(20))

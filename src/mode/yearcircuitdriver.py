@@ -167,7 +167,7 @@ def detect_mark_overtakes(ycd_laps, race_laps, plots):
             dy = 0.1 * (p.y_range.end - p.y_range.start)
             p.renderers.extend([line])
             for name in names:
-                label = Label(x=lap + 0.5, y=y, text=name, **label_kwargs)
+                label = Label(x=lap + 0.7, y=y, text=name, **label_kwargs)
                 p.add_layout(label)
                 y += dy
 
@@ -265,7 +265,7 @@ def mark_pit_stops(ycd_pit_stop_data, plots, driver_id, cached_driver_map=None, 
             r = (p.y_range.end - p.y_range.start)
             y = p.y_range.start + h_pct * r
             dy = 0.09 * r
-            time_label = Label(x=lap + 0.5, y=y, text=time_str, **label_kwargs)
+            time_label = Label(x=lap + 0.7, y=y, text=time_str, **label_kwargs)
             line = p.line(**line_kwargs)
             line_dict[driver_id].append(line)
             p.add_layout(time_label)
@@ -441,11 +441,11 @@ def generate_stats_layout(ycd_results, ycd_pit_stop_data, ycd_fastest_lap_data, 
         quali_pos = ycd_quali_row["quali_position"]
         quali_pos_str = int_to_ordinal(quali_pos).strip()
         quali_time_str = ""
-        if "q1" in ycd_quali_source.columns and ycd_quali_row["q1"] != "":
+        if "q1" in ycd_quali_source.columns and ycd_quali_row["q1"] != "~":
             quali_time_str = ycd_quali_row["q1"]
-        if "q2" in ycd_quali_source.columns and ycd_quali_row["q2"] != "":
+        if "q2" in ycd_quali_source.columns and ycd_quali_row["q2"] != "~":
             quali_time_str = ycd_quali_row["q2"]
-        if "q3" in ycd_quali_source.columns and ycd_quali_row["q3"] != "":
+        if "q3" in ycd_quali_source.columns and ycd_quali_row["q3"] != "~":
             quali_time_str = ycd_quali_row["q3"]
         quali_time_str = quali_time_str.strip()
     else:

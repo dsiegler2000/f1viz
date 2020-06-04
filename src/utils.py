@@ -317,7 +317,7 @@ def time_decorator(f):
         to_return = f(*args, **kwargs)
         end = time.time()
         elapsed = 1000 * (end - start)
-        print(f"Completed {f.__name__} in  {elapsed} milliseconds")
+        print(f"Completed {f.__name__} in {elapsed} milliseconds")
         return to_return
     return timed
 

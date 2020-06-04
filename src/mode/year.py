@@ -1244,7 +1244,6 @@ def generate_wcc_results_table(year_results, year_races, year_constructor_standi
                 wins_str = "0 (0.0%)"
                 podiums_str = "0 (0.0%)"
             wins_str = wins_str.rjust(11)
-            # todo test sorting
             podiums_str = podiums_str.rjust(11)
             avg_fp = str(round(constructor_results["positionOrder"].mean(), 1)).rjust(4)
             source = source.append({

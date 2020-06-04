@@ -20,6 +20,17 @@ races = load_races()
 fastest_lap_data = load_fastest_lap_data()
 status = load_status()
 
+# TODO do second pass on me next :)
+#  come up with 1 more plot this is looking a bit barren, maybe like comparing all races to best/worst race somehow,
+#   maybe also look at variability or something?, maybe just a simple plot comparing to other drivers?
+
+# TODO
+#  Go through each existing mode and do a "second pass" to add simple features and make small clean-up changes
+#   Make sure tables are sortable
+#   Make sure second axes are scaled properly
+#   Make sure using ordinals (1st, 2nd, 3rd) on everything
+#   Make sure the mode has a header
+
 
 def get_layout(year_id=-1, driver_id=-1, **kwargs):
     year_races = races[races["year"] == year_id]

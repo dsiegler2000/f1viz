@@ -179,16 +179,16 @@ min       346.322298
 max      2959.843874
 95% TIME: 2400ms
 For Ferrari in 2014:
-Completed generate_wcc_plot in  84.53607559204102 milliseconds
-Completed generate_positions_plot in  236.85312271118164 milliseconds
-Completed generate_spvfp_scatter in  267.32397079467773 milliseconds
-Completed generate_mltr_fp_scatter in  324.21112060546875 milliseconds
-Completed generate_win_plot in  195.42598724365234 milliseconds
-Completed generate_finishing_position_bar_plot in  4.708766937255859 milliseconds
-Completed generate_driver_performance_table in  45.0439453125 milliseconds
-Completed generate_results_table in  412.68086433410645 milliseconds
-Completed generate_teammate_comparison_line_plot in  191.4517879486084 milliseconds
-Completed generate_stats_layout in  5.276918411254883 milliseconds
+Completed generate_wcc_plot in  144.25969123840332 milliseconds
+Completed generate_positions_plot in  344.17200088500977 milliseconds
+Completed generate_spvfp_scatter in  290.47131538391113 milliseconds
+Completed generate_mltr_fp_scatter in  366.8842315673828 milliseconds
+Completed generate_win_plot in  229.2487621307373 milliseconds
+Completed generate_finishing_position_bar_plot in  5.169153213500977 milliseconds
+Completed generate_driver_performance_table in  56.783199310302734 milliseconds
+Completed generate_results_table in  470.23701667785645 milliseconds
+Completed generate_teammate_comparison_line_plot in  200.06108283996582 milliseconds
+Completed generate_stats_layout in  5.398988723754883 milliseconds
 
 circuitconstructor.py
 count    2627.000000

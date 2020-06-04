@@ -666,7 +666,6 @@ def generate_driver_performance_table(constructor_races, constructor_results):
     source["num_finishes_str"] = source.apply(lambda r: add_pct(r, "num_finishes"), axis=1)
     source["num_mechanical_dnf_str"] = source.apply(lambda r: add_pct(r, "num_mechanical_dnf"), axis=1)
     source["num_crash_dnf_str"] = source.apply(lambda r: add_pct(r, "num_crash_dnf"), axis=1)
-    # TODO fix sorting here
     source["total_points_str"] = source.apply(lambda r: add_ppr(r, "total_points"), axis=1)
 
     driver_performance_columns = [
@@ -684,7 +683,7 @@ def generate_driver_performance_table(constructor_races, constructor_results):
 
     driver_performance_columns_table = DataTable(source=ColumnDataSource(data=source),
                                                  columns=driver_performance_columns, index_position=None,
-                                                 height=min(30 * source.shape[0], 570))
+                                                 height=min(35 * source.shape[0], 570))
     title = Div(text=f"<h2><b>Performance of each Driver</b></h2><br><i>Again, wins, podiums, and finish percentages "
                      f"are calculated as a percentage of races entered, so they may exceeed 100% in certain cases.")
 

@@ -34,20 +34,6 @@ UP_ARROW = "^"
 DOWN_ARROW = "v"
 SIDE_ARROW = ">"
 
-# TODO
-#  remove axis sharing!                                                                                         √
-#  fix lap time plot y axis/panning                                                                             √
-#  add ordinals                                                                                                 √
-#  why is the gap plot off by a bit sometimes? (see brazil 2019, the very end)                                  √
-#  figure out why all these warnings happen (try playing with gap plot)?                                        √
-#  add SP v FP and MLTR vs FP
-
-# TODO
-#   Make sure tables are sortable                                                                           √
-#   Make sure second axes are scaled properly                                                               √
-#   Make sure using ordinals (1st, 2nd, 3rd) on everything                                                  √
-#   Make sure the mode has a header                                                                         √
-
 
 def get_layout(year_id=-1, circuit_id=-1, **kwargs):
     # Get some useful slices

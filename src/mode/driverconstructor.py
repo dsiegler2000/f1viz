@@ -409,7 +409,6 @@ def generate_teammate_diff_comparison_scatter(positions_source, constructor_resu
     :param include_race_labels: Whether to include race labels on the plot
     :return: Teammate diff. comparison scatter, explanation div
     """
-    # TODO is this plot more confusion than it's worth?
     # TODO make this plot use mean lap time percent rather than rank
     logging.info("Generating teammate diff comparison scatter")
     source = pd.DataFrame(columns=["mltr_diff", "mlt_diff", "fp_diff",

@@ -803,7 +803,8 @@ def generate_win_plot(positions_source, driver_id=None, constructor_id=None):
     """
     # TODO refactor to add support for top-n finishes too and dynamically come up with n (like top 6),
     #  see circuitdriver.generate_win_plot and Trello
-    # TODO refactor to add support for points and points per race percent (not really needed cuz points systems change?)
+    # TODO refactor to add support for points and points per race percent (this is needed for yeardriver and
+    #  yearconstructor)
     logging.info("Generating win plot")
     if isinstance(positions_source, dict):
         return Div(text="")
