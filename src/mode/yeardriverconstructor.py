@@ -19,6 +19,8 @@ fastest_lap_data = load_fastest_lap_data()
 
 # TODO something here is messed up, see 1999 Jacques Villeneuve Williams (and try w/ BAR too)
 
+# TODO second pass too
+
 
 def get_layout(year_id=-1, driver_id=-1, constructor_id=-1, **kwargs):
     # Generate slices
