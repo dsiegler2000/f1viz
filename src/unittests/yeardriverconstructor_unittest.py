@@ -125,7 +125,7 @@ for year_id, driver_id, constructor_id in id_list:
             continue
         print(f"Testing year ID {year_id}, driver ID {driver_id}, constructor ID {constructor_id}, {i} / {n}")
         start = time.time()
-        get_layout(year_id=year_id, driver_id=driver_id, constructor_id=constructor_id)
+        get_layout(year_id=year_id, driver_id=driver_id, constructor_id=constructor_id, download_image=False)
         end = time.time()
         elapsed = 1000 * (end - start)
         print(f"Completed in  {elapsed} milliseconds")

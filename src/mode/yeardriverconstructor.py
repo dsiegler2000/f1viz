@@ -4,10 +4,10 @@ from bokeh.layouts import column, row
 from bokeh.models import Div, Spacer, Range1d, FixedTicker
 from pandas import Series
 from data_loading.data_loader import load_results, load_races, load_driver_standings, load_constructor_standings, \
-    load_fastest_lap_data
+    load_fastest_lap_data, load_drivers
 from mode import year, driver, driverconstructor, yeardriver
 import numpy as np
-from utils import get_driver_name, get_constructor_name, PLOT_BACKGROUND_COLOR
+from utils import get_driver_name, get_constructor_name, PLOT_BACKGROUND_COLOR, plot_image_url, vdivider
 
 # Note, ydc=yeardriverconstructor and yd=yeardriver
 
@@ -16,28 +16,26 @@ races = load_races()
 driver_standings = load_driver_standings()
 constructor_standings = load_constructor_standings()
 fastest_lap_data = load_fastest_lap_data()
-
-# TODO something here is messed up, see 1999 Jacques Villeneuve Williams (and try w/ BAR too)
-
-# TODO second pass too
+drivers = load_drivers()
 
 
-def get_layout(year_id=-1, driver_id=-1, constructor_id=-1, **kwargs):
+def get_layout(year_id=-1, driver_id=-1, constructor_id=-1, download_image=True, **kwargs):
     # Generate slices
     year_races = races[races["year"] == year_id]
     year_rids = year_races.index.values
     year_results = results[results["raceId"].isin(year_rids)]
-    yd_results = year_results[year_results["driverId"] == driver_id]
+    ydc_results = year_results[(year_results["driverId"] == driver_id) &
+                               (year_results["constructorId"] == constructor_id)]
 
     logging.info(f"Generating layout for mode YEARDRIVERCONSTRUCTOR in yeardriverconstructor, year_id={year_id}, "
                  f"driver_id={driver_id}, constructor_id={constructor_id}")
 
     # Check if valid
-    if yd_results.shape[0] == 0:
+    if ydc_results.shape[0] == 0:
         return generate_error_layout(year_id, driver_id, constructor_id)
 
     # Generate more slices
-    yd_races = year_races.loc[yd_results["raceId"].values]
+    yd_races = year_races.loc[ydc_results["raceId"].values]
     year_driver_standings = driver_standings[driver_standings["raceId"].isin(year_rids)]
     yd_driver_standings = year_driver_standings[year_driver_standings["driverId"] == driver_id]
     year_constructor_standings = constructor_standings[constructor_standings["raceId"].isin(year_rids)]
@@ -52,20 +50,20 @@ def get_layout(year_id=-1, driver_id=-1, constructor_id=-1, **kwargs):
     wcc_plot = generate_wcc_plot(year_races, year_constructor_standings, year_results, constructor_id)
 
     # Positions plot
-    positions_plot, positions_source = generate_positions_plot(yd_results, yd_driver_standings, yd_fastest_lap_data,
+    positions_plot, positions_source = generate_positions_plot(ydc_results, yd_driver_standings, yd_fastest_lap_data,
                                                                driver_id, year_id)
 
     # Start pos vs finish pos scatter
-    spvfp_scatter = generate_spvfp_scatter(yd_results, yd_races, yd_driver_standings)
+    spvfp_scatter = generate_spvfp_scatter(ydc_results, yd_races, yd_driver_standings)
 
     # Mean lap time rank vs finish pos scatter
-    mltr_fp_scatter = generate_mltr_fp_scatter(yd_results, yd_races, yd_driver_standings)
+    mltr_fp_scatter = generate_mltr_fp_scatter(ydc_results, yd_races, yd_driver_standings)
 
     # Win plot
     win_plot = generate_win_plot(positions_source, driver_id)
 
     # Finishing position bar plot
-    position_dist = generate_finishing_position_bar_plot(yd_results)
+    position_dist = generate_finishing_position_bar_plot(ydc_results)
 
     # Teammate finish pos vs finish pos scatter
     teammatefp_fp_scatter = generate_teammatefp_fp_scatter(positions_source, constructor_results, driver_id)
@@ -80,7 +78,7 @@ def get_layout(year_id=-1, driver_id=-1, constructor_id=-1, **kwargs):
                                                                                               driver_id)
 
     # Results table
-    results_table = generate_results_table(yd_results, yd_fastest_lap_data, year_results, year_fastest_lap_data,
+    results_table = generate_results_table(ydc_results, yd_fastest_lap_data, year_results, year_fastest_lap_data,
                                            driver_id)
 
     # Stats layout
@@ -90,7 +88,15 @@ def get_layout(year_id=-1, driver_id=-1, constructor_id=-1, **kwargs):
     constructor_name = get_constructor_name(constructor_id)
     header = Div(text=f"<h2><b>What did {driver_name}'s {year_id} season with {constructor_name} look like?</b></h2>")
 
+    # Driver image
+    if download_image:
+        image_url = str(drivers.loc[driver_id, "imgUrl"])
+        image_view = plot_image_url(image_url)
+    else:
+        image_view = Div()
+
     middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
+    divider = vdivider()
     layout = column([header,
                      wdc_plot, middle_spacer,
                      wcc_plot, middle_spacer,
@@ -102,7 +108,7 @@ def get_layout(year_id=-1, driver_id=-1, constructor_id=-1, **kwargs):
                      explanation_div, middle_spacer,
                      teammate_comparison_line_plot,
                      results_table,
-                     stats_layout],
+                     row([image_view, divider, stats_layout], sizing_mode="stretch_both")],
                     sizing_mode="stretch_width")
 
     logging.info("Finished generating layout for mode YEARDRIVERCONSTRUCTOR")
@@ -179,12 +185,12 @@ def generate_wcc_plot(year_races, year_constructor_standings, year_results, cons
                         f"classified in this season.")
 
 
-def generate_positions_plot(yd_results, yd_driver_standings, yd_fastest_lap_data, driver_id, year_id):
+def generate_positions_plot(ydc_results, yd_driver_standings, yd_fastest_lap_data, driver_id, year_id):
     """
     Plot WDC position (both rounds and full season), quali, fastest lap, and finishing position rank vs time all on the
     same graph along with smoothed versions of the quali, fastest lap, and finish position ranks.
     Uses driver.generate_positions_plot
-    :param yd_results: YD results
+    :param ydc_results: YDC results
     :param yd_driver_standings: YD driver standings
     :param yd_fastest_lap_data: YD fastest lap data
     :param driver_id: Driver ID
@@ -199,43 +205,55 @@ def generate_positions_plot(yd_results, yd_driver_standings, yd_fastest_lap_data
         smoothing_alpha=0.5,
         include_team_changes=False
     )
-    return driver.generate_positions_plot(driver_years, yd_driver_standings, yd_results, yd_fastest_lap_data, driver_id,
-                                          **kwargs)
+    positions_plot, positions_source = driver.generate_positions_plot(driver_years, yd_driver_standings, ydc_results,
+                                                                      yd_fastest_lap_data, driver_id, **kwargs)
+
+    x_min = positions_source["x"].min() - 0.001
+    x_max = positions_source["x"].max() + 0.001
+    positions_plot.x_range = Range1d(x_min, x_max, bounds=(x_min, x_max))
+    positions_plot.xaxis.ticker = FixedTicker(ticks=positions_source["x"])
+    positions_plot.xaxis.major_label_overrides = {row["x"]: row["roundName"] for idx, row in
+                                                  positions_source.iterrows()}
+    positions_plot.xaxis.major_label_orientation = 0.8 * math.pi / 2
+    positions_plot.xaxis.axis_label = ""
+    positions_plot.xaxis.axis_label = ""
+
+    return positions_plot, positions_source
 
 
-def generate_spvfp_scatter(yd_results, yd_races, yd_driver_standings):
+def generate_spvfp_scatter(ydc_results, yd_races, yd_driver_standings):
     """
     Start pos vs finish pos scatter, uses driver.generate_spvfp_scatter.
-    :param yd_results: YD results
+    :param ydc_results: YDC results
     :param yd_races: YD races
     :param yd_driver_standings: YD driver standings
     :return: Start pos vs finish pos
     """
-    return driver.generate_spvfp_scatter(yd_results, yd_races, yd_driver_standings, include_race_labels=True)
+    return driver.generate_spvfp_scatter(ydc_results, yd_races, yd_driver_standings, include_race_labels=True)
 
 
-def generate_mltr_fp_scatter(yd_results, yd_races, yd_driver_standings):
+def generate_mltr_fp_scatter(ydc_results, yd_races, yd_driver_standings):
     """
     Mean lap time rank vs finish pos scatter, uses driver.generate_mltr_fp_scatter.
-    :param yd_results: YD results
+    :param ydc_results: YDC results
     :param yd_races: YD races
     :param yd_driver_standings: YD driver standings
     :return: Mean lap time rank vs finish pos scatter
     """
-    return driver.generate_mltr_fp_scatter(yd_results, yd_races, yd_driver_standings, include_race_labels=True)
+    return driver.generate_mltr_fp_scatter(ydc_results, yd_races, yd_driver_standings, include_race_labels=True)
 
 
-def generate_results_table(yd_results, yd_fastest_lap_data, year_results, year_fastest_lap_data, driver_id):
+def generate_results_table(ydc_results, yd_fastest_lap_data, year_results, year_fastest_lap_data, driver_id):
     """
     Table of all results this season, uses yeardriver.generate_results_table
-    :param yd_results: YD results
+    :param ydc_results: YDC results
     :param yd_fastest_lap_data: YD fastest lap data
     :param year_results: Year results
     :param year_fastest_lap_data: Year fastest lap data
     :param driver_id: Driver ID
     :return: Results table
     """
-    return yeardriver.generate_results_table(yd_results, yd_fastest_lap_data, year_results, year_fastest_lap_data,
+    return yeardriver.generate_results_table(ydc_results, yd_fastest_lap_data, year_results, year_fastest_lap_data,
                                              driver_id)
 
 
@@ -250,13 +268,13 @@ def generate_win_plot(positions_source, driver_id):
     return driver.generate_win_plot(positions_source, driver_id)
 
 
-def generate_finishing_position_bar_plot(yd_results):
+def generate_finishing_position_bar_plot(ydc_results):
     """
     Plot race finishing position bar chart. Uses driver.generate_finishing_position_bar_plot.
-    :param yd_results: YD results
+    :param ydc_results: YDC results
     :return: Finishing position bar plot layout
     """
-    return driver.generate_finishing_position_bar_plot(yd_results)
+    return driver.generate_finishing_position_bar_plot(ydc_results)
 
 
 def generate_stats_layout(positions_source, comparison_source, constructor_results, year_id, driver_id):
@@ -284,8 +302,9 @@ def generate_stats_layout(positions_source, comparison_source, constructor_resul
     :return: Stats layout
     """
     # TODO add the constructor-specific stuff
-    return yeardriver.generate_stats_layout(positions_source, comparison_source, constructor_results,
-                                            year_id, driver_id)
+    stats_layout = yeardriver.generate_stats_layout(positions_source, comparison_source, constructor_results,
+                                                    year_id, driver_id)
+    return column([stats_layout, Div(height=10)], sizing_mode="fixed")
 
 
 def generate_teammatefp_fp_scatter(positions_source, constructor_results, driver_id):
@@ -321,7 +340,8 @@ def generate_teammate_comparison_line_plot(positions_source, constructor_results
                                                                                                 driver_id,
                                                                                                 **kwargs)
 
-    driverconstructor.mark_teammate_changes(positions_source, constructor_results, driver_id, teammate_fp_plot)
+    driverconstructor.mark_teammate_changes(positions_source, constructor_results, driver_id, teammate_fp_plot,
+                                            x_offset=0.03)
 
     # x axis override
     x_min = positions_source["x"].min() - 0.001
@@ -331,6 +351,7 @@ def generate_teammate_comparison_line_plot(positions_source, constructor_results
     teammate_fp_plot.xaxis.major_label_overrides = {row["x"]: row["roundName"] for idx, row in
                                                     positions_source.iterrows()}
     teammate_fp_plot.xaxis.major_label_orientation = 0.8 * math.pi / 2
+    teammate_fp_plot.xaxis.axis_label = ""
 
     return column([slider, teammate_fp_plot], sizing_mode="stretch_width"), source
 
@@ -413,7 +434,8 @@ def is_valid_input(year_id, driver_id, constructor_id):
     year_races = races[races["year"] == year_id]
     year_rids = year_races.index.values
     year_results = results[results["raceId"].isin(year_rids)]
-    yd_results = year_results[year_results["driverId"] == driver_id]
+    ydc_results = year_results[(year_results["driverId"] == driver_id) &
+                               (year_results["constructorId"] == constructor_id)]
 
-    return yd_results.shape[0] > 0
+    return ydc_results.shape[0] > 0
 

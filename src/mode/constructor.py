@@ -165,7 +165,6 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
     points = 0
     round_num = 1
     driver_changes_glyphs = []
-    round_name = ""
     for year in range(min_year, max_year + 1):
         if races_sublist is None:
             year_subraces = races[races["year"] == year]
@@ -217,6 +216,8 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
             else:
                 current_wcc_standing = np.nan
                 current_wcc_standing_str = ""
+                round_name = get_race_name(race_id)
+                round_num += 1
             race_fastest_lap_data = year_fastest_lap_data[year_fastest_lap_data["raceId"] == race_id]
             if race_fastest_lap_data.shape[0] > 0:
                 avg_lap_rank = race_fastest_lap_data["avg_lap_time_rank"]

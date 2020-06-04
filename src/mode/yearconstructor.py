@@ -179,6 +179,7 @@ def generate_positions_plot(yc_constructor_standings, yc_results, yc_fastest_lap
     positions_plot.xaxis.major_label_overrides = {row["x"]: row["roundName"] for idx, row in
                                                   positions_source.iterrows()}
     positions_plot.xaxis.major_label_orientation = 0.8 * math.pi / 2
+    positions_plot.xaxis.axis_label = ""
 
     return positions_plot, positions_source
 
@@ -203,6 +204,7 @@ def generate_win_plot(positions_source, constructor_id):
         win_plot.xaxis.major_label_overrides = {row["x"]: row["roundName"] for idx, row in
                                                 positions_source.iterrows()}
         win_plot.xaxis.major_label_orientation = 0.8 * math.pi / 2
+        win_plot.xaxis.axis_label = ""
 
     return win_plot
 
@@ -397,6 +399,7 @@ def generate_teammate_comparison_line_plot(yc_results, year_races, yc_driver_sta
     teammate_fp_plot.xaxis.ticker = FixedTicker(ticks=source["x"])
     teammate_fp_plot.xaxis.major_label_overrides = {row["x"]: row["roundName"] for idx, row in source.iterrows()}
     teammate_fp_plot.xaxis.major_label_orientation = 0.8 * math.pi / 2
+    teammate_fp_plot.xaxis.axis_label = ""
     return column([slider, teammate_fp_plot], sizing_mode="stretch_width"), source
 
 

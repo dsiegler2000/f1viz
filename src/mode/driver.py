@@ -160,8 +160,7 @@ def generate_positions_plot(driver_years, driver_driver_standings, driver_result
     max_year = driver_years.max()
     constructor_name = "UNKNOWN"
     points = 0
-    round_num = 1
-    round_name = ""
+    round_num = 0
     for year in range(min_year, max_year + 1):
         if races_sublist is None:
             year_subraces = races[races["year"] == year]
@@ -206,6 +205,8 @@ def generate_positions_plot(driver_years, driver_driver_standings, driver_result
             else:
                 current_wdc_standing = 20
                 current_wdc_standing_str = ""
+                round_name = get_race_name(race_id)
+                round_num += 1
             race_fastest_lap_data = year_fastest_lap_data[year_fastest_lap_data["raceId"] == race_id]
             avg_lap_rank = race_fastest_lap_data["avg_lap_time_rank"]
             if avg_lap_rank.shape[0] > 0:
@@ -985,6 +986,7 @@ def generate_spvfp_scatter(driver_results, driver_races, driver_driver_standings
                                    "year", "constructor_name", "driver_name", "short_name",
                                    "roundNum", "roundName", "roundFlag"])
     color_gen = ColorDashGenerator()
+    round_num = 0
     for idx, row in driver_results.iterrows():
         sp = row["grid"]
         sp_str = int_to_ordinal(sp)
@@ -1012,8 +1014,8 @@ def generate_spvfp_scatter(driver_results, driver_races, driver_driver_standings
             round_num = current_standing["roundNum"].values[0]
             round_name = current_standing["roundName"].values[0]
         else:
-            round_num = ""
-            round_name = ""
+            round_num += 1
+            round_name = get_race_name(row["raceId"])
 
         source = source.append({
             "sp": sp,

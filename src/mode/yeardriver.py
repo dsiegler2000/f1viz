@@ -9,8 +9,9 @@ from bokeh.plotting import figure
 from pandas import Series
 from mode import year, driver, driverconstructor
 from utils import get_driver_name, ColorDashGenerator, get_constructor_name, PLOT_BACKGROUND_COLOR, get_race_name, \
-    int_to_ordinal, get_status_classification, millis_to_str, result_to_str
-from data_loading.data_loader import load_driver_standings, load_results, load_races, load_fastest_lap_data, load_status
+    int_to_ordinal, get_status_classification, millis_to_str, result_to_str, plot_image_url, vdivider
+from data_loading.data_loader import load_driver_standings, load_results, load_races, load_fastest_lap_data, \
+    load_status, load_drivers
 
 # Note, YD = year driver
 
@@ -19,9 +20,10 @@ results = load_results()
 races = load_races()
 fastest_lap_data = load_fastest_lap_data()
 status = load_status()
+drivers = load_drivers()
 
 
-def get_layout(year_id=-1, driver_id=-1, **kwargs):
+def get_layout(year_id=-1, driver_id=-1, download_image=True, **kwargs):
     year_races = races[races["year"] == year_id]
     year_rids = sorted(year_races.index.values)
     year_results = results[results["raceId"].isin(year_rids)].sort_values(by="raceId")
@@ -81,7 +83,15 @@ def get_layout(year_id=-1, driver_id=-1, **kwargs):
     # Header
     header = Div(text=f"<h2><b>{get_driver_name(driver_id)} in {year_id}</b></h2><br>")
 
+    # Driver image
+    if download_image:
+        image_url = str(drivers.loc[driver_id, "imgUrl"])
+        image_view = plot_image_url(image_url)
+    else:
+        image_view = Div()
+
     middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
+    divider = vdivider()
     layout = column([header,
                      wdc_plot, middle_spacer,
                      positions_plot, middle_spacer,
@@ -90,7 +100,7 @@ def get_layout(year_id=-1, driver_id=-1, **kwargs):
                      row([spvfp_scatter, mltr_fp_scatter], sizing_mode="stretch_width"), middle_spacer,
                      teammate_comparison_line_plot,
                      results_table,
-                     stats_layout],
+                     row([image_view, divider, stats_layout], sizing_mode="stretch_both")],
                     sizing_mode="stretch_width")
 
     logging.info("Finished generating layout for mode YEARDRIVER")
@@ -162,6 +172,7 @@ def generate_positions_plot(yd_driver_standings, yd_results, yd_fastest_lap_data
     positions_plot.xaxis.major_label_overrides = {row["x"]: row["roundName"] for idx, row in
                                                   positions_source.iterrows()}
     positions_plot.xaxis.major_label_orientation = 0.8 * math.pi / 2
+    positions_plot.xaxis.axis_label = ""
 
     return positions_plot, positions_source
 
@@ -324,7 +335,7 @@ def generate_win_plot(positions_source, year_results):
     :param year_results: Year results
     :return: Win plot layout
     """
-    # TODO maybe even refactor this to use a version in driver
+    # TODO maybe even refactor this to use a version in driver, but this also has points and pts/race support
     # Inspired by driver.generate_win_plot
     logging.info("Generating win plot")
     if isinstance(positions_source, dict):
@@ -417,6 +428,7 @@ def generate_win_plot(positions_source, year_results):
     win_plot.xaxis.ticker = FixedTicker(ticks=positions_source["x"])
     win_plot.xaxis.major_label_overrides = {row["x"]: row["roundName"] for idx, row in positions_source.iterrows()}
     win_plot.xaxis.major_label_orientation = 0.8 * math.pi / 2
+    win_plot.xaxis.axis_label = ""
 
     # Other y axis (%)
     max_y = win_plot.y_range.end
@@ -534,6 +546,7 @@ def generate_teammate_comparison_line_plot(positions_source, constructor_results
     teammate_fp_plot.xaxis.major_label_overrides = {row["x"]: row["roundName"] for idx, row in
                                                     positions_source.iterrows()}
     teammate_fp_plot.xaxis.major_label_orientation = 0.8 * math.pi / 2
+    teammate_fp_plot.xaxis.axis_label = ""
 
     return column([slider, teammate_fp_plot], sizing_mode="stretch_width"), source
 
@@ -575,6 +588,7 @@ def generate_stats_layout(positions_source, comparison_source, constructor_resul
         highest_race_finish = positions_source.loc[highest_race_finish_idx, "finish_position_int"]
         round_name = positions_source.loc[highest_race_finish_idx, "roundName"]
         highest_race_finish_str = int_to_ordinal(highest_race_finish) + " at " + round_name
+        highest_race_finish_str = highest_race_finish_str.strip()
     num_races = positions_source.shape[0]
     num_races_str = str(num_races)
     points = positions_source["points"].max()

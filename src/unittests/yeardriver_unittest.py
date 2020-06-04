@@ -104,7 +104,7 @@ for year_id, driver_id in id_list:
         driver_name = get_driver_name(driver_id, include_flag=False, just_last=True)
         print(f"Testing year ID {year_id}, driver ID {driver_id}, {i} / {n}")
         start = time.time()
-        get_layout(year_id=year_id, driver_id=driver_id)
+        get_layout(year_id=year_id, driver_id=driver_id, download_image=False)
         end = time.time()
         elapsed = 1000 * (end - start)
         print(f"Completed in  {elapsed} milliseconds")

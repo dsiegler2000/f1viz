@@ -144,13 +144,14 @@ def generate_positions_plot(dc_years, dc_driver_standings, dc_results, dc_fastes
     return positions_plot, positions_source
 
 
-def mark_teammate_changes(positions_source, constructor_results, driver_id, fig):
+def mark_teammate_changes(positions_source, constructor_results, driver_id, fig, x_offset=0.1):
     """
     Marks teammate changes with a vertical line (only teammates who raced for > 5 races).
     :param positions_source: Positions source
     :param constructor_results: Constructor results
     :param driver_id: Driver ID
     :param fig: Figure
+    :param x_offset: Offset on the x axis to draw the teammate name label
     :return: Figure with teammate changes marked (also modifies in place)
     """
     prev_teammate_did = -1
@@ -173,8 +174,8 @@ def mark_teammate_changes(positions_source, constructor_results, driver_id, fig)
                     x = row["x"]
                     line = Span(line_color="white", location=x, dimension="height", line_alpha=0.4, line_width=3.2)
                     fig.add_layout(line)
-                    label = Label(x=x + 0.1, y=18, text=get_driver_name(teammate_did, include_flag=False, just_last=True),
-                                  **label_kwargs)
+                    label = Label(x=x + x_offset, y=18, text=get_driver_name(teammate_did, include_flag=False,
+                                                                             just_last=True), **label_kwargs)
                     fig.add_layout(label)
             prev_teammate_did = teammate_did
     return fig
@@ -504,17 +505,17 @@ def generate_teammate_diff_comparison_scatter(positions_source, constructor_resu
     teammate_diff_scatter.yaxis.ticker = FixedTicker(ticks=np.arange(-45, 45, 5).tolist())
 
     driver_name = get_driver_name(driver_id, include_flag=False, just_last=True)
-    explanation = f"This plot is meant to show when {driver_name} was faster than his/her teammate, but yet finished " \
-                  f"lower, and vice \nversa, along with the more regular cases of when {driver_name} was faster than " \
-                  f"his/her teammate, and finished higher (and vice versa).<br>To compute the x axis, first every " \
-                  f"driver in each race is ranked based on their average lap time (1 being fastest). Next, the x axis" \
-                  f" value is computed for every race as {driver_name}'s fastest lap rank - teammate's " \
-                  f"fastest lap rank.<br>The y axis is computed for every race as {driver_name}'s finishing position " \
-                  f"- teammate's finishing position (official classification is used so therefore DNFs are plotted)." \
-                  f"<br>Thus, dots in the +x region represent races where {driver_name} was slower than his/her " \
-                  f"teammate overall and dots in the +y region represent races where {driver_name} finished lower " \
-                  f"than his/her teammate.<br>Some may view this as a \"When/how often does {driver_name} " \
-                  f"get screwed over\" chart."
+    explanation = f"The right plot is meant to show when {driver_name} was faster than his/her teammate, but yet " \
+                  f"finished lower, and vice \nversa, along with the more regular cases of when {driver_name} was " \
+                  f"faster than his/her teammate, and finished higher (and vice versa).<br>To compute the x axis, " \
+                  f"first every driver in each race is ranked based on their average lap time (1 being fastest). " \
+                  f"Next, the x axis value is computed for every race as {driver_name}'s fastest lap rank - " \
+                  f"teammate's fastest lap rank.<br>The y axis is computed for every race as {driver_name}'s " \
+                  f"finishing position - teammate's finishing position (official classification is used so " \
+                  f"therefore DNFs are plotted).<br>Thus, dots in the +x region represent races where {driver_name} " \
+                  f"was slower than his/her teammate overall and dots in the +y region represent races where " \
+                  f"{driver_name} finished lower than his/her teammate." \
+                  f"<br>Some may view this as a \"When/how often does {driver_name} get screwed over chart."
     explanation = Div(text=explanation)
 
     teammate_diff_scatter.scatter(x="mltr_diff", y="fp_diff", source=source,

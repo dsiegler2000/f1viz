@@ -190,6 +190,7 @@ def generate_wdc_plot(year_driver_standings, year_results, highlight_did=None, m
                                             year_driver_standings.iterrows()}
     wdc_plot.xaxis.ticker = FixedTicker(ticks=np.arange(1, num_rounds + 1))
     wdc_plot.xaxis.major_label_orientation = 0.8 * math.pi / 2
+    wdc_plot.xaxis.axis_label = ""
 
     # Legend
     legend = sorted(legend, key=lambda l: l.index)
@@ -286,6 +287,7 @@ def generate_wcc_plot(year_constructor_standings, year_results, highlight_cid=No
                                                      year_constructor_standings.iterrows()}
     constructors_plot.xaxis.ticker = FixedTicker(ticks=np.arange(1, num_rounds + 1))
     constructors_plot.xaxis.major_label_orientation = 0.8 * math.pi / 2
+    constructors_plot.xaxis.axis_label = ""
 
     # Legend
     legend = sorted(legend, key=lambda l: l.index)
@@ -704,6 +706,7 @@ def generate_win_plots(driver_win_source, constructor_win_source):
                                          for idx, src_row in driver_win_source.iterrows()}
         p.xaxis.major_label_orientation = 0.8 * math.pi / 2
         p.xaxis.major_tick_line_alpha = 0.2
+        p.xaxis.axis_label = ""
 
     # Constructors
     constructor_win_source["win_pct"] = constructor_win_source["wins"] / constructor_win_source["num_races"]
@@ -815,6 +818,7 @@ def generate_win_plots(driver_win_source, constructor_win_source):
                                          for idx, src_row in constructor_win_source.iterrows()}
         p.xaxis.major_label_orientation = 0.8 * math.pi / 2
         p.xaxis.major_tick_line_alpha = 0.2
+        p.xaxis.axis_label = ""
 
     return column([row([driver_win_plot, constructor_win_plot], sizing_mode="stretch_width"),
                    row([driver_podium_plot, constructor_podium_plot], sizing_mode="stretch_width"),

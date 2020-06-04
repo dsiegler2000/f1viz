@@ -263,15 +263,15 @@ min       335.409880
 max      2340.843916
 95% TIME: 1900ms
 For Kimi with Ferrari in 2015:
-Completed generate_wdc_plot in  446.43402099609375 milliseconds
-Completed generate_wcc_plot in  77.1491527557373 milliseconds
-Completed generate_positions_plot in  187.5479221343994 milliseconds
-Completed generate_spvfp_scatter in  158.79011154174805 milliseconds
-Completed generate_mltr_fp_scatter in  175.14872550964355 milliseconds
-Completed generate_win_plot in  146.39925956726074 milliseconds
-Completed generate_finishing_position_bar_plot in  4.892110824584961 milliseconds
-Completed generate_teammatefp_fp_scatter in  133.69321823120117 milliseconds
-Completed generate_teammate_diff_comparison_scatter in  164.95490074157715 milliseconds
-Completed generate_teammate_comparison_line_plot in  173.62308502197266 milliseconds
-Completed generate_results_table in  161.54217720031738 milliseconds
-Completed generate_stats_layout in  3.280162811279297 milliseconds
+Completed generate_wdc_plot in 474.76983070373535 milliseconds
+Completed generate_wcc_plot in 95.33810615539551 milliseconds
+Completed generate_positions_plot in 320.58191299438477 milliseconds
+Completed generate_spvfp_scatter in 148.02098274230957 milliseconds
+Completed generate_mltr_fp_scatter in 168.73693466186523 milliseconds
+Completed generate_win_plot in 174.16715621948242 milliseconds
+Completed generate_finishing_position_bar_plot in 4.914045333862305 milliseconds
+Completed generate_teammatefp_fp_scatter in 137.24017143249512 milliseconds
+Completed generate_teammate_diff_comparison_scatter in 154.10399436950684 milliseconds
+Completed generate_teammate_comparison_line_plot in 188.3401870727539 milliseconds
+Completed generate_results_table in 167.91796684265137 milliseconds
+Completed generate_stats_layout in 3.103971481323242 milliseconds
