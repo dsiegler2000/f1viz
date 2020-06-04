@@ -48,7 +48,7 @@ constructor_results = year_results.loc[constructor_results_idxs]
 
 # More focused WDC plot
 generate_wdc_plot = time_decorator(generate_wdc_plot)
-wdc_plot = generate_wdc_plot(year_races, year_driver_standings, year_results, driver_id, consider_window=2)
+wdc_plot = generate_wdc_plot(year_races, year_driver_standings, year_results, driver_id)
 
 # Positions plot
 generate_positions_plot = time_decorator(generate_positions_plot)
@@ -69,7 +69,7 @@ spvfp_scatter = generate_spvfp_scatter(yd_results, yd_races, yd_driver_standings
 
 # Mean lap time rank vs finish pos scatter
 generate_mltr_fp_scatter = time_decorator(generate_mltr_fp_scatter)
-mltr_fp_scatter = generate_mltr_fp_scatter(yd_results, yd_races, yd_driver_standings, driver_id)
+mltr_fp_scatter = generate_mltr_fp_scatter(yd_results, yd_races, yd_driver_standings)
 
 # Teammate comparison line plot
 generate_teammate_comparison_line_plot = time_decorator(generate_teammate_comparison_line_plot)

@@ -20,17 +20,6 @@ races = load_races()
 fastest_lap_data = load_fastest_lap_data()
 status = load_status()
 
-# TODO do second pass on me next :)
-#  come up with 1 more plot this is looking a bit barren, maybe like comparing all races to best/worst race somehow,
-#   maybe also look at variability or something?, maybe just a simple plot comparing to other drivers?
-
-# TODO
-#  Go through each existing mode and do a "second pass" to add simple features and make small clean-up changes
-#   Make sure tables are sortable
-#   Make sure second axes are scaled properly
-#   Make sure using ordinals (1st, 2nd, 3rd) on everything
-#   Make sure the mode has a header
-
 
 def get_layout(year_id=-1, driver_id=-1, **kwargs):
     year_races = races[races["year"] == year_id]
@@ -75,7 +64,7 @@ def get_layout(year_id=-1, driver_id=-1, **kwargs):
     spvfp_scatter = generate_spvfp_scatter(yd_results, yd_races, yd_driver_standings)
 
     # Mean lap time rank vs finish pos scatter
-    mltr_fp_scatter = generate_mltr_fp_scatter(yd_results, yd_races, yd_driver_standings, driver_id)
+    mltr_fp_scatter = generate_mltr_fp_scatter(yd_results, yd_races, yd_driver_standings)
 
     # Teammate comparison line plot
     teammate_comparison_line_plot, comparison_source = generate_teammate_comparison_line_plot(positions_source,
@@ -89,8 +78,12 @@ def get_layout(year_id=-1, driver_id=-1, **kwargs):
     # Stats
     stats_layout = generate_stats_layout(positions_source, comparison_source, constructor_results, year_id, driver_id)
 
+    # Header
+    header = Div(text=f"<h2><b>{get_driver_name(driver_id)} in {year_id}</b></h2><br>")
+
     middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
-    layout = column([wdc_plot, middle_spacer,
+    layout = column([header,
+                     wdc_plot, middle_spacer,
                      positions_plot, middle_spacer,
                      win_plot, middle_spacer,
                      finishing_position_bar_plot, middle_spacer,
@@ -153,7 +146,8 @@ def generate_positions_plot(yd_driver_standings, yd_results, yd_fastest_lap_data
     driver_years = np.array([year_id])
     kwargs = dict(
         smoothing_alpha=0.2,
-        smoothing_muted=True
+        smoothing_muted=True,
+        include_team_changes=False
     )
     positions_plot, positions_source = driver.generate_positions_plot(driver_years, yd_driver_standings, yd_results,
                                                                       yd_fastest_lap_data, driver_id, **kwargs)
@@ -267,7 +261,7 @@ def generate_results_table(yd_results, yd_fastest_lap_data, year_results, year_f
         elif finish_pos == 1:
             time_str = millis_to_str(time)
         else:
-            time_str = ""
+            time_str = "~"
         if race_driver_fastest_lap_data.shape[0] > 0:
             fastest_lap_time = race_driver_fastest_lap_data["fastest_lap_time_millis"].values[0]
             fastest_lap_time_str = millis_to_str(fastest_lap_time)
@@ -279,10 +273,12 @@ def generate_results_table(yd_results, yd_fastest_lap_data, year_results, year_f
                     fastest_time = fastest_time.values[0]
                     fastest_gap = millis_to_str(fastest_lap_time - fastest_time)
                     fastest_lap_time_str = millis_to_str(fastest_lap_time) + " (+" + fastest_gap + ")"
+            if fastest_lap_time_str == "":
+                fastest_lap_time_str = "~"
             fastest_avg_idx = race_fastest_lap_data["avg_lap_time_millis"].idxmin()
             avg_lap_time = race_driver_fastest_lap_data["avg_lap_time_millis"].values[0]
             if np.isnan(avg_lap_time):
-                avg_lap_time_str = ""
+                avg_lap_time_str = "~"
             elif race_fastest_lap_data.loc[fastest_avg_idx, "driver_id"] == driver_id or np.isnan(avg_lap_time):
                 avg_lap_time_str = millis_to_str(avg_lap_time) + " (Fastest Avg.)"
             else:
@@ -290,8 +286,8 @@ def generate_results_table(yd_results, yd_fastest_lap_data, year_results, year_f
                 avg_gap = millis_to_str(avg_lap_time - fastest_avg_time)
                 avg_lap_time_str = millis_to_str(avg_lap_time) + " (+" + avg_gap + ")"
         else:
-            fastest_lap_time_str = ""
-            avg_lap_time_str = ""
+            fastest_lap_time_str = "~"
+            avg_lap_time_str = "~"
         source = source.append({
             "race_name": race_name,
             "constructor_name": constructor_name,
@@ -337,7 +333,7 @@ def generate_win_plot(positions_source, year_results):
                                        "win_pct", "wins", "win_pct_str",
                                        "podium_pct", "podiums", "podium_pct_str",
                                        "ppr_pct", "points", "ppr_pct_str"
-                                       "constructor_name", "wdc_final_standing"])
+                                       "constructor_name", "wdc_final_standing", "wdc_final_standing_str"])
     wins = 0
     podiums = 0
     n_races = 0
@@ -365,6 +361,7 @@ def generate_win_plot(positions_source, year_results):
             "ppr_pct": ppr_pct,
             "constructor_name": row["constructor_name"],
             "wdc_final_standing": row["wdc_final_standing"],
+            "wdc_final_standing_str": int_to_ordinal(row["wdc_final_standing"]),
             "win_pct_str": str(round(100 * win_pct, 1)) + "%",
             "podium_pct_str": str(round(100 * podium_pct, 1)) + "%",
             "ppr_pct_str": str(round(100 * ppr_pct, 1)) + "%"
@@ -467,7 +464,7 @@ def generate_win_plot(positions_source, year_results):
         ("Number of Podiums", "@podiums (@podium_pct_str)"),
         ("Points", "@points (@ppr_pct_str of max pts. possible)"),
         ("Constructor", "@constructor_name"),
-        ("Final Position this year", "@wdc_final_standing")
+        ("Final Position this year", "@wdc_final_standing_str")
     ]))
 
     # Crosshair tooltip
@@ -496,17 +493,15 @@ def generate_spvfp_scatter(yd_results, yd_races, yd_driver_standings):
     return driver.generate_spvfp_scatter(yd_results, yd_races, yd_driver_standings, include_race_labels=True)
 
 
-def generate_mltr_fp_scatter(yd_results, yd_races, yd_driver_standings, driver_id):
+def generate_mltr_fp_scatter(yd_results, yd_races, yd_driver_standings):
     """
     Plot mean lap time vs finish position scatter plot (see `driver.generate_mltr_fp_scatter`)
     :param yd_results: YD results
     :param yd_races: YD races
     :param yd_driver_standings: YD driver standings
-    :param driver_id: Driver ID
     :return: Mean lap time rank vs finish pos scatter plot layout
     """
-    return driver.generate_mltr_fp_scatter(yd_results, yd_races, yd_driver_standings, driver_id,
-                                           include_race_labels=True)
+    return driver.generate_mltr_fp_scatter(yd_results, yd_races, yd_driver_standings, include_race_labels=True)
 
 
 def generate_teammate_comparison_line_plot(positions_source, constructor_results, yd_results, driver_id):

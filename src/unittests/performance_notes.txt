@@ -158,15 +158,15 @@ min       133.615732
 max      2877.269030
 95% RUN TIME: 2000ms
 For Vettel in 2013:
-Completed generate_wdc_plot in  586.820125579834 milliseconds
-Completed generate_positions_plot in  252.67267227172852 milliseconds
-Completed generate_win_plot in  179.0769100189209 milliseconds
-Completed generate_finishing_position_bar_plot in  5.19108772277832 milliseconds
-Completed generate_spvfp_scatter in  146.10719680786133 milliseconds
-Completed generate_mltr_fp_scatter in  196.78807258605957 milliseconds
-Completed generate_teammate_comparison_line_plot in  175.8437156677246 milliseconds
-Completed generate_results_table in  166.1362648010254 milliseconds
-Completed generate_stats_layout in  3.4809112548828125 milliseconds
+Completed generate_wdc_plot in 507.2927474975586 milliseconds
+Completed generate_positions_plot in 336.41695976257324 milliseconds
+Completed generate_win_plot in 171.91600799560547 milliseconds
+Completed generate_finishing_position_bar_plot in 28.63001823425293 milliseconds
+Completed generate_spvfp_scatter in 145.83826065063477 milliseconds
+Completed generate_mltr_fp_scatter in 169.66700553894043 milliseconds
+Completed generate_teammate_comparison_line_plot in 219.29502487182617 milliseconds
+Completed generate_results_table in 141.07704162597656 milliseconds
+Completed generate_stats_layout in 3.123044967651367 milliseconds
 
 yearconstructor.py
 count     900.000000

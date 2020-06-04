@@ -115,7 +115,7 @@ def get_layout(driver_id=-1, download_image=True, **kwargs):
 def generate_positions_plot(driver_years, driver_driver_standings, driver_results, driver_fastest_lap_data, driver_id,
                             title=None, smoothing_alpha=0.05, minor_line_width=1.7, major_line_width=2.8,
                             smoothing_muted=False, races_sublist=None, show_mean_finish_pos=False,
-                            include_lap_times=False):
+                            include_lap_times=False, include_team_changes=True):
     """
     Plots WDC standing (calculated per-race and per-season), quali rank (per-race), fastest lap rank (per-race), and
     finishing position (per-race) all on the same plot.
@@ -133,6 +133,7 @@ def generate_positions_plot(driver_years, driver_driver_standings, driver_result
     show positions at just a specific circuit, set to None if looking at all races
     :param show_mean_finish_pos: If set to True, will show mean finish position that year instead of WDC finish pos
     :param include_lap_times: If set to True, will plot average lap time of every race
+    :param include_team_changes: If set to True, will include lines for team changes
     :return: Plot layout, data source
     """
     # TODO add smoothing slider
@@ -363,7 +364,8 @@ def generate_positions_plot(driver_years, driver_driver_standings, driver_result
     positions_plot.add_tools(CrosshairTool(dimensions="both", line_color="white", line_alpha=0.6))
 
     # Mark team changes
-    mark_team_changes(driver_years, driver_results, positions_plot, source)
+    if include_team_changes:
+        mark_team_changes(driver_years, driver_results, positions_plot, source)
 
     return positions_plot, source
 

@@ -137,7 +137,8 @@ def generate_positions_plot(dc_years, dc_driver_standings, dc_results, dc_fastes
     title += get_constructor_name(constructor_id)
     title += " (" + rounds_to_str(dc_years) + ")"
     positions_plot, positions_source = driver.generate_positions_plot(dc_years, dc_driver_standings, dc_results,
-                                                                      dc_fastest_lap_data, driver_id, title=title)
+                                                                      dc_fastest_lap_data, driver_id, title=title,
+                                                                      include_team_changes=False)
     subtitle = "Teammates who stayed for more than five races are marked with a vertical line."
     positions_plot.add_layout(Title(text=subtitle, text_font_style="italic"), "above")
     return positions_plot, positions_source
@@ -585,10 +586,10 @@ def generate_teammate_comparison_line_plot(positions_source, constructor_results
     """
     # TODO add mean lap time percent to this plot
     logging.info("Generating teammate finish pos. vs driver finish pos line plot")
-    source = pd.DataFrame(columns=["x", "year", "race_id",
+    source = pd.DataFrame(columns=["x", "year", "race_id", "roundNum", "roundName",
                                    "driver_fp", "teammate_fp",
                                    "driver_fp_str", "teammate_fp_str"
-                                   "year", "roundNum", "roundName", "wdc_final_standing", "teammate_name"])
+                                   "wdc_final_standing", "wdc_final_standing_str", "teammate_name"])
     prev_teammate_did = -1
     teammate_name = ""
     for idx, row in positions_source.iterrows():
@@ -621,6 +622,7 @@ def generate_teammate_comparison_line_plot(positions_source, constructor_results
                     "roundNum": row["roundNum"],
                     "roundName": row["roundName"],
                     "wdc_final_standing": row["wdc_final_standing"],
+                    "wdc_final_standing_str": int_to_ordinal(row["wdc_final_standing"]),
                     "teammate_name": teammate_name
                 }, ignore_index=True)
 
@@ -713,7 +715,7 @@ def generate_teammate_comparison_line_plot(positions_source, constructor_results
         ("Teammate Finish Position", "@teammate_fp_str"),
         ("Year", "@year"),
         ("Round", "@roundNum - @roundName"),
-        ("Final Position this year", "@wdc_final_standing")
+        ("Final Position this year", "@wdc_final_standing_str")
     ]))
 
     # Crosshair tooltip

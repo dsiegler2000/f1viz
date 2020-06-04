@@ -194,7 +194,8 @@ def generate_positions_plot(yd_results, yd_driver_standings, yd_fastest_lap_data
     kwargs = dict(
         title=driver_name + " in " + str(year_id),
         smoothing_muted=True,
-        smoothing_alpha=0.5
+        smoothing_alpha=0.5,
+        include_team_changes=False
     )
     return driver.generate_positions_plot(driver_years, yd_driver_standings, yd_results, yd_fastest_lap_data, driver_id,
                                           **kwargs)
