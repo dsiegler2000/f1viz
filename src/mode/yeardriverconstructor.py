@@ -22,10 +22,10 @@ drivers = load_drivers()
 def get_layout(year_id=-1, driver_id=-1, constructor_id=-1, download_image=True, **kwargs):
     # Generate slices
     year_races = races[races["year"] == year_id]
-    year_rids = year_races.index.values
+    year_rids = sorted(year_races.index.values)
     year_results = results[results["raceId"].isin(year_rids)]
     ydc_results = year_results[(year_results["driverId"] == driver_id) &
-                               (year_results["constructorId"] == constructor_id)]
+                               (year_results["constructorId"] == constructor_id)].sort_values(by="raceId")
 
     logging.info(f"Generating layout for mode YEARDRIVERCONSTRUCTOR in yeardriverconstructor, year_id={year_id}, "
                  f"driver_id={driver_id}, constructor_id={constructor_id}")
@@ -39,6 +39,7 @@ def get_layout(year_id=-1, driver_id=-1, constructor_id=-1, download_image=True,
     year_driver_standings = driver_standings[driver_standings["raceId"].isin(year_rids)]
     yd_driver_standings = year_driver_standings[year_driver_standings["driverId"] == driver_id]
     year_constructor_standings = constructor_standings[constructor_standings["raceId"].isin(year_rids)]
+    year_constructor_standings = year_constructor_standings.sort_values(by="raceId")
     year_fastest_lap_data = fastest_lap_data[fastest_lap_data["raceId"].isin(year_rids)]
     yd_fastest_lap_data = year_fastest_lap_data[year_fastest_lap_data["driver_id"] == driver_id]
     constructor_results = year_results[year_results["constructorId"] == constructor_id]

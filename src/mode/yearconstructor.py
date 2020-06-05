@@ -2,16 +2,14 @@ import logging
 import math
 import pandas as pd
 from bokeh.layouts import column, row
-from bokeh.models import Div, Spacer, Range1d, FixedTicker, TableColumn, DataTable, ColumnDataSource, CrosshairTool, \
-    HoverTool, Slider, Legend, LegendItem, Span, Title, Label
-from bokeh.plotting import figure
+from bokeh.models import Div, Spacer, Range1d, FixedTicker, TableColumn, DataTable, ColumnDataSource
 from pandas import Series
 import numpy as np
 from utils import get_constructor_name, PLOT_BACKGROUND_COLOR, get_race_name, int_to_ordinal, \
     get_status_classification, millis_to_str, get_driver_name, result_to_str
 from data_loading.data_loader import load_results, load_constructor_standings, load_races, load_fastest_lap_data, \
     load_status, load_driver_standings
-from mode import year, constructor, driver, driverconstructor
+from mode import year, constructor, driver
 
 # Note, YC = year constructor
 
@@ -316,6 +314,8 @@ def generate_results_table(yc_results, yc_fastest_lap_data, year_results, year_f
 
     if year_only:
         source = source.sort_values(by="race_name", ascending=False)
+    else:
+        source = source.sort_values(by="year", ascending=False)
 
     results_columns = [
         TableColumn(field="quali_pos_str", title="Grid Pos.", width=75),

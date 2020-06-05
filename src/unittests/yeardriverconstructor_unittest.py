@@ -108,7 +108,7 @@ for constructor_id in constructors.index.unique():
         for year_id in races["year"].unique():
             id_list.append((year_id, driver_id, constructor_id))
 n_original = len(id_list)
-pct_reduce = 0.002  # Out of 1
+pct_reduce = 0.02  # Out of 1
 id_list = np.array(id_list)
 id_list_idxs = np.random.choice(len(id_list), int(pct_reduce * n_original), replace=False)
 id_list = id_list[id_list_idxs].tolist()
@@ -120,8 +120,8 @@ for year_id, driver_id, constructor_id in id_list:
         i += 1
         if not is_valid_input(year_id, driver_id, constructor_id):
             invalid += 1
-            if invalid % 100 == 0:
-                print(str(round(100 * invalid / i, 1)) + "% of combos invalid currently")
+            if invalid % 500 == 0:
+                print(str(round(100 * invalid / i, 2)) + "% of combos invalid currently")
             continue
         print(f"Testing year ID {year_id}, driver ID {driver_id}, constructor ID {constructor_id}, {i} / {n}")
         start = time.time()

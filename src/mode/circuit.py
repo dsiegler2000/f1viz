@@ -3,7 +3,7 @@ from collections import defaultdict
 import numpy as np
 from bokeh.layouts import column, row
 from bokeh.models import Div, HoverTool, LegendItem, Legend, CrosshairTool, Range1d, DataRange1d, LinearAxis, \
-    DatetimeTickFormatter, Spacer, Span, ColumnDataSource, TableColumn, DataTable, NumeralTickFormatter, Title
+    DatetimeTickFormatter, Spacer, Span, ColumnDataSource, TableColumn, DataTable, NumeralTickFormatter, Title, Label
 from bokeh.plotting import figure
 from data_loading.data_loader import load_circuits, load_fastest_lap_data, load_races, load_qualifying, load_results, \
     load_driver_standings
@@ -425,11 +425,11 @@ def generate_spmfp_plot(circuit_years, circuit_races, circuit_results):
         min_year -= 1
         max_year += 1
     spfp_plot = figure(
-        title=u"Mean Start Position minus Finish Position \u2014 How many places do drivers make up on average?",
+        title=u"Average Start Position minus Finish Position \u2014 How many places do drivers make up on average?",
         x_axis_label="Year",
-        y_axis_label="Mean start position minus finish position",
+        y_axis_label="Average start position minus finish position",
         x_range=Range1d(min_year, max_year, bounds=(min_year, max_year + 3)),
-        y_range=Range1d(min_y - 2, max_y + 2, bounds=(min_y - 2, max_y + 2)),
+        y_range=Range1d(min(min_y - 2, -1), max_y + 2, bounds=(min(min_y - 2, -1), max_y)),
         tools="pan,xbox_zoom,xwheel_zoom,reset,box_zoom,wheel_zoom,save"
     )
 
@@ -457,13 +457,25 @@ def generate_spmfp_plot(circuit_years, circuit_races, circuit_results):
 
     # Legend
     legend_items = [
-        LegendItem(label="Mean Start - Finish Pos.", renderers=[mspmfp_line, mspmfp_mean_line]),
+        LegendItem(label="Average Start - Finish Pos.", renderers=[mspmfp_line, mspmfp_mean_line]),
         LegendItem(label="Number of DNFs", renderers=[dnf_line, dnf_mean_line]),
     ]
     legend = Legend(items=legend_items, location="top_right", glyph_height=15, spacing=2, inactive_fill_color="gray")
     spfp_plot.add_layout(legend, "right")
     spfp_plot.legend.click_policy = "mute"
     spfp_plot.legend.label_text_font_size = "12pt"  # The default font size
+
+    # Labels
+    text_label_kwargs = dict(x=min_year + 0.5,
+                             render_mode="canvas",
+                             text_color="white",
+                             text_font_size="12pt",
+                             border_line_color="white",
+                             border_line_alpha=0.7)
+    label1 = Label(y=-0.9, text=" Finish lower than started ", **text_label_kwargs)
+    label2 = Label(y=0.4, text=" Finish higher than start ", **text_label_kwargs)
+    spfp_plot.add_layout(label1)
+    spfp_plot.add_layout(label2)
 
     # Hover tooltip
     spfp_plot.add_tools(HoverTool(show_arrow=False, tooltips=[

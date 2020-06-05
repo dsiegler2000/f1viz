@@ -339,9 +339,9 @@ def generate_mltr_position_scatter(year_fastest_lap_data, year_results, year_dri
                                    "constructor_final_standing", "constructor_final_standing_str",
                                    "constructor_mean_rank", "color"])
     position_mlt_scatter = figure(
-        title=u"Constructor Mean Lap Time Rank versus WDC Position \u2014 Who did well with a poor car?",
-        x_axis_label="Constructor Mean Lap Time Rank",
-        y_axis_label="World Driver's Championship Final Position",
+        title=u"Constructor Avg. Lap Time Rank versus WDC Position \u2014 Who did well with a poor car?",
+        x_axis_label="Constructor Average Lap Time Rank",
+        y_axis_label="WDC Final Position",
         tools="pan,reset,save",
         x_range=Range1d(0, 12, bounds=(0, 14)),
         y_range=Range1d(0, 22, bounds=(0, 60)),
@@ -349,6 +349,8 @@ def generate_mltr_position_scatter(year_fastest_lap_data, year_results, year_dri
     )
     position_mlt_scatter.xaxis.ticker = FixedTicker(ticks=np.arange(2, 100, 2).tolist() + [1])
     position_mlt_scatter.yaxis.ticker = FixedTicker(ticks=np.arange(4, 100, 4).tolist() + [1])
+    position_mlt_scatter.xaxis.major_label_overrides = {i: int_to_ordinal(i) for i in range(1, 60)}
+    position_mlt_scatter.yaxis.major_label_overrides = {i: int_to_ordinal(i) for i in range(1, 60)}
 
     explanation = "The x axis is computed by finding the average lap time of every constructor at every race, and " \
                   "then for every race, ranking each constructor based on average lap time. Those ranks are then " \
@@ -461,10 +463,12 @@ def generate_wins_pie_plots(year_results):
         wins_source.loc[did, "driver_name"] = get_driver_name(did)
         wins_source.loc[did, "constructor_name"] = get_constructor_name(cid)
 
-    driver_pie_chart = figure(title="Pie Chart", toolbar_location=None,
-                              tools="hover", tooltips="Name: @driver_name<br>"
-                                                      "Wins: @num_wins (@pct_wins_str)<br>"
-                                                      "Constructor: @constructor_name",
+    driver_pie_chart = figure(title=u"Race Winners \u2014 Drivers",
+                              toolbar_location=None,
+                              tools="hover",
+                              tooltips="Name: @driver_name<br>"
+                                       "Wins: @num_wins (@pct_wins_str)<br>"
+                                       "Constructor: @constructor_name",
                               x_range=(-0.5, 0.5), y_range=(-0.5, 0.5))
 
     driver_pie_chart.wedge(x=0, y=0, radius=0.4, start_angle=cumsum("angle", include_zero=True),
@@ -488,7 +492,9 @@ def generate_wins_pie_plots(year_results):
         wins_source.loc[cid, "color"] = color
         wins_source.loc[cid, "constructor_name"] = get_constructor_name(cid)
 
-    constructor_pie_chart = figure(title="Pie Chart", toolbar_location=None, tools="hover",
+    constructor_pie_chart = figure(title=u"Race Winners \u2014 Drivers",
+                                   toolbar_location=None,
+                                   tools="hover",
                                    tooltips="Name: @constructor_name<br>"
                                             "Wins: @num_wins (@pct_wins_str)<br>",
                                    x_range=(-0.5, 0.5), y_range=(-0.5, 0.5))
@@ -544,8 +550,8 @@ def generate_msp_position_scatter(year_results, year_driver_standings):
         }, ignore_index=True)
 
     mean_sp_scatter = figure(
-        title="Mean Start Position vs WDC Finish Position",
-        x_axis_label="Mean Start Position",
+        title="Average Start Position vs WDC Finish Position",
+        x_axis_label="Avg. Start Position",
         y_axis_label="WDC Final Position",
         x_range=Range1d(0, 22, bounds=(0, 60)),
         y_range=Range1d(0, 22, bounds=(0, 60)),
@@ -555,6 +561,8 @@ def generate_msp_position_scatter(year_results, year_driver_standings):
     mean_sp_scatter.line(x=[-60, 60], y=[-60, 60], color="white", line_alpha=0.5)
     mean_sp_scatter.xaxis.ticker = FixedTicker(ticks=np.arange(5, 100, 5).tolist() + [1])
     mean_sp_scatter.yaxis.ticker = FixedTicker(ticks=np.arange(5, 100, 5).tolist() + [1])
+    mean_sp_scatter.xaxis.major_label_overrides = {i: int_to_ordinal(i) for i in range(1, 60)}
+    mean_sp_scatter.yaxis.major_label_overrides = {i: int_to_ordinal(i) for i in range(1, 60)}
 
     mean_sp_scatter.scatter(x="mean_sp", y="driver_final_standing", source=source, size=8, color="color")
 

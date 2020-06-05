@@ -203,16 +203,17 @@ def generate_stats_layout(race_quali, race_results, race_laps, circuit_id, race_
         race_stats += template.format("Time: ".ljust(13), fastest_lap_time + " on lap " + str(fastest_lap_number))
     if len(podium_info) > 0:
         race_stats += header_template.format("Podium")
-        race_stats += template.format("First: ".ljust(13), podium_info[0][0] + " (" + podium_info[0][1]) + ")"
-        race_stats += template.format("Second: ".ljust(13), podium_info[1][0] + " (" + podium_info[1][1]) + ")"
-        race_stats += template.format("Third: ".ljust(13), podium_info[2][0] + " (" + podium_info[2][1]) + ")"
+        race_stats += template.format("First: ".ljust(13), podium_info[0][0] + " (" + podium_info[0][1] + ")")
+        race_stats += template.format("Second: ".ljust(13), podium_info[1][0] + " (" + podium_info[1][1] + ")")
+        race_stats += template.format("Third: ".ljust(13), podium_info[2][0] + " (" + podium_info[2][1] + ")")
 
     stats_div = Div(text=race_stats)
 
     divider = vdivider()
     return column([row([image_view, divider, quali_table], sizing_mode="stretch_both"),
                    row([impacts, divider, results_table], sizing_mode="stretch_both"),
-                   row([fastest_lap_table, divider, stats_div], sizing_mode="stretch_both"),
+                   row([fastest_lap_table, divider], sizing_mode="stretch_width"),
+                   stats_div,
                    Div(height=100)], sizing_mode="stretch_width")
 
 
@@ -818,7 +819,7 @@ def generate_pit_stop_plot(race_pit_stops, cached_driver_map, race_laps):
     pit_stop_plot = figure(
         title=u"Pit stop plot \u2014 every time a driver pits",
         x_axis_label="Lap",
-        y_axis_label="Lap Time",
+        y_axis_label="",
         x_range=Range1d(0.5, max_laps + 1, bounds=(0.5, max_laps + 1)),
         plot_height=30 * len(cached_driver_map),
         tools="reset,save"
@@ -1045,6 +1046,7 @@ def generate_position_plot(race_laps, cached_driver_map, highlight_dids=None, mu
     )
     position_plot.xaxis.ticker = FixedTicker(ticks=[1] + list(np.arange(10, 200, 10)))
     position_plot.yaxis.ticker = FixedTicker(ticks=[1] + list(np.arange(5, 60, 5)))
+    position_plot.yaxis.major_label_overrides = {i: int_to_ordinal(i) for i in range(1, 60)}
 
     legend = []
     for driver_id in race_laps["driverId"].unique():

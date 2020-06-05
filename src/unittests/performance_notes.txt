@@ -252,15 +252,15 @@ Completed mark_pit_stops in  5.161046981811523 milliseconds
 Completed generate_quali_table in  61.83767318725586 milliseconds
 Completed generate_stats_layout in  435.6050491333008 milliseconds
 
-yeardriverconstructor.py (note, I randomly sub-sample 0.2% of the IDs each time as testing every ID combo would be impossible)
-count    1315.000000
-mean     1309.751904
-std       235.953037
-min       335.409880
-25%      1154.450059
-50%      1329.281807
-75%      1462.426901
-max      2340.843916
+yeardriverconstructor.py (note, I randomly sub-sample 2% of the IDs each time as testing every ID combo would be impossible)
+count      71.000000
+mean     1742.667094
+std       349.706827
+min      1050.513029
+25%      1525.448561
+50%      1692.255974
+75%      1964.204550
+max      2712.991953
 95% TIME: 1900ms
 For Kimi with Ferrari in 2015:
 Completed generate_wdc_plot in 474.76983070373535 milliseconds

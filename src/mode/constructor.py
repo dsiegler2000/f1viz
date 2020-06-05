@@ -158,6 +158,7 @@ def generate_positions_plot(constructor_years, constructor_constructor_standings
         y_range=Range1d(0, 22, bounds=(0, 60)),
         tools="pan,xbox_zoom,xwheel_zoom,reset,box_zoom,wheel_zoom,save"
     )
+    positions_plot.yaxis.major_label_overrides = {i: int_to_ordinal(i) for i in range(1, 60)}
     if show_driver_changes:
         subtitle = "Only drivers who drove with this constructor for more than 10 races are shown in driver changes"
         positions_plot.add_layout(Title(text=subtitle, text_font_style="italic"), "above")

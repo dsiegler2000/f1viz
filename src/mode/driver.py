@@ -269,6 +269,7 @@ def generate_positions_plot(driver_years, driver_driver_standings, driver_result
 
     positions_plot.xaxis.ticker = FixedTicker(ticks=np.arange(min_year - 1, max_year + 2))
     positions_plot.yaxis.ticker = FixedTicker(ticks=np.arange(5, 61, 5).tolist() + [1])
+    positions_plot.yaxis.major_label_overrides = {i: int_to_ordinal(i) for i in range(1, 60)}
 
     # Add the lines
     kwargs = {
@@ -879,6 +880,7 @@ def generate_win_plot(positions_source, driver_id=None, constructor_id=None):
         tools="pan,xbox_zoom,reset,box_zoom,wheel_zoom,save",
         y_range=Range1d(0, max(max_podium, max_dnfs), bounds=(0, 1000))
     )
+
     if constructor_id:
         subtitle = "Win and podium percent is calculated as num. wins / num. races entered, and thus podium pct. may " \
                    "theoretically exceed 100%"
@@ -979,6 +981,8 @@ def generate_spvfp_scatter(driver_results, driver_races, driver_driver_standings
                            tools="pan,wheel_zoom,reset,save")
     spvfp_scatter.xaxis.ticker = FixedTicker(ticks=np.arange(5, 61, 5).tolist() + [1])
     spvfp_scatter.yaxis.ticker = FixedTicker(ticks=np.arange(5, 61, 5).tolist() + [1])
+    spvfp_scatter.xaxis.major_label_overrides = {i: int_to_ordinal(i) for i in range(1, 60)}
+    spvfp_scatter.yaxis.major_label_overrides = {i: int_to_ordinal(i) for i in range(1, 60)}
 
     source = pd.DataFrame(columns=["sp", "sp_str",
                                    "fp", "fp_str",
@@ -1181,6 +1185,8 @@ def generate_mltr_fp_scatter(driver_results, driver_races, driver_driver_standin
                              tools="pan,wheel_zoom,reset,save")
     mltr_fp_scatter.xaxis.ticker = FixedTicker(ticks=np.arange(5, 61, 5).tolist() + [1])
     mltr_fp_scatter.yaxis.ticker = FixedTicker(ticks=np.arange(5, 61, 5).tolist() + [1])
+    mltr_fp_scatter.xaxis.major_label_overrides = {i: int_to_ordinal(i) for i in range(1, 60)}
+    mltr_fp_scatter.yaxis.major_label_overrides = {i: int_to_ordinal(i) for i in range(1, 60)}
 
     mltr_fp_scatter.scatter(x="mltr", y="fp", source=source, size="size", color="color", marker="marker")
     mltr_fp_scatter.line(x=[-60, 60], y=[-60, 60], color="white", line_alpha=0.5)

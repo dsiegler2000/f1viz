@@ -348,6 +348,8 @@ def generate_teammatefp_fp_scatter(positions_source, constructor_results, driver
                                    tools="pan,box_zoom,reset,save")
     teammatefp_fp_scatter.xaxis.ticker = FixedTicker(ticks=np.arange(5, 61, 5).tolist() + [1])
     teammatefp_fp_scatter.yaxis.ticker = FixedTicker(ticks=np.arange(5, 61, 5).tolist() + [1])
+    teammatefp_fp_scatter.xaxis.major_label_overrides = {i: int_to_ordinal(i) for i in range(1, 60)}
+    teammatefp_fp_scatter.yaxis.major_label_overrides = {i: int_to_ordinal(i) for i in range(1, 60)}
 
     teammatefp_fp_scatter.scatter(x="teammate_fp", y="driver_fp", source=source,
                                   marker="marker", color="color", size="size")
@@ -645,6 +647,7 @@ def generate_teammate_comparison_line_plot(positions_source, constructor_results
                               tools="pan,box_zoom,reset,save")
     teammate_fp_plot.xaxis.ticker = FixedTicker(ticks=np.arange(1950, 2050))
     teammate_fp_plot.yaxis.ticker = FixedTicker(ticks=np.arange(5, 61, 5).tolist() + [1])
+    teammate_fp_plot.yaxis.major_label_overrides = {i: int_to_ordinal(i) for i in range(1, 60)}
 
     kwargs = dict(
         x="x",

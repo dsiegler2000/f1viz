@@ -51,18 +51,20 @@ mode_lay = unimplemented.get_layout()
 mode = "default"
 
 # TODO master list:
-#  Go through each existing mode and do a "second pass" to add simple features and make small clean-up changes
-#   Make sure tables are sortable
-#   Make sure second axes are scaled properly
-#   Make sure using ordinals (1st, 2nd, 3rd) on everything
-#   Make sure the mode has a header
+#  Go through each existing mode and do a "second pass" to add simple features and make small clean-up changes      √
+#   Make sure tables are sortable                                                                                   √
+#   Make sure second axes are scaled properly                                                                       √
+#   Make sure using ordinals (1st, 2nd, 3rd) on everything                                                          √
+#   Make sure the mode has a header                                                                                 √
 #  Get rid of axis sharing on whatever mode that is                                                                 √
 #  Add axis overrides to position plot, SP v FP, MLTR vs FP, and any other plots to make the axes ordinal (1st, 2nd...)
+#   Try this out on one mode, see how it feels then make a decision
 #  Change all mean lap time ranks to be mean lap time percent (except in position plot)
 #  Add the top-n support for all win plots as well as the calculate 95th percentile and set that as n feature
 #  Add smoothing slider to positions plots
-#  Add the plots checklists for efficiency, make it into a class so it's easy to implement, pass the plots+description
 #  Check all stats divs for things that need to be `strip`-ed
+#  Add the plots checklists for efficiency, make it into a class so it's easy to implement, see Trello
+#  Release to r/Formula1 (without the all_ modes)
 #  Start on the all_years or home mode
 
 
