@@ -18,9 +18,9 @@ from html_table.HTML_table import TableCell, Table, TableRow
 from data_loading.data_loader import load_seasons, load_driver_standings, load_races, load_results, \
     load_constructor_standings, load_lap_times, load_qualifying, load_fastest_lap_data
 from mode import driver
-from utils import PLOT_BACKGROUND_COLOR, get_line_thickness, get_driver_name, get_constructor_name, \
+from utils import get_line_thickness, get_driver_name, get_constructor_name, \
     ColorDashGenerator, get_race_name, position_text_to_str, get_status_classification, rounds_to_str, int_to_ordinal, \
-    vdivider
+    vdivider, PLOT_BACKGROUND_COLOR
 
 seasons = load_seasons()
 driver_standings = load_driver_standings()

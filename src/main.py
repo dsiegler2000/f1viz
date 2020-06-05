@@ -4,7 +4,7 @@ from bokeh.io import curdoc
 from data_loading.data_loader import load_races, load_drivers, load_circuits, load_constructors
 from mode import home, yearcircuit, unimplemented, year, driver, circuit, constructor, circuitdriver, driverconstructor, \
     yeardriver, yearconstructor, circuitconstructor, yearcircuitdriver, yearcircuitconstructor, yeardriverconstructor, \
-    circuitdriverconstructor, yearcircuitdriverconstructor, allyears
+    circuitdriverconstructor, yearcircuitdriverconstructor, allyears, checkbox_tester
 import os
 import logging
 
@@ -13,8 +13,6 @@ logging.basicConfig(level=logging.NOTSET)
 logging.root.setLevel(logging.NOTSET)
 
 logging.info(f"Receiving request, PID: {os.getpid()}")
-
-INCLUDE_GENERATE_BUTTON = True
 
 # Load data
 races = load_races()
@@ -27,7 +25,7 @@ logging.info("Loaded data")
 modes = {
     # year, circuit, driver, constructor
     0b0000: ["HOME", home],
-    0b1000: ["YEAR", year],
+    0b1000: ["YEAR", checkbox_tester],
     0b0100: ["CIRCUIT", circuit],
     0b0010: ["DRIVER", driver],
     0b0001: ["CONSTRUCTOR", constructor],
@@ -47,8 +45,37 @@ modes = {
     "all_drivers": None,
     "all_constructors": None
 }
-mode_lay = unimplemented.get_layout()
-mode = "default"
+# mode_lay = unimplemented.get_layout()
+# mode = "default"
+
+year_completions = ["<select year>", "All Years"] + [str(y) for y in
+                                                     races.sort_values(by="year", ascending=False)["year"].unique()]
+
+race_completions = []
+for i, r in races.iterrows():
+    race_name = r["name"]
+    races_with_same_name = races[races["name"].str.lower() == race_name.lower()]
+    circuit_ids = races_with_same_name["circuitId"]
+    num_circuits = len(list(circuit_ids.unique()))
+    to_add = []
+    if num_circuits == 1:
+        to_add.append(race_name)
+    else:
+        for j, value in circuit_ids.value_counts().sort_values(ascending=False).iteritems():
+            circuit_name = circuits.loc[j, "name"]
+            to_add.append(race_name + " at " + circuit_name)
+    for n in to_add:
+        if n not in race_completions:
+            race_completions.append(n)
+circuit_completions = [c for c in circuits["name"].unique()]
+racecircuit_completions = ["<select race or circuit>", "All Circuits"] + race_completions + circuit_completions
+
+driver_completions = ["<select driver>", "All Drivers"]
+for i, r in drivers.iterrows():
+    driver_completions.append(r["forename"] + " " + r["surname"])
+
+constructor_completions = ["<select constructor>", "All Constructors"] + [c for c in constructors["name"].unique()]
+
 
 # TODO master list:
 #  Go through each existing mode and do a "second pass" to add simple features and make small clean-up changes      √
@@ -57,20 +84,18 @@ mode = "default"
 #   Make sure using ordinals (1st, 2nd, 3rd) on everything                                                          √
 #   Make sure the mode has a header                                                                                 √
 #  Get rid of axis sharing on whatever mode that is                                                                 √
-#  Add axis overrides to position plot, SP v FP, MLTR vs FP, and any other plots to make the axes ordinal (1st, 2nd...)
-#   Try this out on one mode, see how it feels then make a decision
+#  Add axis overrides to position plot, SP v FP, MLTR vs FP, and any other plots to make the axes ordinal           √
+#   Try this out on one mode, see how it feels then make a decision                                                 √
 #  Change all mean lap time ranks to be mean lap time percent (except in position plot)
 #  Add the top-n support for all win plots as well as the calculate 95th percentile and set that as n feature
 #  Add smoothing slider to positions plots
 #  Check all stats divs for things that need to be `strip`-ed
-#  Add the plots checklists for efficiency, make it into a class so it's easy to implement, see Trello
+#  Add the plots checklists for efficiency, make it into a class so it's easy to implement, see Trello and utils
 #  Release to r/Formula1 (without the all_ modes)
 #  Start on the all_years or home mode
 
 
-def update():
-    global mode_lay, lay, mode
-
+def get_mode(year_input, circuit_input, driver_input, constructor_input):
     year_v = year_input.value
     circuit_v = circuit_input.value
     driver_v = driver_input.value
@@ -146,74 +171,61 @@ def update():
     if not isinstance(mode, list):
         mode = ["unimplemented", unimplemented]
 
+    return mode, year_id, circuit_id, driver_id, constructor_id
+
+
+def update(year_input, circuit_input, driver_input, constructor_input):
+    mode, year_id, circuit_id, driver_id, constructor_id = get_mode(year_input, circuit_input, driver_input,
+                                                                    constructor_input)
     logging.info(f"Updating to mode: {mode[0]}...")
-
-    mode_lay = mode[1].get_layout(year_id=year_id, circuit_id=circuit_id,
-                                  driver_id=driver_id, constructor_id=constructor_id, mode=mode[0])
-
-    curdoc().remove_root(lay)
-    lay = column([header, search_bars_layout, mode_lay, footer], sizing_mode="scale_width")
-    curdoc().add_root(lay)
+    plots_layout = mode[1].get_layout(year_id=year_id, circuit_id=circuit_id, driver_id=driver_id,
+                                      constructor_id=constructor_id, mode=mode[0])
+    generate_main(plots_layout, year_v=year_input.value, circuit_v=circuit_input.value, driver_v=driver_input.value,
+                  constructor_v=constructor_input.value)
 
 
 logging.info("Constructing initial layout...")
 
-# Header and footer
-header = Div(text=open(os.path.join("src", "header.html")).read(), sizing_mode="stretch_width")
-footer = Div(text=open(os.path.join("src", "footer.html")).read(), sizing_mode="stretch_width")
 
-# Season search bar
-year_completions = ["<select year>", "All Years"] + [str(y) for y in races.sort_values(by="year", ascending=False)["year"].unique()]
-year_input = Select(options=year_completions)
+def generate_main(plots_layout, year_v=None, circuit_v=None, driver_v=None, constructor_v=None, first_time=False):
+    # Header and footer
+    header = Div(text=open(os.path.join("src", "header.html")).read(), sizing_mode="stretch_width")
+    footer = Div(text=open(os.path.join("src", "footer.html")).read(), sizing_mode="stretch_width")
 
-# Circuit / race
-race_completions = []
-for i, r in races.iterrows():
-    race_name = r["name"]
-    races_with_same_name = races[races["name"].str.lower() == race_name.lower()]
-    circuit_ids = races_with_same_name["circuitId"]
-    num_circuits = len(list(circuit_ids.unique()))
-    to_add = []
-    if num_circuits == 1:
-        to_add.append(race_name)
-    else:
-        for j, value in circuit_ids.value_counts().sort_values(ascending=False).iteritems():
-            circuit_name = circuits.loc[j, "name"]
-            to_add.append(race_name + " at " + circuit_name)
-    for n in to_add:
-        if n not in race_completions:
-            race_completions.append(n)
-circuit_completions = [c for c in circuits["name"].unique()]
-racecircuit_completions = ["<select race or circuit>", "All Circuits"] + race_completions + circuit_completions
-circuit_input = Select(options=racecircuit_completions)
+    year_input = Select(options=year_completions)
+    circuit_input = Select(options=racecircuit_completions)
+    driver_input = Select(options=driver_completions)
+    constructor_input = Select(options=constructor_completions)
 
-# Driver
-driver_completions = ["<select driver>", "All Drivers"]
-for i, r in drivers.iterrows():
-    driver_completions.append(r["forename"] + " " + r["surname"])
-driver_input = Select(options=driver_completions)
+    if year_v:
+        year_input.value = year_v
+    if circuit_v:
+        circuit_input.value = circuit_v
+    if driver_v:
+        driver_input.value = driver_v
+    if constructor_v:
+        constructor_input.value = constructor_v
 
-# Constructor
-constructor_completions = ["<select constructor>", "All Constructors"] + [c for c in constructors["name"].unique()]
-constructor_input = Select(options=constructor_completions)
+    search_bars = [circuit_input, year_input, driver_input, constructor_input]
+    search_bars_layout = row(*search_bars, sizing_mode="scale_width")
 
-search_bars = [circuit_input, year_input, driver_input, constructor_input]
-search_bars_layout = row(*search_bars, sizing_mode="scale_width")
+    search_bars_layout = column([search_bars_layout], sizing_mode="scale_width")
 
-if INCLUDE_GENERATE_BUTTON:
-    generate_button = Button(label="Generate Plots")
-    generate_button.on_click(lambda event: update())
-    search_bars_layout = column([search_bars_layout, generate_button], sizing_mode="scale_width")
-else:
+    lay = column([header, search_bars_layout, plots_layout, footer], sizing_mode="scale_width")
+
+    curdoc().clear()
+    curdoc().add_root(lay)
+    curdoc().title = "F1Viz"
+    curdoc().theme = "dark_minimal"
+
+    year_input.value = "2016"
+
     for s in search_bars:
-        s.on_change("value", lambda attr, old, new: update())
+        s.on_change("value", lambda attr, old, new: update(year_input, circuit_input, driver_input, constructor_input))
 
-lay = column([header, search_bars_layout, mode_lay, footer], sizing_mode="scale_width")
+    if first_time:
+        update(year_input, circuit_input, driver_input, constructor_input)
 
-curdoc().add_root(lay)
-curdoc().title = "F1Viz"
-curdoc().theme = "dark_minimal"
 
-update()
-
+generate_main(Div(), first_time=True)
 logging.info("Initialized")
