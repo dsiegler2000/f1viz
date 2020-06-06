@@ -1,3 +1,5 @@
+/* TODO better looking checkbox buttons */
+
 /* Button */
 .bk-root .bk-btn-default  {
     color: white;
@@ -84,5 +86,5 @@ p {
     max-width: 800;
 }
 a {
-      color: aqua;
+    color: aqua;
 }

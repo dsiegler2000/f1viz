@@ -46,6 +46,134 @@ status = None
 # Quick map from nationality to their country code (for flag emojis)
 NATIONALITY_TO_FLAG = pd.read_csv("data/static_data/nationalities.csv", index_col=0)
 
+COMMON_PLOT_DESCRIPTIONS = {
+    "generate_wdc_plot": u"""World Driver's Championship Plot \u2014 plots the progression of the WDC by looking at 
+    the points each driver has accumulated over time""",
+
+    "generate_wcc_plot": u"""World Constructor's Championship Plot \u2014 plots the progression of the WCC by looking at 
+    the points each driver has accumulated over time""",
+
+    "generate_spvfp_scatter": u"""Start Position vs Finish Position Scatter Plot \u2014 each dot on this plot 
+    represents a driver at one race, and can show exceptional drives where a driver made up many positions"""
+}
+
+select_unselect = True
+
+
+def generate_plot_list_selector(plot_items):
+    """
+    See Trello, this is going to be a fat one
+    :param plot_items: List of lists, with each list containing at least one object of type `PlotItem`
+    :return: Layout
+    """
+    # Check the shape and types of the plot items to make sure it is valid
+    for i, l in enumerate(plot_items):
+        if isinstance(l, Iterable):
+            for item in l:
+                if not isinstance(item, PlotItem):
+                    raise ValueError("One sub-element of `plot_items` is not of type PlotItem")
+        else:
+            if not isinstance(l, PlotItem):
+                raise ValueError("One sub-element of `plot_items` is not of type PlotItem")
+            plot_items[i] = [l]
+    # TODO add loading animation
+    # Generate the check box list
+    descriptions = []
+    for l in plot_items:
+        for i in l:
+            if i.listed:
+                descriptions.append(i.description)
+    checkbox_group = CheckboxGroup(labels=descriptions, active=[])
+    generate_button = Button(label="Generate Plots")
+    select_all_button = Button(label="Select All", width=100)
+
+    def select_all_handler(event):
+        global select_unselect
+        if select_unselect:
+            checkbox_group.active = list(range(len(descriptions)))
+            select_all_button.label = "Unselect All"
+        else:
+            checkbox_group.active = []
+            select_all_button.label = "Select All"
+        select_unselect = not select_unselect
+    select_all_button.on_click(select_all_handler)
+    select_all_button_row = row([select_all_button], sizing_mode="fixed")
+    prev_active = []
+
+    def update():
+        if checkbox_group.active == prev_active:
+            return
+        idx = 0
+        layout = []
+        for l in plot_items:
+            row_layouts = []
+            for i in l:
+                if idx in checkbox_group.active or not i.listed:
+                    plot_layout = i.method(*i.args, **i.kwargs)
+                    row_layouts.append(plot_layout)
+                idx += 1
+            if len(row_layouts) > 0:
+                layout.append(row(row_layouts, sizing_mode="stretch_width"))
+        new_layout = column([select_all_button_row, checkbox_group, generate_button,
+                             column(layout, sizing_mode="stretch_width")], sizing_mode="scale_width")
+        main.generate_main(new_layout)
+
+    generate_button.on_click(lambda event: update())
+    return column([select_all_button_row, checkbox_group, generate_button], sizing_mode="scale_width")
+
+
+def generate_div_item(text):
+    return PlotItem(lambda: Div(text=text), [], "", listed=False)
+
+
+def generate_spacer_item():
+    return PlotItem(lambda: Spacer(width=5, background=PLOT_BACKGROUND_COLOR), [], "", listed=False)
+
+
+def generate_vdivider_item():
+    return PlotItem(lambda: vdivider(), [], "", listed=False)
+
+
+class PlotItem:
+    def __init__(self, method, args, description, kwargs=None, listed=True, estimated_time=0):
+        """
+        Creates a new plot item.
+        :param method: Method to call, can also be a static object and will automatically construct a lambda for it
+        :param args: Args for that method
+        :param description: String description of the item, used for final display
+        :param kwargs: Dict of kwargs args for that method
+        :param listed: Whether to list the item in the final checklist, if the item has `listed` set to False, it will
+        always be generated
+        :param estimated_time: Estimated time to execute the given method
+        """
+        if kwargs is None:
+            kwargs = {}
+        self.method = method
+        self.args = args
+        self.kwargs = kwargs
+        self.description = description
+        self.listed = listed
+        self.estimated_time = estimated_time
+
+        if not callable(method):
+            self.method = lambda: method
+
+        # Check args and kwargs
+        sig = inspect.signature(self.method)
+        kwarg_names = set()
+        num_args = 0
+        for k, v in sig.parameters.items():
+            if v.default == sig.empty:  # Regular arg
+                num_args += 1
+            else:  # keyword arg
+                kwarg_names.add(k)
+        if num_args != len(self.args):
+            raise ValueError(f"Incorrect number of args! Got: {len(self.args)}, expected: {num_args}")
+        for k, v in self.kwargs.items():
+            if k not in kwarg_names:
+                raise ValueError(f"{k} is not a valid keyword argument to pass to {self.method.__name__}. The valid "
+                                 f"keyword arguments are: {kwarg_names}")
+
 
 def plot_image_url(image_url):
     """
@@ -452,89 +580,6 @@ def result_to_str(pos, status_id):
         finish_pos = np.nan
         finish_pos_str = "RET (" + status.loc[status_id, "status"] + ")"
     return finish_pos_str, finish_pos
-
-
-def generate_plot_list_selector(plot_items):
-    """
-    See Trello, this is going to be a fat one
-    TODO this will require that all processing happens within the `generate_plot` methods (i.e. the `mark_whatever`
-     methods can't be called standalone)
-    :param plot_items: List of lists, with each list containing at least one object of type `PlotItem`
-    :return:
-    """
-    from main import generate_main
-    # Check the shape and types of the plot items to make sure it is valid
-    for i, l in enumerate(plot_items):
-        if isinstance(l, Iterable):
-            for item in l:
-                if not isinstance(item, PlotItem):
-                    raise ValueError("One sub-element of `plot_items` is not of type PlotItem")
-        else:
-            if not isinstance(l, PlotItem):
-                raise ValueError("One sub-element of `plot_items` is not of type PlotItem")
-            plot_items[i] = [l]
-    # Generate the check box list
-    descriptions = []
-    for l in plot_items:
-        for i in l:
-            descriptions.append(i.description)
-    checkbox_group = CheckboxGroup(labels=descriptions, active=[])
-    generate_button = Button(label="Generate Plots")
-    prev_active = []
-
-    def update():
-        if checkbox_group.active == prev_active:
-            return
-        idx = 0
-        layout = []
-        for l in plot_items:
-            row_layouts = []
-            for i in l:
-                if idx in checkbox_group.active:
-                    plot_layout = i.method(*i.args, **i.kwargs)
-                    row_layouts.append(plot_layout)
-                idx += 1
-            if len(row_layouts) > 0:
-                layout.append(row(row_layouts, sizing_mode="stretch_width"))
-        new_layout = column([checkbox_group, generate_button,
-                             column(layout, sizing_mode="stretch_width")], sizing_mode="scale_width")
-        generate_main(new_layout)
-
-    generate_button.on_click(lambda event: update())
-    return column([checkbox_group, generate_button], sizing_mode="scale_width")
-
-
-class PlotItem:
-    def __init__(self, method, args, kwargs, description, estimated_time=0):
-        """
-        Creates a new plot item.
-        :param method: Method to call
-        :param args: Args for that method
-        :param kwargs: Dict of kwargs args for that method
-        :param description: String description of the item, used for final display
-        :param estimated_time: Estimated time to execute the given method
-        """
-        self.method = method
-        self.args = args
-        self.kwargs = kwargs
-        self.description = description
-        self.estimated_time = estimated_time
-
-        # Check args and kwargs
-        sig = inspect.signature(method)
-        kwarg_names = set()
-        num_args = 0
-        for k, v in sig.parameters.items():
-            if v == sig.empty:  # Regular arg
-                num_args += 1
-            else:  # keyword arg
-                kwarg_names.add(k)
-        if num_args != len(self.args):
-            raise ValueError(f"Incorrect number of args! Expected: {len(self.args)}, got: {num_args}")
-        for k, v in self.kwargs.items():
-            if k not in kwarg_names:
-                raise ValueError(f"{k} is not a valid keyword argument to pass to {method.__name__}. The valid "
-                                 f"keyword arguments are: {kwarg_names}")
 
 
 class ColorDashGenerator:

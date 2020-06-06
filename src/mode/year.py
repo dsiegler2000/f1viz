@@ -19,8 +19,9 @@ from data_loading.data_loader import load_seasons, load_driver_standings, load_r
     load_constructor_standings, load_lap_times, load_qualifying, load_fastest_lap_data
 from mode import driver
 from utils import get_line_thickness, get_driver_name, get_constructor_name, \
-    ColorDashGenerator, get_race_name, position_text_to_str, get_status_classification, rounds_to_str, int_to_ordinal, \
-    vdivider, PLOT_BACKGROUND_COLOR
+    ColorDashGenerator, get_race_name, position_text_to_str, get_status_classification, rounds_to_str, int_to_ordinal,\
+    PlotItem, generate_plot_list_selector, COMMON_PLOT_DESCRIPTIONS, generate_spacer_item, generate_div_item, \
+    generate_vdivider_item
 
 seasons = load_seasons()
 driver_standings = load_driver_standings()
@@ -48,65 +49,125 @@ def get_layout(year_id=-1, **kwargs):
     year_fastest_lap_data = fastest_lap_data[fastest_lap_data["raceId"].isin(year_races.index)]
 
     logging.info(f"Generating layout for mode YEAR in year, year_id={year_id}")
+    #
+    # # Generate WDC plot
+    # wdc_plot = generate_wdc_plot(year_driver_standings, year_results)
+    #
+    # # Generate constructor's plot
+    # constructors_plot = generate_wcc_plot(year_constructor_standings, year_results)
+    #
+    # # Generate position vs mean lap time rank plot
+    # position_mltr_scatter = generate_mltr_position_scatter(year_fastest_lap_data, year_results,
+    #                                                        year_driver_standings, year_constructor_standings)
+    #
+    # # Generate mean finish start position vs WDC finish position scatter plot
+    # msp_position_scatter = generate_msp_position_scatter(year_results, year_driver_standings)
+    #
+    # # Start pos vs finish pos scatter plot
+    # spvpfp_scatter = generate_spvfp_scatter(year_results, year_races, year_driver_standings)
+    #
+    # # WCC results table
+    # wcc_results_table = generate_wcc_results_table(year_results, year_races, year_constructor_standings)
+    #
+    # # Wins pie chart
+    # wins_pie_chart = generate_wins_pie_plots(year_results)
+    #
+    # # Generate the teams and drivers table
+    # teams_and_drivers = generate_teams_and_drivers_table(year_results, year_races)
+    #
+    # # Generate races info
+    # races_info = generate_races_info_table(year_races, year_qualifying, year_results, year_fastest_lap_data)
+    #
+    # # Generate WDC table
+    # wdc_table, driver_win_source, constructor_win_source = generate_wdc_results_table(year_results,
+    #                                                                                   year_driver_standings, year_races)
+    #
+    # # Win plots
+    # win_plots = generate_win_plots(driver_win_source, constructor_win_source)
+    #
+    # # Generate DNF table
+    # dnf_table = generate_dnf_table(year_results)
+    #
+    # # Header
+    # header = Div(text=f"<h2>What did the {year_id} season look like?</h2>")
+    #
+    # # Bring it all together
+    # middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
+    # layout = column([header,
+    #                  wdc_plot, middle_spacer,
+    #                  constructors_plot, middle_spacer,
+    #                  wins_pie_chart, middle_spacer,
+    #                  row([msp_position_scatter, position_mltr_scatter], sizing_mode="stretch_width"), middle_spacer,
+    #                  win_plots, middle_spacer,
+    #                  row([spvpfp_scatter, vdivider(), wcc_results_table], sizing_mode="stretch_width"), middle_spacer,
+    #                  teams_and_drivers,
+    #                  races_info,
+    #                  wdc_table,
+    #                  dnf_table],
+    #                 sizing_mode="stretch_width")
 
-    header = Div(text=f"<h2>What did the {year_id} season look like?</h2>")
+    wdc_plot = PlotItem(generate_wdc_plot, [year_driver_standings, year_results],
+                        COMMON_PLOT_DESCRIPTIONS["generate_wdc_plot"])
 
-    # Generate WDC plot
-    wdc_plot = generate_wdc_plot(year_driver_standings, year_results)
+    constructors_plot = PlotItem(generate_wcc_plot, [year_constructor_standings, year_results],
+                                 COMMON_PLOT_DESCRIPTIONS["generate_wcc_plot"])
 
-    # Generate constructor's plot
-    constructors_plot = generate_wcc_plot(year_constructor_standings, year_results)
+    wins_pie_chart = PlotItem(generate_wins_pie_plots, [year_results], "Winners Pie Chart")
 
-    # Generate position vs mean lap time rank plot
-    position_mltr_scatter = generate_mltr_position_scatter(year_fastest_lap_data, year_results,
-                                                           year_driver_standings, year_constructor_standings)
+    description = u"Average Starting Position vs WDC Finish Position \u2014 " \
+                  u"who tended to make up many places during the race?"
+    msp_position_scatter = PlotItem(generate_msp_position_scatter, [year_results, year_driver_standings], description)
 
-    # Generate mean finish start position vs WDC finish position scatter plot
-    msp_position_scatter = generate_msp_position_scatter(year_results, year_driver_standings)
+    description = u"Average Lap Time vs WDC Finish Position scatter plot \u2014 who finished relatively well with a " \
+                  u"relatively poor car?"
+    mltr_position_scatter = PlotItem(generate_mltr_position_scatter, [year_fastest_lap_data, year_results,
+                                                                      year_driver_standings,
+                                                                      year_constructor_standings], description)
 
-    # Start pos vs finish pos scatter plot
-    spvpfp_scatter = generate_spvfp_scatter(year_results, year_races, year_driver_standings)
+    wdc_results_table, driver_win_source, constructor_win_source = generate_wdc_results_table(year_results,
+                                                                                              year_driver_standings,
+                                                                                              year_races)
 
-    # WCC results table
-    wcc_results_table = generate_wcc_results_table(year_results, year_races, year_constructor_standings)
+    description = "Plot of the number of wins, podiums, and DNFs along with the " \
+                  "win, podium, and DNF rate of every driver as the season progresses"
+    win_plots = PlotItem(generate_win_plots, [driver_win_source, constructor_win_source], description)
 
-    # Wins pie chart
-    wins_pie_chart = generate_wins_pie_plots(year_results)
+    spvfp_scatter = PlotItem(generate_spvfp_scatter, [year_results, year_races, year_driver_standings],
+                             COMMON_PLOT_DESCRIPTIONS["generate_spvfp_scatter"])
 
-    # Generate the teams and drivers table
-    teams_and_drivers = generate_teams_and_drivers_table(year_results, year_races)
+    wcc_results_table = PlotItem(generate_wcc_results_table, [year_results, year_races, year_constructor_standings],
+                                 "Table of results for the World Constructor's Championship")
 
-    # Generate races info
-    races_info = generate_races_info_table(year_races, year_qualifying, year_results, year_fastest_lap_data)
+    teams_and_drivers = PlotItem(generate_teams_and_drivers_table, [year_results, year_races],
+                                 "Table of all drivers and the teams they competed for this season")
 
-    # Generate WDC table
-    wdc_table, driver_win_source, constructor_win_source = generate_wdc_results_table(year_results,
-                                                                                      year_driver_standings, year_races)
+    races_info = PlotItem(generate_races_info_table, [year_races, year_qualifying, year_results, year_fastest_lap_data],
+                          "Table of results for every race of the season")
 
-    # Win plots
-    win_plots = generate_win_plots(driver_win_source, constructor_win_source)
+    wdc_results_table = PlotItem(wdc_results_table, [], "Table of results for the World Driver's Championship")
 
-    # Generate DNF table
-    dnf_table = generate_dnf_table(year_results)
+    dnf_table = PlotItem(generate_dnf_table, [year_results], "Table of DNFs for each driver and constructor")
 
-    # Bring it all together
-    middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
-    layout = column([header,
-                     wdc_plot, middle_spacer,
-                     constructors_plot, middle_spacer,
-                     wins_pie_chart, middle_spacer,
-                     row([position_mltr_scatter, msp_position_scatter], sizing_mode="stretch_width"), middle_spacer,
-                     win_plots, middle_spacer,
-                     row([spvpfp_scatter, vdivider(), wcc_results_table], sizing_mode="stretch_width"), middle_spacer,
-                     teams_and_drivers,
-                     races_info,
-                     wdc_table,
-                     dnf_table],
-                    sizing_mode="stretch_width")
+    header = generate_div_item(f"<h2>What did the {year_id} season look like?</h2>")
+
+    middle_spacer = generate_spacer_item()
+    group = generate_plot_list_selector([
+        [header],
+        [wdc_plot], [middle_spacer],
+        [constructors_plot], [middle_spacer],
+        [wins_pie_chart], [middle_spacer],
+        [msp_position_scatter, mltr_position_scatter], [middle_spacer],
+        [win_plots], [middle_spacer],
+        [spvfp_scatter, generate_vdivider_item(), wcc_results_table],
+        [teams_and_drivers],
+        [races_info],
+        [wdc_results_table],
+        [dnf_table]
+    ])
 
     logging.info("Finished generating layout for mode YEAR")
 
-    return layout
+    return group
 
 
 def generate_wdc_plot(year_driver_standings, year_results, highlight_did=None, muted_dids=None):
@@ -613,9 +674,9 @@ def generate_spvfp_scatter(year_results, year_races, year_driver_standings):
 
 
 def generate_win_plots(driver_win_source, constructor_win_source):
-    logging.info("Generating win plots")
     # Yes, I partially re-wrote this method for efficiency
 
+    logging.info("Generating win plots")
     # Drivers
     driver_win_source["win_pct"] = driver_win_source["wins"] / driver_win_source["num_races"]
     driver_win_source["podium_pct"] = driver_win_source["podiums"] / driver_win_source["num_races"]

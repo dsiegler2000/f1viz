@@ -1,10 +1,10 @@
 from bokeh.layouts import column, row
-from bokeh.models import AutocompleteInput, Div, Select, Button
+from bokeh.models import AutocompleteInput, Div, Select
 from bokeh.io import curdoc
 from data_loading.data_loader import load_races, load_drivers, load_circuits, load_constructors
-from mode import home, yearcircuit, unimplemented, year, driver, circuit, constructor, circuitdriver, driverconstructor, \
-    yeardriver, yearconstructor, circuitconstructor, yearcircuitdriver, yearcircuitconstructor, yeardriverconstructor, \
-    circuitdriverconstructor, yearcircuitdriverconstructor, allyears, checkbox_tester
+from mode import home, yearcircuit, unimplemented, year, driver, circuit, constructor, circuitdriver, \
+    driverconstructor, yeardriver, yearconstructor, circuitconstructor, yearcircuitdriver, yearcircuitconstructor, \
+    yeardriverconstructor, circuitdriverconstructor, yearcircuitdriverconstructor, allyears
 import os
 import logging
 
@@ -25,7 +25,7 @@ logging.info("Loaded data")
 modes = {
     # year, circuit, driver, constructor
     0b0000: ["HOME", home],
-    0b1000: ["YEAR", checkbox_tester],
+    0b1000: ["YEAR", year],
     0b0100: ["CIRCUIT", circuit],
     0b0010: ["DRIVER", driver],
     0b0001: ["CONSTRUCTOR", constructor],
@@ -38,15 +38,13 @@ modes = {
     0b1110: ["YEARCIRCUITDRIVER", yearcircuitdriver],
     0b1101: ["YEARCIRCUITCONSTRUCTOR", yearcircuitconstructor],
     0b1011: ["YEARDRIVERCONSTRUCTOR", yeardriverconstructor],
-    0b0111: ["CIRCUITDRIVERCONSTRUCTOR", circuitdriverconstructor],          # alias of circuitdriver
-    0b1111: ["YEARCIRCUITDRIVERCONSTRUCTOR", yearcircuitdriverconstructor],  # alias of yearcircuitdriver
+    0b0111: ["CIRCUITDRIVERCONSTRUCTOR", circuitdriverconstructor],
+    0b1111: ["YEARCIRCUITDRIVERCONSTRUCTOR", yearcircuitdriverconstructor],
     "all_years": ["ALLYEARS", allyears],
     "all_circuits": None,
     "all_drivers": None,
     "all_constructors": None
 }
-# mode_lay = unimplemented.get_layout()
-# mode = "default"
 
 year_completions = ["<select year>", "All Years"] + [str(y) for y in
                                                      races.sort_values(by="year", ascending=False)["year"].unique()]
@@ -91,11 +89,27 @@ constructor_completions = ["<select constructor>", "All Constructors"] + [c for 
 #  Add smoothing slider to positions plots
 #  Check all stats divs for things that need to be `strip`-ed
 #  Add the plots checklists for efficiency, make it into a class so it's easy to implement, see Trello and utils
+#   home                                                                                                            √
+#   year
+#   circuit
+#   driver
+#   constructor
+#   yearcircuit
+#   circuitdriver
+#   driverconstructor
+#   yeardriver
+#   yearconstructor
+#   circuitconstructor
+#   yearcircuitdriver
+#   yearcircuitconstructor
+#   yeardriverconstructor
+#   circuitdriverconstructor
+#   yearcircuitdriverconstructor
 #  Release to r/Formula1 (without the all_ modes)
 #  Start on the all_years or home mode
 
 
-def get_mode(year_input, circuit_input, driver_input, constructor_input):
+def _get_mode(year_input, circuit_input, driver_input, constructor_input):
     year_v = year_input.value
     circuit_v = circuit_input.value
     driver_v = driver_input.value
@@ -174,9 +188,9 @@ def get_mode(year_input, circuit_input, driver_input, constructor_input):
     return mode, year_id, circuit_id, driver_id, constructor_id
 
 
-def update(year_input, circuit_input, driver_input, constructor_input):
-    mode, year_id, circuit_id, driver_id, constructor_id = get_mode(year_input, circuit_input, driver_input,
-                                                                    constructor_input)
+def _update(year_input, circuit_input, driver_input, constructor_input):
+    mode, year_id, circuit_id, driver_id, constructor_id = _get_mode(year_input, circuit_input, driver_input,
+                                                                     constructor_input)
     logging.info(f"Updating to mode: {mode[0]}...")
     plots_layout = mode[1].get_layout(year_id=year_id, circuit_id=circuit_id, driver_id=driver_id,
                                       constructor_id=constructor_id, mode=mode[0])
@@ -184,10 +198,9 @@ def update(year_input, circuit_input, driver_input, constructor_input):
                   constructor_v=constructor_input.value)
 
 
-logging.info("Constructing initial layout...")
-
-
 def generate_main(plots_layout, year_v=None, circuit_v=None, driver_v=None, constructor_v=None, first_time=False):
+    logging.info(f"Generating main, year_v={year_v}, circuit_v={circuit_v}, driver_v={driver_v}, "
+                 f"constructor_v={constructor_v}")
     # Header and footer
     header = Div(text=open(os.path.join("src", "header.html")).read(), sizing_mode="stretch_width")
     footer = Div(text=open(os.path.join("src", "footer.html")).read(), sizing_mode="stretch_width")
@@ -221,11 +234,12 @@ def generate_main(plots_layout, year_v=None, circuit_v=None, driver_v=None, cons
     year_input.value = "2016"
 
     for s in search_bars:
-        s.on_change("value", lambda attr, old, new: update(year_input, circuit_input, driver_input, constructor_input))
+        s.on_change("value", lambda attr, old, new: _update(year_input, circuit_input, driver_input, constructor_input))
 
     if first_time:
-        update(year_input, circuit_input, driver_input, constructor_input)
+        _update(year_input, circuit_input, driver_input, constructor_input)
 
 
+logging.info("Constructing initial layout...")
 generate_main(Div(), first_time=True)
 logging.info("Initialized")
