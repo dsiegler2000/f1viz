@@ -1,16 +1,17 @@
 import logging
 from collections import defaultdict
 import numpy as np
+import pandas as pd
 from bokeh.layouts import column, row
 from bokeh.models import Div, HoverTool, LegendItem, Legend, CrosshairTool, Range1d, DataRange1d, LinearAxis, \
-    DatetimeTickFormatter, Spacer, Span, ColumnDataSource, TableColumn, DataTable, NumeralTickFormatter, Title, Label
+    DatetimeTickFormatter, Span, ColumnDataSource, TableColumn, DataTable, NumeralTickFormatter, Title, Label
 from bokeh.plotting import figure
 from data_loading.data_loader import load_circuits, load_fastest_lap_data, load_races, load_qualifying, load_results, \
     load_driver_standings
 from mode import driver
-from utils import get_circuit_name, get_driver_name, millis_to_str, DATETIME_TICK_KWARGS, PLOT_BACKGROUND_COLOR, \
-    get_constructor_name, vdivider, plot_image_url, rounds_to_str, get_status_classification
-import pandas as pd
+from utils import get_circuit_name, get_driver_name, millis_to_str, DATETIME_TICK_KWARGS, \
+    get_constructor_name, vdivider, plot_image_url, rounds_to_str, get_status_classification, generate_spacer_item, \
+    generate_plot_list_selector, generate_div_item, PlotItem, COMMON_PLOT_DESCRIPTIONS
 
 circuits = load_circuits()
 fastest_lap_data = load_fastest_lap_data()
@@ -18,8 +19,6 @@ races = load_races()
 qualifying = load_qualifying()
 results = load_results()
 driver_standings = load_driver_standings()
-
-# TODO this really needs a box to check for "generate SP v FP plot" and "generate MLTR vs FP plot" for efficiency
 
 
 def get_layout(circuit_id=-1, download_image=True, **kwargs):
@@ -33,52 +32,54 @@ def get_layout(circuit_id=-1, download_image=True, **kwargs):
 
     logging.info(f"Generating layout for mode CIRCUIT in circuit, circuit_id={circuit_id}")
 
-    # Generate times plot
-    times_plot = generate_times_plot(circuit_years, circuit_quali, circuit_fastest_lap_data, circuit_races,
-                                     circuit_results, circuit_id)
+    times_plot = PlotItem(generate_times_plot, [circuit_years, circuit_quali, circuit_fastest_lap_data, circuit_races,
+                                                circuit_results, circuit_id],
+                          COMMON_PLOT_DESCRIPTIONS["generate_times_plot"])
 
-    # Generate DNF plot
-    dnf_plot = generate_dnf_plot(circuit_years, circuit_results, circuit_races, circuit_id)
+    description = u"DNF Plot \u2014 plots number of DNFs and DNF percent vs year for this circuit"
+    dnf_plot = PlotItem(generate_dnf_plot, [circuit_years, circuit_results, circuit_races, circuit_id], description)
 
-    # Generate starting position minus finish position plot
-    spmfp_plot = generate_spmfp_plot(circuit_years, circuit_races, circuit_results)
+    description = u"Average Start Position minus Finish Position Plot \u2014 " \
+                  u"How many places do drivers make up on average?"
+    spmfp_plot = PlotItem(generate_spmfp_plot, [circuit_years, circuit_races, circuit_results], description)
 
-    # Start pos vs finish pos scatter
-    spvfp_scatter = generate_spvfp_scatter(circuit_results, circuit_races, circuit_driver_standings)
+    spvfp_scatter = PlotItem(generate_spvfp_scatter, [circuit_results, circuit_races, circuit_driver_standings],
+                             COMMON_PLOT_DESCRIPTIONS["generate_spvfp_scatter"])
 
-    # Mean lap time rank vs finish pos scatter
-    mltr_fp_scatter = generate_mltr_fp_scatter(circuit_results, circuit_races, circuit_driver_standings)
+    mltr_fp_scatter = PlotItem(generate_mltr_fp_scatter, [circuit_results, circuit_races, circuit_driver_standings],
+                               COMMON_PLOT_DESCRIPTIONS["generate_mltr_fp_scatter"])
 
-    # Generate results table
-    circuit_results_table = generate_circuit_results_table(circuit_years, circuit_races, circuit_results,
-                                                           circuit_quali, circuit_fastest_lap_data)
+    description = u"Circuit Results Table \u2014 table of results for every GP held at this circuit"
+    circuit_results_table = PlotItem(generate_circuit_results_table, [circuit_years, circuit_races, circuit_results,
+                                                                      circuit_quali, circuit_fastest_lap_data],
+                                     description)
 
-    # Circuit stats
-    circuit_stats = generate_stats_layout(circuit_id, circuit_years, circuit_fastest_lap_data, circuit_results,
-                                          circuit_races, download_image=download_image)
+    description = u"Various statistics on this circuit along with an image of the circuit layout"
+    circuit_stats = PlotItem(generate_stats_layout, [circuit_id, circuit_years, circuit_fastest_lap_data,
+                                                     circuit_results, circuit_races], description,
+                             kwargs=dict(download_image=download_image))
 
-    # Winner's table
-    winners_table = generate_winners_table(circuit_years, circuit_results, circuit_races)
+    description = u"Winner's Table \u2014 table of the drivers and constructors who have won the most at this circuit"
+    winners_table = PlotItem(generate_winners_table, [circuit_years, circuit_results, circuit_races], description)
 
-    # Header
     circuit_name = get_circuit_name(circuit_id)
-    header = Div(text=f"<h2><b>{circuit_name}</b></h2><br>")
+    header = generate_div_item(f"<h2><b>{circuit_name}</b></h2><br>")
 
-    middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
-    layout = column([
-        header,
-        times_plot, middle_spacer,
-        dnf_plot, middle_spacer,
-        spmfp_plot, middle_spacer,
-        row([spvfp_scatter, mltr_fp_scatter], sizing_mode="stretch_width"),
-        circuit_results_table,
-        circuit_stats,
-        winners_table
-    ], sizing_mode="stretch_width")
+    middle_spacer = generate_spacer_item()
+    group = generate_plot_list_selector([
+        [header],
+        [times_plot], [middle_spacer],
+        [dnf_plot], [middle_spacer],
+        [spmfp_plot], [middle_spacer],
+        [spvfp_scatter, mltr_fp_scatter],
+        [circuit_results_table],
+        [circuit_stats],
+        [winners_table]
+    ])
 
     logging.info("Finished generating layout for mode CIRCUIT")
 
-    return layout
+    return group
 
 
 def generate_spvfp_scatter(circuit_results, circuit_races, circuit_driver_standings):

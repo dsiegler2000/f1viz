@@ -34,6 +34,8 @@ UP_ARROW = "^"
 DOWN_ARROW = "v"
 SIDE_ARROW = ">"
 
+# TODO change to checklist style
+
 
 def get_layout(year_id=-1, circuit_id=-1, **kwargs):
     # Get some useful slices

@@ -1,24 +1,24 @@
 import logging
 import math
-from datetime import datetime
 from collections import defaultdict, OrderedDict
-from bokeh.palettes import Set3_12 as palette
+from datetime import datetime
 import numpy as np
+import pandas as pd
 from bokeh.layouts import column, row
-from bokeh.models import Div, FixedTicker, Range1d, CrosshairTool, HoverTool, LegendItem, Legend, Span, Label, Spacer, \
+from bokeh.models import Div, FixedTicker, Range1d, CrosshairTool, HoverTool, LegendItem, Legend, Span, Label, \
     ColumnDataSource, LinearAxis, NumeralTickFormatter, DataTable, TableColumn, FactorRange, LabelSet, Title, \
     DatetimeTickFormatter
-import pandas as pd
+from bokeh.palettes import Set3_12 as palette
 from bokeh.plotting import figure
 from bokeh.transform import factor_cmap
 from pandas import Series
-
-from mode import driverconstructor
-from utils import get_driver_name, position_text_to_str, get_constructor_name, ColorDashGenerator, get_circuit_name, \
-    PLOT_BACKGROUND_COLOR, int_to_ordinal, get_status_classification, rounds_to_str, get_race_name, nationality_to_flag, \
-    result_to_str, millis_to_str, DATETIME_TICK_KWARGS, rescale, plot_image_url, vdivider
 from data_loading.data_loader import load_drivers, load_results, load_driver_standings, load_races, \
     load_fastest_lap_data, load_status
+from mode import driverconstructor
+from utils import get_driver_name, position_text_to_str, get_constructor_name, ColorDashGenerator, get_circuit_name, \
+    int_to_ordinal, get_status_classification, rounds_to_str, get_race_name, nationality_to_flag, \
+    result_to_str, millis_to_str, DATETIME_TICK_KWARGS, rescale, plot_image_url, generate_plot_list_selector, \
+    generate_spacer_item, generate_vdivider_item, generate_div_item, PlotItem, COMMON_PLOT_DESCRIPTIONS
 
 drivers = load_drivers()
 results = load_results()
@@ -49,67 +49,70 @@ def get_layout(driver_id=-1, download_image=True, **kwargs):
 
     logging.info(f"Generating layout for mode DRIVER in driver, driver_id={driver_id}")
 
-    # Position plot
     positions_plot, positions_source = generate_positions_plot(driver_years, driver_driver_standings, driver_results,
                                                                driver_fastest_lap_data, driver_id)
+    positions_plot = PlotItem(positions_plot, [], COMMON_PLOT_DESCRIPTIONS["generate_positions_plot"])
 
-    # Circuit performance table
-    circuit_performance_table = generate_circuit_performance_table(driver_results, driver_races, driver_id)
+    circuit_performance_table = PlotItem(generate_circuit_performance_table, [driver_results, driver_races, driver_id],
+                                         COMMON_PLOT_DESCRIPTIONS["generate_circuit_performance_table"])
 
-    # Position bar plot
-    position_dist = generate_finishing_position_bar_plot(driver_results)
+    position_dist = PlotItem(generate_finishing_position_bar_plot, [driver_results],
+                             COMMON_PLOT_DESCRIPTIONS["generate_finishing_position_bar_plot"])
 
-    # WDC Position bar plot
-    wdc_position_dist = generate_wdc_position_bar_plot(positions_source)
+    wdc_position_dist = PlotItem(generate_wdc_position_bar_plot, [positions_source],
+                                 COMMON_PLOT_DESCRIPTIONS["generate_wdc_position_bar_plot"])
 
-    # Win/podium plot
-    win_plot = generate_win_plot(positions_source, driver_id=driver_id)
+    win_plot = PlotItem(generate_win_plot, [positions_source], COMMON_PLOT_DESCRIPTIONS["generate_win_plot"],
+                        kwargs=dict(driver_id=driver_id))
 
-    # Starting position vs finish position scatter
-    spvfp_scatter = generate_spvfp_scatter(driver_results, driver_races, driver_driver_standings)
+    spvfp_scatter = PlotItem(generate_spvfp_scatter, [driver_results, driver_races, driver_driver_standings],
+                             COMMON_PLOT_DESCRIPTIONS["generate_spvfp_scatter"])
 
-    # Mean lap time rank vs finish position scatter plot
-    mltr_fp_scatter = generate_mltr_fp_scatter(driver_results, driver_races, driver_driver_standings)
+    mltr_fp_scatter = PlotItem(generate_mltr_fp_scatter, [driver_results, driver_races, driver_driver_standings],
+                               COMMON_PLOT_DESCRIPTIONS["generate_mltr_fp_scatter"])
 
-    # Teammate comparison line plot
-    teammate_comparison_line_plot = generate_teammate_comparison_line_plot(positions_source, constructor_results,
-                                                                           driver_years, driver_results, driver_id)
+    teammate_comparison_line_plot = PlotItem(generate_teammate_comparison_line_plot, [positions_source,
+                                                                                      constructor_results,
+                                                                                      driver_years,
+                                                                                      driver_results,
+                                                                                      driver_id],
+                                             COMMON_PLOT_DESCRIPTIONS["generate_teammate_comparison_line_plot"])
 
-    # Team performance graph and table
     team_performance_layout, performance_source = generate_team_performance_layout(driver_races, positions_source,
                                                                                    driver_results)
+    description = u"Team Performance Table \u2014 table of this driver's results at each constructor " \
+                  u"he/she has competed for"
+    team_performance_layout = PlotItem(team_performance_layout, [], description)
 
-    # Driver stats
-    driver_stats_layout = generate_stats_layout(driver_years, driver_races, performance_source, driver_results,
-                                                driver_id)
+    description = u"Various statistics on this driver"
+    driver_stats_layout = PlotItem(generate_stats_layout, [driver_years, driver_races, performance_source,
+                                                           driver_results, driver_id], description)
 
-    # Header
-    header = Div(text=f"<h2><b>{get_driver_name(driver_id)}</b></h2><br>")
-
-    # Driver image
     if download_image:
         image_url = str(drivers.loc[driver_id, "imgUrl"])
         image_view = plot_image_url(image_url)
     else:
         image_view = Div()
+    image_view = PlotItem(image_view, [], "", listed=False)
 
-    middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
-    divider = vdivider()
-    layout = column([header,
-                     positions_plot, middle_spacer,
-                     position_dist, middle_spacer,
-                     wdc_position_dist, middle_spacer,
-                     win_plot, middle_spacer,
-                     row([spvfp_scatter, mltr_fp_scatter], sizing_mode="stretch_width"),
-                     teammate_comparison_line_plot,
-                     circuit_performance_table,
-                     team_performance_layout,
-                     row([image_view, divider, driver_stats_layout], sizing_mode="stretch_both")],
-                    sizing_mode="stretch_width")
+    header = generate_div_item(f"<h2><b>{get_driver_name(driver_id)}</b></h2><br>")
+    middle_spacer = generate_spacer_item()
+    group = generate_plot_list_selector([
+        [header],
+        [positions_plot], [middle_spacer],
+        [position_dist], [middle_spacer],
+        [wdc_position_dist], [middle_spacer],
+        [win_plot], [middle_spacer],
+        [spvfp_scatter, mltr_fp_scatter], [middle_spacer],
+        [teammate_comparison_line_plot],
+        [circuit_performance_table],
+        [team_performance_layout],
+        [image_view, generate_vdivider_item(), driver_stats_layout]
+    ])
 
     logging.info("Finished generating layout for mode DRIVER")
 
-    return layout
+    return group
 
 
 def generate_positions_plot(driver_years, driver_driver_standings, driver_results, driver_fastest_lap_data, driver_id,

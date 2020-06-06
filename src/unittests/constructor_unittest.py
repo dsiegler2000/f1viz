@@ -5,7 +5,7 @@ import pandas as pd
 from data_loading.data_loader import load_races, load_fastest_lap_data, load_results, load_constructors, \
     load_constructor_standings
 from mode.constructor import generate_positions_plot, get_layout, generate_circuit_performance_table, \
-    generate_finishing_positions_bar_plot, generate_wcc_position_bar_plot, generate_win_plot, \
+    generate_finishing_position_bar_plot, generate_wcc_position_bar_plot, generate_win_plot, \
     generate_driver_performance_table, generate_stats_layout
 from utils import time_decorator, get_constructor_name
 
@@ -41,7 +41,7 @@ positions_plot, positions_source = generate_positions_plot(constructor_years, co
                                                            constructor_id)
 
 # Positions bar plot
-generate_finishing_positions_bar_plot = time_decorator(generate_finishing_positions_bar_plot)
+generate_finishing_positions_bar_plot = time_decorator(generate_finishing_position_bar_plot)
 positions_bar_plot = generate_finishing_positions_bar_plot(constructor_results)
 
 # WCC bar plot

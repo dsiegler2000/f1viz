@@ -2,9 +2,10 @@ import logging
 import math
 import re
 from collections import defaultdict, OrderedDict
+import numpy as np
 import pandas as pd
 from bokeh.layouts import column, row
-from bokeh.models import Div, Spacer, CrosshairTool, Range1d, FixedTicker, LegendItem, Legend, HoverTool, TableColumn, \
+from bokeh.models import Div, CrosshairTool, Range1d, FixedTicker, LegendItem, Legend, HoverTool, TableColumn, \
     DataTable, ColumnDataSource, LinearAxis, NumeralTickFormatter, Span, Label, Title, DatetimeTickFormatter, Button, \
     Slider
 from bokeh.plotting import figure
@@ -12,10 +13,10 @@ from pandas import Series
 from data_loading.data_loader import load_constructors, load_results, load_constructor_standings, load_races, \
     load_fastest_lap_data, load_driver_standings
 from mode import driver
-from utils import get_constructor_name, PLOT_BACKGROUND_COLOR, position_text_to_str, get_driver_name, \
+from utils import get_constructor_name, position_text_to_str, get_driver_name, \
     get_circuit_name, int_to_ordinal, get_status_classification, rounds_to_str, nationality_to_flag, get_race_name, \
-    millis_to_str, DATETIME_TICK_KWARGS, rescale, result_to_str
-import numpy as np
+    millis_to_str, DATETIME_TICK_KWARGS, rescale, result_to_str, generate_plot_list_selector, generate_div_item, \
+    generate_spacer_item, PlotItem, COMMON_PLOT_DESCRIPTIONS
 
 constructors = load_constructors()
 results = load_results()
@@ -50,56 +51,59 @@ def get_layout(constructor_id=-1, **kwargs):
         return Div(text="Unfortunately, this team competed for less than 1 year and thus we cannot accurately "
                         "provide data on them.")
 
-    # Position plot
     positions_plot, positions_source = generate_positions_plot(constructor_years, constructor_constructor_standings,
                                                                constructor_results, constructor_fastest_lap_data,
                                                                constructor_id)
+    positions_plot = PlotItem(positions_plot, [], COMMON_PLOT_DESCRIPTIONS["generate_positions_plot"])
 
-    # Positions bar plot
-    positions_bar_plot = generate_finishing_positions_bar_plot(constructor_results)
+    positions_bar_plot = PlotItem(generate_finishing_position_bar_plot, [constructor_results],
+                                  COMMON_PLOT_DESCRIPTIONS["generate_finishing_position_bar_plot"])
 
-    # WCC bar plot
-    wcc_bar_plot = generate_wcc_position_bar_plot(positions_source)
+    wcc_bar_plot = PlotItem(generate_wcc_position_bar_plot, [positions_source],
+                            COMMON_PLOT_DESCRIPTIONS["generate_wcc_position_bar_plot"])
 
-    # Win plot
-    win_plot = generate_win_plot(positions_source, constructor_id)
+    win_plot = PlotItem(generate_win_plot, [positions_source, constructor_id],
+                        COMMON_PLOT_DESCRIPTIONS["generate_win_plot"])
 
-    # Teammate comparison plot
     args = [constructor_results, constructor_races, constructor_driver_standings, constructor_years]
-    teammate_comparison_line_plot, comparison_source = generate_teammate_comparison_line_plot(*args)
+    teammate_comparison_line_plot = PlotItem(generate_teammate_comparison_line_plot, args,
+                                             COMMON_PLOT_DESCRIPTIONS["generate_teammate_comparison_line_plot"])
 
-    # Circuit performance table
-    circuit_performance_table = generate_circuit_performance_table(constructor_results, constructor_races,
-                                                                   constructor_id, consider_up_to=24)
+    circuit_performance_table = PlotItem(generate_circuit_performance_table, [constructor_results, constructor_races,
+                                                                              constructor_id],
+                                         COMMON_PLOT_DESCRIPTIONS["generate_circuit_performance_table"])
 
-    # Driver performance table
     driver_performance_layout, driver_performance_source = generate_driver_performance_table(constructor_races,
                                                                                              constructor_results)
+    description = u"Driver Performance Table \u2014 table containing all drivers who raced for this constructor and " \
+                  u"their performance, such as number of wins and podiums"
+    driver_performance_layout = PlotItem(driver_performance_layout, [], description)
 
-    # Constructor stats div
-    constructor_stats = generate_stats_layout(constructor_years, constructor_races,
-                                              driver_performance_source, constructor_results,
-                                              constructor_constructor_standings, constructor_id)
+    description = u"Various statistics on this constructor"
+    constructor_stats = PlotItem(generate_stats_layout, [constructor_years, constructor_races,
+                                                         driver_performance_source, constructor_results,
+                                                         constructor_constructor_standings, constructor_id],
+                                 description)
 
-    # Header
     constructor_name = get_constructor_name(constructor_id)
-    header = Div(text=f"<h2><b>{constructor_name}</b></h2><br>")
+    header = generate_div_item(f"<h2><b>{constructor_name}</b></h2><br>")
 
-    middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
-    layout = column([header,
-                     positions_plot, middle_spacer,
-                     positions_bar_plot, middle_spacer,
-                     wcc_bar_plot, middle_spacer,
-                     win_plot,
-                     teammate_comparison_line_plot,
-                     circuit_performance_table,
-                     driver_performance_layout,
-                     constructor_stats],
-                    sizing_mode="stretch_width")
+    middle_spacer = generate_spacer_item()
+    group = generate_plot_list_selector([
+        [header],
+        [positions_plot], [middle_spacer],
+        [positions_bar_plot], [middle_spacer],
+        [wcc_bar_plot], [middle_spacer],
+        [win_plot],
+        [teammate_comparison_line_plot],
+        [circuit_performance_table],
+        [driver_performance_layout],
+        [constructor_stats]
+    ])
 
     logging.info("Finished generating layout for mode CONSTRUCTOR")
 
-    return layout
+    return group
 
 
 def generate_positions_plot(constructor_years, constructor_constructor_standings, constructor_results,
@@ -489,7 +493,7 @@ def generate_circuit_performance_table(constructor_results, constructor_races, c
     return column([title, row([circuits_table], sizing_mode="stretch_width")], sizing_mode="stretch_width")
 
 
-def generate_finishing_positions_bar_plot(constructor_results, consider_up_to=24):
+def generate_finishing_position_bar_plot(constructor_results, consider_up_to=24):
     """
     Bar plot showing distribution of race finishing positions.
     :param constructor_results: Constructor results

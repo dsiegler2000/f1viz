@@ -21,7 +21,6 @@ from data_loading.data_loader import load_drivers, load_constructors, load_circu
     load_constructor_colors, load_status
 
 # This is the color of the Bokeh plots
-
 PLOT_BACKGROUND_COLOR = RGB(22, 25, 28)
 BASE_BACKGROUND_COLOR = RGB(47, 47, 47)
 
@@ -47,14 +46,40 @@ status = None
 NATIONALITY_TO_FLAG = pd.read_csv("data/static_data/nationalities.csv", index_col=0)
 
 COMMON_PLOT_DESCRIPTIONS = {
-    "generate_wdc_plot": u"""World Driver's Championship Plot \u2014 plots the progression of the WDC by looking at 
+    "generate_wdc_plot": u"""World Drivers' Championship Plot \u2014 plots the progression of the WDC by looking at 
     the points each driver has accumulated over time""",
 
-    "generate_wcc_plot": u"""World Constructor's Championship Plot \u2014 plots the progression of the WCC by looking at 
+    "generate_wcc_plot": u"""World Constructors' Championship Plot \u2014 plots the progression of the WCC by looking at 
     the points each driver has accumulated over time""",
 
     "generate_spvfp_scatter": u"""Start Position vs Finish Position Scatter Plot \u2014 each dot on this plot 
-    represents a driver at one race, and can show exceptional drives where a driver made up many positions"""
+    represents a driver at one race, and can show exceptional drives where a driver made up many positions""",
+
+    "generate_mltr_fp_scatter": u"""Average Lap Time Rank vs Finish Position Scatter Plot \u2014 each dot on this plot 
+    represents a driver at one race, and can show exceptional drivers where a driver out-drove their car""",
+
+    "generate_times_plot": u"""Lap Times vs Lap \u2014 plots the lap time of drivers for every lap""",
+
+    "generate_finishing_position_bar_plot": u"""Finish Position Bar Plot \u2014 bar plot of how many times this driver 
+    has finished 1st, 2nd, 3rd, etc. including RET in races""",
+
+    "generate_wdc_position_bar_plot": u"""WDC Position Bar Plot \u2014 bar plot of how many times this driver 
+    has finished 1st, 2nd, 3rd, etc. in the World Drivers' Championship""",
+
+    "generate_wcc_position_bar_plot": u"""WCC Position Bar Plot \u2014 bar plot of how many times this constructor 
+    has finished 1st, 2nd, 3rd, etc. in the World Constructors' Championship""",
+
+    "generate_win_plot": u"""Wins, Podiums, and DNFs vs Time Plot \u2014 plots number of wins, podiums, and DNFs along 
+    with win, podium, and DNF percent vs time""",
+
+    "generate_teammate_comparison_line_plot": u"""Teammate Comparison Plot \u2014 plots the finishing position of the
+     driver along with his/her teammate vs time""",
+
+    "generate_positions_plot": u"""Positions Plot \u2014 plots finishing position, grid position, and WDC position vs 
+    time, providing a concise summary of results for every race""",
+
+    "generate_circuit_performance_table": u"""Circuit Performance Table \u2014 table of performance at every circuit 
+    they've raced at"""
 }
 
 select_unselect = True
@@ -66,23 +91,31 @@ def generate_plot_list_selector(plot_items):
     :param plot_items: List of lists, with each list containing at least one object of type `PlotItem`
     :return: Layout
     """
+    # TODO add loading animation
+    import main
+
     # Check the shape and types of the plot items to make sure it is valid
+    idx = 0
     for i, l in enumerate(plot_items):
         if isinstance(l, Iterable):
             for item in l:
                 if not isinstance(item, PlotItem):
-                    raise ValueError("One sub-element of `plot_items` is not of type PlotItem")
+                    raise ValueError(f"One sub-element of `plot_items` is not of type PlotItem: {item}, row {idx}")
         else:
             if not isinstance(l, PlotItem):
-                raise ValueError("One sub-element of `plot_items` is not of type PlotItem")
+                raise ValueError(f"One sub-element of `plot_items` is not of type PlotItem: {l}, row {idx}")
             plot_items[i] = [l]
-    # TODO add loading animation
+        idx += 1
     # Generate the check box list
     descriptions = []
+    idx_to_item = dict()
+    idx = 0
     for l in plot_items:
         for i in l:
             if i.listed:
                 descriptions.append(i.description)
+                idx_to_item[idx] = i
+                idx += 1
     checkbox_group = CheckboxGroup(labels=descriptions, active=[])
     generate_button = Button(label="Generate Plots")
     select_all_button = Button(label="Select All", width=100)
@@ -110,8 +143,11 @@ def generate_plot_list_selector(plot_items):
             for i in l:
                 if idx in checkbox_group.active or not i.listed:
                     plot_layout = i.method(*i.args, **i.kwargs)
+                    if hasattr(plot_layout, '__len__'):
+                        plot_layout = plot_layout[0]
                     row_layouts.append(plot_layout)
-                idx += 1
+                if i.listed:
+                    idx += 1
             if len(row_layouts) > 0:
                 layout.append(row(row_layouts, sizing_mode="stretch_width"))
         new_layout = column([select_all_button_row, checkbox_group, generate_button,
@@ -146,6 +182,7 @@ class PlotItem:
         always be generated
         :param estimated_time: Estimated time to execute the given method
         """
+        # TODO add caching/memoization to the method
         if kwargs is None:
             kwargs = {}
         self.method = method
@@ -154,6 +191,7 @@ class PlotItem:
         self.description = description
         self.listed = listed
         self.estimated_time = estimated_time
+        self.cache = None
 
         if not callable(method):
             self.method = lambda: method

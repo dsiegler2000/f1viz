@@ -181,7 +181,7 @@ def generate_finishing_position_bar_plot(cc_results):
     :param cc_results: CC results
     :return: Finishing position bar plot layout
     """
-    return constructor.generate_finishing_positions_bar_plot(cc_results)
+    return constructor.generate_finishing_position_bar_plot(cc_results)
 
 
 def generate_spvfp_scatter(cc_results, cc_races, cc_driver_standings):

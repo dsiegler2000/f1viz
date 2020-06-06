@@ -346,7 +346,7 @@ def generate_finishing_position_bar_plot(yc_results):
     :param yc_results: YC results
     :return: Finishing position bar plot
     """
-    return constructor.generate_finishing_positions_bar_plot(yc_results)
+    return constructor.generate_finishing_position_bar_plot(yc_results)
 
 
 def generate_spvfp_scatter(yc_results, yc_races, yc_driver_standings):

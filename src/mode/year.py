@@ -49,62 +49,6 @@ def get_layout(year_id=-1, **kwargs):
     year_fastest_lap_data = fastest_lap_data[fastest_lap_data["raceId"].isin(year_races.index)]
 
     logging.info(f"Generating layout for mode YEAR in year, year_id={year_id}")
-    #
-    # # Generate WDC plot
-    # wdc_plot = generate_wdc_plot(year_driver_standings, year_results)
-    #
-    # # Generate constructor's plot
-    # constructors_plot = generate_wcc_plot(year_constructor_standings, year_results)
-    #
-    # # Generate position vs mean lap time rank plot
-    # position_mltr_scatter = generate_mltr_position_scatter(year_fastest_lap_data, year_results,
-    #                                                        year_driver_standings, year_constructor_standings)
-    #
-    # # Generate mean finish start position vs WDC finish position scatter plot
-    # msp_position_scatter = generate_msp_position_scatter(year_results, year_driver_standings)
-    #
-    # # Start pos vs finish pos scatter plot
-    # spvpfp_scatter = generate_spvfp_scatter(year_results, year_races, year_driver_standings)
-    #
-    # # WCC results table
-    # wcc_results_table = generate_wcc_results_table(year_results, year_races, year_constructor_standings)
-    #
-    # # Wins pie chart
-    # wins_pie_chart = generate_wins_pie_plots(year_results)
-    #
-    # # Generate the teams and drivers table
-    # teams_and_drivers = generate_teams_and_drivers_table(year_results, year_races)
-    #
-    # # Generate races info
-    # races_info = generate_races_info_table(year_races, year_qualifying, year_results, year_fastest_lap_data)
-    #
-    # # Generate WDC table
-    # wdc_table, driver_win_source, constructor_win_source = generate_wdc_results_table(year_results,
-    #                                                                                   year_driver_standings, year_races)
-    #
-    # # Win plots
-    # win_plots = generate_win_plots(driver_win_source, constructor_win_source)
-    #
-    # # Generate DNF table
-    # dnf_table = generate_dnf_table(year_results)
-    #
-    # # Header
-    # header = Div(text=f"<h2>What did the {year_id} season look like?</h2>")
-    #
-    # # Bring it all together
-    # middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
-    # layout = column([header,
-    #                  wdc_plot, middle_spacer,
-    #                  constructors_plot, middle_spacer,
-    #                  wins_pie_chart, middle_spacer,
-    #                  row([msp_position_scatter, position_mltr_scatter], sizing_mode="stretch_width"), middle_spacer,
-    #                  win_plots, middle_spacer,
-    #                  row([spvpfp_scatter, vdivider(), wcc_results_table], sizing_mode="stretch_width"), middle_spacer,
-    #                  teams_and_drivers,
-    #                  races_info,
-    #                  wdc_table,
-    #                  dnf_table],
-    #                 sizing_mode="stretch_width")
 
     wdc_plot = PlotItem(generate_wdc_plot, [year_driver_standings, year_results],
                         COMMON_PLOT_DESCRIPTIONS["generate_wdc_plot"])
@@ -127,6 +71,7 @@ def get_layout(year_id=-1, **kwargs):
     wdc_results_table, driver_win_source, constructor_win_source = generate_wdc_results_table(year_results,
                                                                                               year_driver_standings,
                                                                                               year_races)
+    wdc_results_table = PlotItem(wdc_results_table, [], "Table of results for the World Drivers' Championship")
 
     description = "Plot of the number of wins, podiums, and DNFs along with the " \
                   "win, podium, and DNF rate of every driver as the season progresses"
@@ -136,15 +81,13 @@ def get_layout(year_id=-1, **kwargs):
                              COMMON_PLOT_DESCRIPTIONS["generate_spvfp_scatter"])
 
     wcc_results_table = PlotItem(generate_wcc_results_table, [year_results, year_races, year_constructor_standings],
-                                 "Table of results for the World Constructor's Championship")
+                                 "Table of results for the World Constructors' Championship")
 
     teams_and_drivers = PlotItem(generate_teams_and_drivers_table, [year_results, year_races],
                                  "Table of all drivers and the teams they competed for this season")
 
     races_info = PlotItem(generate_races_info_table, [year_races, year_qualifying, year_results, year_fastest_lap_data],
                           "Table of results for every race of the season")
-
-    wdc_results_table = PlotItem(wdc_results_table, [], "Table of results for the World Driver's Championship")
 
     dnf_table = PlotItem(generate_dnf_table, [year_results], "Table of DNFs for each driver and constructor")
 
@@ -172,7 +115,7 @@ def get_layout(year_id=-1, **kwargs):
 
 def generate_wdc_plot(year_driver_standings, year_results, highlight_did=None, muted_dids=None):
     """
-    Generates a plot of the progress of the world driver's championship.
+    Generates a plot of the progress of the world drivers' championship.
     :param year_driver_standings: Driver's championship standings for this year
     :param year_results: Results for this year
     :param highlight_did: Driver ID of a driver to be highlighted, leave to None if no highlight
@@ -189,7 +132,7 @@ def generate_wdc_plot(year_driver_standings, year_results, highlight_did=None, m
     num_drivers = len(driver_ids)
     plot_height = 30 * min(num_drivers, 30)
     wdc_plot = figure(
-        title=u"World Driver's Championship \u2014 Number of points each driver has",
+        title=u"World Drivers' Championship \u2014 Number of points each driver has",
         y_axis_label="Points",
         y_range=Range1d(0, max_pts + 5, bounds=(0, max_pts + 5)),
         tools="pan,box_zoom,wheel_zoom,reset,save",
@@ -295,7 +238,7 @@ def generate_wcc_plot(year_constructor_standings, year_results, highlight_cid=No
     constructor_ids = year_constructor_standings["constructorId"].unique()
     num_constructors = len(constructor_ids)
     constructors_plot = figure(
-        title=u"World Constructors's Championship \u2014 Number of points each constructor has",
+        title=u"World Constructors' Championship \u2014 Number of points each constructor has",
         y_axis_label="Points",
         y_range=Range1d(0, max_pts + 5, bounds=(0, max_pts + 5)),
         tools="pan,box_zoom,wheel_zoom,reset,save",
@@ -1196,7 +1139,7 @@ def generate_wdc_results_table(year_results, year_driver_standings, year_races):
 
     htmlcode = str(table)
 
-    title = Div(text=u"""<h2 style="margin-bottom:0px;">World Driver's Championship 
+    title = Div(text=u"""<h2 style="margin-bottom:0px;">World Drivers' Championship 
                          \u2014 Results for each Race</h2>""")
     subtitle = Div(text="<i>Green coloring indicates top 10, regardless of the scoring system used this season.</i>")
     table = bokeh.layouts.row([Div(text=htmlcode)])
@@ -1339,7 +1282,7 @@ def generate_wcc_results_table(year_results, year_races, year_constructor_standi
         TableColumn(field="avg_fp", title="Avg. Finish Pos.", width=80),
     ]
 
-    title = Div(text=u"<h2>World Constructor's Championship</h2>")
+    title = Div(text=u"<h2>World Constructors' Championship</h2>")
     wcc_results_table = DataTable(source=ColumnDataSource(data=source), columns=results_columns, index_position=None)
     return column([title, wcc_results_table], sizing_mode="stretch_width")
 
