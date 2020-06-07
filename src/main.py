@@ -97,10 +97,10 @@ constructor_completions = ["<select constructor>", "All Constructors"] + [c for 
 #   yearcircuit                             √
 #   circuitdriver                           √
 #   driverconstructor                       √
-#   yeardriver
-#   yearconstructor
-#   circuitconstructor
-#   yearcircuitdriver
+#   yeardriver                              √
+#   yearconstructor                         √
+#   circuitconstructor                      √
+#   yearcircuitdriver                       √
 #   yearcircuitconstructor
 #   yeardriverconstructor
 #   circuitdriverconstructor
@@ -198,9 +198,19 @@ def _update(year_input, circuit_input, driver_input, constructor_input):
                   constructor_v=constructor_input.value)
 
 
-def generate_main(plots_layout, year_v=None, circuit_v=None, driver_v=None, constructor_v=None, first_time=False):
+prev_year_v = None
+prev_circuit_v = None
+prev_driver_v = None
+prev_constructor_v = None
+
+
+def generate_main(plots_layout, year_v=None, circuit_v=None, driver_v=None, constructor_v=None, first_time=False,
+                  keep_prev_values=False):
     logging.info(f"Generating main, year_v={year_v}, circuit_v={circuit_v}, driver_v={driver_v}, "
                  f"constructor_v={constructor_v}")
+
+    global prev_year_v, prev_circuit_v, prev_driver_v, prev_constructor_v
+
     # Header and footer
     header = Div(text=open(os.path.join("src", "header.html")).read(), sizing_mode="stretch_width")
     footer = Div(text=open(os.path.join("src", "footer.html")).read(), sizing_mode="stretch_width")
@@ -209,6 +219,12 @@ def generate_main(plots_layout, year_v=None, circuit_v=None, driver_v=None, cons
     circuit_input = Select(options=racecircuit_completions)
     driver_input = Select(options=driver_completions)
     constructor_input = Select(options=constructor_completions)
+
+    if keep_prev_values:
+        year_v = prev_year_v
+        circuit_v = prev_circuit_v
+        driver_v = prev_driver_v
+        constructor_v = prev_constructor_v
 
     if year_v:
         year_input.value = year_v
@@ -233,11 +249,18 @@ def generate_main(plots_layout, year_v=None, circuit_v=None, driver_v=None, cons
 
     if first_time:
         # Put any default values here
-
+        # circuit_input.value = "Monaco Grand Prix"
+        # constructor_input.value = "Mercedes"
+        # year_input.value = "2016"
         _update(year_input, circuit_input, driver_input, constructor_input)
 
     for s in search_bars:
         s.on_change("value", lambda attr, old, new: _update(year_input, circuit_input, driver_input, constructor_input))
+
+    prev_year_v = year_input.value
+    prev_circuit_v = circuit_input.value
+    prev_driver_v = driver_input.value
+    prev_constructor_v = constructor_input.value
 
 
 logging.info("Constructing initial layout...")

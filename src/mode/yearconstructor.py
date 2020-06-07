@@ -1,15 +1,16 @@
 import logging
 import math
+import numpy as np
 import pandas as pd
 from bokeh.layouts import column, row
-from bokeh.models import Div, Spacer, Range1d, FixedTicker, TableColumn, DataTable, ColumnDataSource
+from bokeh.models import Div, Range1d, FixedTicker, TableColumn, DataTable, ColumnDataSource
 from pandas import Series
-import numpy as np
-from utils import get_constructor_name, PLOT_BACKGROUND_COLOR, get_race_name, int_to_ordinal, \
-    get_status_classification, millis_to_str, get_driver_name, result_to_str
 from data_loading.data_loader import load_results, load_constructor_standings, load_races, load_fastest_lap_data, \
     load_status, load_driver_standings
 from mode import year, constructor, driver
+from utils import get_constructor_name, get_race_name, int_to_ordinal, \
+    get_status_classification, millis_to_str, get_driver_name, result_to_str, generate_plot_list_selector, \
+    generate_spacer_item, generate_div_item, COMMON_PLOT_DESCRIPTIONS, PlotItem
 
 # Note, YC = year constructor
 
@@ -27,6 +28,7 @@ def get_layout(year_id=-1, constructor_id=-1, **kwargs):
     year_races = races[races["year"] == year_id]
     year_results = results[results["raceId"].isin(year_races.index)]
     yc_results = year_results[year_results["constructorId"] == constructor_id]
+
     # Detect if it is a valid combo
     if yc_results.shape[0] == 0:
         return generate_error_layout(year_id, constructor_id)
@@ -54,60 +56,63 @@ def get_layout(year_id=-1, constructor_id=-1, **kwargs):
     logging.info(f"Generating layout for mode YEARCONSTRUCTOR in yearconstructor, year_id={year_id}, "
                  f"constructor_id={constructor_id}")
 
-    # WCC plot
-    wcc_plot = generate_wcc_plot(year_races, year_constructor_standings, year_results, constructor_id)
+    wcc_plot = PlotItem(generate_wcc_plot, [year_races, year_constructor_standings, year_results, constructor_id],
+                        COMMON_PLOT_DESCRIPTIONS["generate_wcc_plot"])
 
-    # Positions plot
     positions_plot, positions_source = generate_positions_plot(yc_constructor_standings, yc_results,
                                                                yc_fastest_lap_data, year_id, constructor_id)
+    positions_plot = PlotItem(positions_plot, [], COMMON_PLOT_DESCRIPTIONS["generate_positions_plot"])
 
-    # Start pos v finish pos scatter
-    spvfp_scatter = generate_spvfp_scatter(yc_results, yc_races, yc_driver_standings)
+    spvfp_scatter = PlotItem(generate_spvfp_scatter, [yc_results, yc_races, yc_driver_standings],
+                             COMMON_PLOT_DESCRIPTIONS["generate_spvfp_scatter"])
 
-    # Mean lap time rank vs finish pos scatter
-    mltr_fp_scatter = generate_mltr_fp_scatter(yc_results, yc_races, yc_driver_standings)
+    mltr_fp_scatter = PlotItem(generate_mltr_fp_scatter, [yc_results, yc_races, yc_driver_standings],
+                               COMMON_PLOT_DESCRIPTIONS["generate_mltr_fp_scatter"])
 
-    # Win plot
-    win_plot = generate_win_plot(positions_source, constructor_id)
+    win_plot = PlotItem(generate_win_plot, [positions_source, constructor_id],
+                        COMMON_PLOT_DESCRIPTIONS["generate_win_plot"])
 
-    # Finish pos bar plot
-    finishing_position_bar_plot = generate_finishing_position_bar_plot(yc_results)
+    finishing_position_bar_plot = PlotItem(generate_finishing_position_bar_plot, [yc_results],
+                                           COMMON_PLOT_DESCRIPTIONS["generate_finishing_position_bar_plot"])
 
-    # Driver performance table
-    driver_performance_layout = generate_driver_performance_table(yc_races, yc_results)
+    description = u"Driver Performance Table \u2014 table showing the performance of every driver that competed for " \
+                  u"this constructor for this season, including number of races, podiums, wins, podiums, etc."
+    driver_performance_layout = PlotItem(generate_driver_performance_table, [yc_races, yc_results], description)
 
-    # Results table
-    results_table, results_source = generate_results_table(yc_results, yc_fastest_lap_data, year_results,
-                                                           year_fastest_lap_data)
+    description = u"Results Table \u2014 table showing this constructor's results at every race this season"
+    results_table = PlotItem(generate_results_table, [yc_results, yc_fastest_lap_data, year_results,
+                                                      year_fastest_lap_data], description)
 
-    # Teammate comparison line plot
     teammate_comparison_line_plot, comparison_source = generate_teammate_comparison_line_plot(yc_results, year_races,
                                                                                               yc_driver_standings,
                                                                                               year_id)
+    teammate_comparison_line_plot = PlotItem(teammate_comparison_line_plot, [],
+                                             COMMON_PLOT_DESCRIPTIONS["generate_teammate_comparison_line_plot"])
 
-    # Stats layout
-    stats_layout = generate_stats_layout(positions_source, yc_results, comparison_source, year_id, constructor_id)
+    description = u"Various statistics on this constructor during this year"
+    stats_layout = PlotItem(generate_stats_layout, [positions_source, yc_results, comparison_source, year_id,
+                                                    constructor_id], description)
 
-    # Header
     constructor_name = get_constructor_name(constructor_id)
-    # todo add notes about colors and stuff
-    header = Div(text=f"<h2><b>What did {constructor_name}'s {year_id} season look like?</b></h2>")
+    header = generate_div_item(f"<h2><b>What did {constructor_name}'s {year_id} season look like?</b></h2>")
 
     logging.info("Finished generating layout for mode YEARCONSTRUCTOR")
 
-    middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
-    layout = column([header,
-                     wcc_plot, middle_spacer,
-                     positions_plot, middle_spacer,
-                     win_plot, middle_spacer,
-                     finishing_position_bar_plot, middle_spacer,
-                     row([spvfp_scatter, mltr_fp_scatter], sizing_mode="stretch_width"), middle_spacer,
-                     teammate_comparison_line_plot, middle_spacer,
-                     driver_performance_layout,
-                     stats_layout,
-                     results_table],
-                    sizing_mode="stretch_width")
-    return layout
+    middle_spacer = generate_spacer_item()
+    group = generate_plot_list_selector([
+        [header],
+        [wcc_plot], [middle_spacer],
+        [positions_plot], [middle_spacer],
+        [win_plot], [middle_spacer],
+        [finishing_position_bar_plot], [middle_spacer],
+        [spvfp_scatter, mltr_fp_scatter], [middle_spacer],
+        [teammate_comparison_line_plot], [middle_spacer],
+        [driver_performance_layout],
+        [stats_layout],
+        [results_table]
+    ])
+
+    return group
 
 
 def generate_wcc_plot(year_races, year_constructor_standings, year_results, constructor_id, consider_window=2):
@@ -312,10 +317,7 @@ def generate_results_table(yc_results, yc_fastest_lap_data, year_results, year_f
             "avg_lap_time_str": avg_lap_time_str
         }, ignore_index=True)
 
-    if year_only:
-        source = source.sort_values(by="race_name", ascending=False)
-    else:
-        source = source.sort_values(by="year", ascending=False)
+    source = source.sort_values(by="year", ascending=False)
 
     results_columns = [
         TableColumn(field="quali_pos_str", title="Grid Pos.", width=75),

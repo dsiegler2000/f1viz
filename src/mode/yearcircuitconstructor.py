@@ -20,6 +20,8 @@ fastest_lap_data = load_fastest_lap_data()
 driver_standings = load_driver_standings()
 constructor_standings = load_constructor_standings()
 
+# TODO checklist on me next :)
+
 
 def get_layout(year_id=-1, circuit_id=-1, constructor_id=-1, download_image=True, **kwargs):
     # Generate slices
@@ -59,9 +61,11 @@ def get_layout(year_id=-1, circuit_id=-1, constructor_id=-1, download_image=True
     plots = [gap_plot, position_plot, lap_time_plot]
 
     # Mark pit stops
+    # todo fix
     mark_pit_stops(ycc_pit_stop_data, driver_ids, cached_driver_map, plots)
 
     # Mark safety car
+    # todo fix
     disclaimer_sc = detect_mark_safety_car(race_laps, race, race_results, plots)
 
     # Quali table

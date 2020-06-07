@@ -52,6 +52,7 @@ def get_layout(year_id=-1, circuit_id=-1, driver_id=-1, constructor_id=-1, downl
     plots = [gap_plot, position_plot, lap_time_plot]
 
     # Mark safety car
+    # todo fix
     disclaimer_sc = detect_mark_safety_car(race_laps, race, race_results, plots)
 
     # Mark fastest lap
@@ -132,6 +133,7 @@ def detect_mark_safety_car(race_laps, race, race_results, plots):
     :param plots: Plots to mark
     :return: Disclaimer div
     """
+    # todo fix
     return yearcircuitdriver.detect_mark_safety_car(race_laps, race, race_results, plots)
 
 

@@ -8,7 +8,8 @@ from data_loading.data_loader import load_results, load_lap_times, load_pit_stop
 from mode import yearcircuit
 import numpy as np
 from utils import PLOT_BACKGROUND_COLOR, get_driver_name, get_race_name, get_circuit_name, plot_image_url, \
-    get_constructor_name, int_to_ordinal, result_to_str, millis_to_str, vdivider, rounds_to_str
+    get_constructor_name, int_to_ordinal, result_to_str, millis_to_str, vdivider, rounds_to_str, PlotItem, \
+    COMMON_PLOT_DESCRIPTIONS, generate_plot_list_selector, generate_spacer_item, generate_div_item
 
 # Note, ycd=yearcircuitdriver and dr=driver race
 
@@ -47,77 +48,138 @@ def get_layout(year_id=-1, circuit_id=-1, driver_id=-1, download_image=True, **k
                                             (fastest_lap_data["driver_id"] == driver_id)]
     year_driver_standings = driver_standings[driver_standings["raceId"].isin(year_races.index.values)]
 
-    # Gap plot
-    gap_plot, cached_driver_map = generate_gap_plot(race_laps, race_results, driver_id)
+    # # Gap plot
+    # gap_plot, cached_driver_map = generate_gap_plot(race_laps, race_results, driver_id)
+    #
+    # # Position plot
+    # position_plot = generate_position_plot(race_laps, race_results, cached_driver_map, driver_id)
+    #
+    # # Lap time plot
+    # lap_time_plot = generate_lap_time_plot(race_laps, race_results, cached_driver_map, driver_id)
+    #
+    # plots = [gap_plot, position_plot, lap_time_plot]
+    #
+    # # Mark safety car
+    # disclaimer_sc = detect_mark_safety_car(race_laps, race, race_results, plots)
+    #
+    # # Mark fastest lap
+    # mark_fastest_lap(ycd_results, plots)
+    #
+    # plots = [gap_plot, lap_time_plot]
+    #
+    # # Mark overtakes
+    # disclaimer_overtakes = detect_mark_overtakes(ycd_laps, race_laps, plots)
+    #
+    # # Mark pit stops
+    # mark_pit_stops(ycd_pit_stop_data, [gap_plot, lap_time_plot], driver_id)
+    #
+    # # Quali table
+    # quali_table, quali_source = generate_quali_table(race_quali, race_results, driver_id)
+    #
+    # # Stats layout
+    # stats_layout = generate_stats_layout(ycd_results, ycd_pit_stop_data, ycd_fastest_lap_data, year_driver_standings,
+    #                                      race_results, quali_source, rid, circuit_id, driver_id,
+    #                                      download_image=download_image)
+    #
+    # driver_name = get_driver_name(driver_id)
+    # race_name = get_race_name(rid, include_year=True)
+    # header = Div(text=f"<h2><b>What did {driver_name}'s {race_name} look like?</b></h2><br><i>Yellow dashed "
+    #                   f"vertical lines show the start of a safety car period, orange vertical lines show the end*. "
+    #                   f"<br>The white line marks the fastest lap of the race."
+    #                   f"<br>Green lines show overtakes and red lines show being overtaken**."
+    #                   f"<br>Pink lines show pit stops along with how long was spent in the pits.</i>")
+    #
+    # middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
+    # layout = column([header,
+    #                  gap_plot, middle_spacer,
+    #                  position_plot, middle_spacer,
+    #                  lap_time_plot, middle_spacer,
+    #                  disclaimer_sc,
+    #                  disclaimer_overtakes,
+    #                  quali_table,
+    #                  stats_layout],
+    #                 sizing_mode="stretch_width")
 
-    # Position plot
-    position_plot = generate_position_plot(race_laps, race_results, cached_driver_map, driver_id)
+    disclaimer_sc, sc_starts, sc_ends = detect_safety_car(race_laps, race)
+    disclaimer_sc = PlotItem(disclaimer_sc, [], "", listed=False)
+    disclaimer_overtakes, overtake_data = detect_overtakes(ycd_laps, race_laps)
+    disclaimer_overtakes = PlotItem(disclaimer_overtakes, [], "", listed=False)
 
-    # Lap time plot
-    lap_time_plot = generate_lap_time_plot(race_laps, race_results, cached_driver_map, driver_id)
+    gap_plot, cached_driver_map = generate_gap_plot(race_laps, race_results, driver_id,
+                                                    sc_starts=sc_starts, sc_ends=sc_ends, overtake_data=overtake_data,
+                                                    ycd_pit_stop_data=ycd_pit_stop_data)
+    gap_plot = PlotItem(gap_plot, [], COMMON_PLOT_DESCRIPTIONS["generate_gap_plot"])
 
-    plots = [gap_plot, position_plot, lap_time_plot]
+    position_plot = PlotItem(generate_position_plot, [race_laps, race_results, cached_driver_map, driver_id],
+                             COMMON_PLOT_DESCRIPTIONS["generate_position_plot"],
+                             kwargs=dict(sc_starts=sc_starts, sc_ends=sc_ends, ycd_pit_stop_data=ycd_pit_stop_data))
 
-    # Mark safety car
-    disclaimer_sc = detect_mark_safety_car(race_laps, race, race_results, plots)
+    lap_time_plot = PlotItem(generate_lap_time_plot, [race_laps, race_results, cached_driver_map, driver_id],
+                             COMMON_PLOT_DESCRIPTIONS["generate_times_plot"],
+                             kwargs=dict(sc_starts=sc_starts, sc_ends=sc_ends, overtake_data=overtake_data))
 
-    # Mark fastest lap
-    mark_fastest_lap(ycd_results, plots)
-
-    plots = [gap_plot, lap_time_plot]
-
-    # Mark overtakes
-    disclaimer_overtakes = detect_mark_overtakes(ycd_laps, race_laps, plots)
-
-    # Mark pit stops
-    mark_pit_stops(ycd_pit_stop_data, [gap_plot, lap_time_plot], driver_id)
-
-    # Quali table
+    description = u"Qualifying Table \u2014 table containing information about qualifying times and rank"
     quali_table, quali_source = generate_quali_table(race_quali, race_results, driver_id)
+    quali_table = PlotItem(quali_table, [], description)
 
-    # Stats layout
-    stats_layout = generate_stats_layout(ycd_results, ycd_pit_stop_data, ycd_fastest_lap_data, year_driver_standings,
-                                         race_results, quali_source, rid, circuit_id, driver_id,
-                                         download_image=download_image)
+    description = u"Various statistics on this driver at this race"
+    stats_layout = PlotItem(generate_stats_layout, [ycd_results, ycd_pit_stop_data, ycd_fastest_lap_data,
+                                                    year_driver_standings, race_results, quali_source, rid, circuit_id,
+                                                    driver_id], description,
+                            kwargs=dict(download_image=download_image))
 
     driver_name = get_driver_name(driver_id)
     race_name = get_race_name(rid, include_year=True)
-    header = Div(text=f"<h2><b>What did {driver_name}'s {race_name} look like?</b></h2><br><i>Yellow dashed "
-                      f"vertical lines show the start of a safety car period, orange vertical lines show the end*. "
-                      f"<br>The white line marks the fastest lap of the race."
-                      f"<br>Green lines show overtakes and red lines show being overtaken**."
-                      f"<br>Pink lines show pit stops along with how long was spent in the pits.</i>")
+    header = generate_div_item(f"<h2><b>What did {driver_name}'s {race_name} look like?"
+                               f"</b></h2><br><i>Yellow dashed vertical lines show the start of a safety car period, "
+                               f"orange vertical lines show the end*. "
+                               f"<br>The white line marks the fastest lap of the race."
+                               f"<br>Green lines show overtakes and red lines show being overtaken**."
+                               f"<br>Pink lines show pit stops along with how long was spent in the pits.</i>")
 
-    middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
-    layout = column([header,
-                     gap_plot, middle_spacer,
-                     position_plot, middle_spacer,
-                     lap_time_plot, middle_spacer,
-                     disclaimer_sc,
-                     disclaimer_overtakes,
-                     quali_table,
-                     stats_layout],
-                    sizing_mode="stretch_width")
+    middle_spacer = generate_spacer_item()
+    layout = generate_plot_list_selector([
+        [header],
+        [gap_plot], [middle_spacer],
+        [position_plot], [middle_spacer],
+        [lap_time_plot], [middle_spacer],
+        [disclaimer_sc],
+        [disclaimer_overtakes],
+        [quali_table],
+        [stats_layout]
+    ])
 
     logging.info("Finished generating layout for mode YEARCIRCUITDRIVER")
 
     return layout
 
 
-def generate_gap_plot(race_laps, race_results, driver_id, consider_window=2):
+def generate_gap_plot(race_laps, race_results, driver_id, consider_window=2, sc_starts=None, sc_ends=None,
+                      overtake_data=None, ycd_pit_stop_data=None):
     """
     Plots gap to leader.
     :param race_laps: Race laps
     :param race_results: Race results
     :param driver_id: Driver ID
+    :param sc_starts: List of starts of safety car periods
+    :param sc_ends: List of starts of safety car periods
+    :param overtake_data: List of overtake data tuples
     :param consider_window: Window to focus on (places around the driver)
+    :param ycd_pit_stop_data: YCD pit stop data in order to mark pit stops
     :return: Gap plot layout, cached driver map
     """
     muted_dids = generate_muted_dids(race_results, driver_id, consider_window)
-    return yearcircuit.generate_gap_plot(race_laps, race_results, highlight_dids=[driver_id], muted_dids=muted_dids)
+    gap_plot, cached_driver_map = yearcircuit.generate_gap_plot(race_laps, race_results, highlight_dids=[driver_id],
+                                                                muted_dids=muted_dids, sc_starts=sc_starts,
+                                                                sc_ends=sc_ends)
+    mark_overtakes(overtake_data, [gap_plot])
+    if ycd_pit_stop_data is not None:
+        mark_pit_stops(ycd_pit_stop_data, [gap_plot], driver_id)
+    return gap_plot, cached_driver_map
 
 
-def generate_position_plot(race_laps, race_results, cached_driver_map, driver_id, consider_window=2):
+def generate_position_plot(race_laps, race_results, cached_driver_map, driver_id, consider_window=2, sc_starts=None,
+                           sc_ends=None, ycd_pit_stop_data=None):
     """
     Generates a position plot (position vs lap)
     :param race_laps: Race laps
@@ -125,39 +187,35 @@ def generate_position_plot(race_laps, race_results, cached_driver_map, driver_id
     :param cached_driver_map: Cached driver map
     :param driver_id: Driver ID
     :param consider_window: Consider window
+    :param sc_starts: List of starts of safety car periods
+    :param sc_ends: List of starts of safety car periods
+    :param ycd_pit_stop_data: YCD pit stop data to mark pit stops
     :return: Position plot
     """
     muted_dids = generate_muted_dids(race_results, driver_id, consider_window)
-    return yearcircuit.generate_position_plot(race_laps, cached_driver_map, highlight_dids=[driver_id],
-                                              muted_dids=muted_dids)
+    position_plot = yearcircuit.generate_position_plot(race_laps, cached_driver_map, highlight_dids=[driver_id],
+                                                       muted_dids=muted_dids, sc_starts=sc_starts, sc_ends=sc_ends)
+    if ycd_pit_stop_data is not None:
+        mark_pit_stops(ycd_pit_stop_data, [position_plot], driver_id)
+    return position_plot
 
 
-def detect_mark_safety_car(race_laps, race, race_results, plots):
+def detect_safety_car(race_laps, race):
     """
-    Detect and mark safety car laps.
+    Detect safety car laps.
     :param race_laps: Race laps
     :param race: Race entry (from races.csv)
-    :param race_results: Race results
-    :param plots: Plots
-    :return: Disclaimer div
+    :return: Disclaimer div, safety car start list, safety car end list
     """
-    # TODO FIX ME
     disclaimer, sc_starts, sc_ends = yearcircuit.detect_safety_car(race_laps, race)
-    return disclaimer
+    return disclaimer, sc_starts, sc_ends
 
 
-def detect_mark_overtakes(ycd_laps, race_laps, plots):
-    """
-    Detects and marks overtakes
-    :param ycd_laps: YCD laps
-    :param race_laps: Race laps
-    :param plots: Plots to mark
-    :return: Returns a disclaimer div
-    """
-    if ycd_laps.shape[0] <= 1:
-        return Div()
-
-    def mark_overtake(lap, color, names):
+def mark_overtakes(overtake_data, plots):
+    for d in overtake_data:
+        lap = d[0]
+        color = d[1]
+        names = d[2]
         label_kwargs = dict(render_mode="canvas",
                             text_color=color,
                             text_font_size="9pt",
@@ -172,10 +230,22 @@ def detect_mark_overtakes(ycd_laps, race_laps, plots):
                 p.add_layout(label)
                 y += dy
 
+
+def detect_overtakes(ycd_laps, race_laps):
+    """
+    Detects overtakes
+    :param ycd_laps: YCD laps
+    :param race_laps: Race laps
+    :return: Disclaimer div, overtake data
+    """
+    if ycd_laps.shape[0] <= 1:
+        return Div()
+
     prev_position = ycd_laps["position"].values[0]
     prev_lap_laps = None
     overtakes = 0
     overtaken = 0
+    overtake_data = []
     for idx, row in ycd_laps.iterrows():
         curr_position = row["position"]
         lap = row["lap"]
@@ -197,7 +267,7 @@ def detect_mark_overtakes(ycd_laps, race_laps, plots):
                         if opponent_prev_pos < prev_position and opponent_curr_pos > curr_position:
                             overtakes += 1
                             names.append(get_driver_name(did, include_flag=False, just_last=True))
-                mark_overtake(lap, "green", names)
+                overtake_data.append((lap, "green", names))
             if curr_position > prev_position:  # Got overtaken
                 names = []
                 for opponent_prev_pos in range(prev_position, 30):
@@ -212,14 +282,14 @@ def detect_mark_overtakes(ycd_laps, race_laps, plots):
                         if opponent_prev_pos > prev_position and opponent_curr_pos < curr_position:
                             overtaken += 1
                             names.append(get_driver_name(did, include_flag=False, just_last=True))
-                    mark_overtake(lap, "red", names)
+                    overtake_data.append((lap, "red", names))
         prev_position = curr_position
         prev_lap_laps = lap_laps
     disclaimer = Div(text="<b>** Overtakes are detected using lap timing data, and thus may not always be perfectly "
                           "accurate, especially if there are multiple overtakes occurring in one lap. These overtakes "
                           "also include overtakes that occur in the pits.</b>")
 
-    return disclaimer
+    return disclaimer, overtake_data
 
 
 def mark_pit_stops(ycd_pit_stop_data, plots, driver_id, cached_driver_map=None, h_pct=0.5, show_name=False):
@@ -283,10 +353,12 @@ def mark_fastest_lap(ycd_results, plots):
     :param plots: Plots to mark
     :return: None
     """
+    # TODO add this back
     yearcircuit.mark_fastest_lap(ycd_results, plots)
 
 
-def generate_lap_time_plot(race_laps, race_results, cached_driver_map, driver_id, consider_window=1):
+def generate_lap_time_plot(race_laps, race_results, cached_driver_map, driver_id, consider_window=1,
+                           sc_starts=None, sc_ends=None, overtake_data=None):
     """
     Generates a plot of lap time vs laps
     :param race_laps: Race laps
@@ -294,6 +366,9 @@ def generate_lap_time_plot(race_laps, race_results, cached_driver_map, driver_id
     :param cached_driver_map: Cached driver map
     :param driver_id: Driver ID
     :param consider_window: Window to focus on (places around the driver)
+    :param sc_starts: List of starts of safety car periods
+    :param sc_ends: List of starts of safety car periods
+    :param overtake_data: Overtake tuple data
     :return: Lap time plot layout
     """
     muted_dids = generate_muted_dids(race_results, driver_id, consider_window)
@@ -301,7 +376,10 @@ def generate_lap_time_plot(race_laps, race_results, cached_driver_map, driver_id
         stdev_range=(1.5, 0.2),
         include_hist=False,
         highlight_dids=[driver_id],
-        muted_dids=muted_dids
+        muted_dids=muted_dids,
+        sc_starts=sc_starts,
+        sc_ends=sc_ends,
+        overtake_data=overtake_data
     )
     return yearcircuit.generate_lap_time_plot(race_laps, cached_driver_map, **kwargs)[1]
 

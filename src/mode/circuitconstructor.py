@@ -4,7 +4,8 @@ from bokeh.models import Div, Spacer
 from data_loading.data_loader import load_results, load_races, load_fastest_lap_data, load_lap_times, \
     load_driver_standings, load_constructor_standings, load_circuits
 from mode import circuitdriver, constructor, yearconstructor, driver
-from utils import get_circuit_name, get_constructor_name, PLOT_BACKGROUND_COLOR, plot_image_url
+from utils import get_circuit_name, get_constructor_name, PLOT_BACKGROUND_COLOR, plot_image_url, generate_spacer_item, \
+    generate_div_item, PlotItem, COMMON_PLOT_DESCRIPTIONS, generate_plot_list_selector
 
 # Note, CC = circuit constructor
 
@@ -55,34 +56,34 @@ def get_layout(circuit_id=-1, constructor_id=-1, download_image=True, **kwargs):
     cc_driver_standings = driver_standings.loc[cc_driver_standings_idxs]
     constructor_constructor_standings = constructor_standings[constructor_standings["constructorId"] == constructor_id]
 
-    # Positions plot
     positions_plot, positions_source = generate_positions_plot(cc_years, cc_fastest_lap_data, constructor_results,
                                                                constructor_constructor_standings, cc_races,
                                                                constructor_id)
+    positions_plot = PlotItem(positions_plot, [], COMMON_PLOT_DESCRIPTIONS["generate_positions_plot"])
 
-    # Win plot
-    win_plot = generate_win_plot(positions_source, constructor_id)
+    win_plot = PlotItem(generate_win_plot, [positions_source, constructor_id],
+                        COMMON_PLOT_DESCRIPTIONS["generate_win_plot"])
 
-    # Lap time distribution plot
-    lap_time_distribution_plot = generate_lap_time_plot(cc_lap_times, cc_rids, circuit_id, constructor_id)
+    lap_time_distribution_plot = PlotItem(generate_lap_time_plot, [cc_lap_times, cc_rids, circuit_id, constructor_id],
+                                          COMMON_PLOT_DESCRIPTIONS["generate_times_plot"])
 
-    # Finish position bar plot
-    finish_position_bar_plot = generate_finishing_position_bar_plot(cc_results)
+    finish_position_bar_plot = PlotItem(generate_finishing_position_bar_plot, [cc_results],
+                                        COMMON_PLOT_DESCRIPTIONS["generate_finishing_position_bar_plot"])
 
-    # Start pos vs finish pos scatter plot
-    spvfp_scatter = generate_spvfp_scatter(cc_results, cc_races, cc_driver_standings)
+    spvfp_scatter = PlotItem(generate_spvfp_scatter, [cc_results, cc_races, cc_driver_standings],
+                             COMMON_PLOT_DESCRIPTIONS["generate_spvfp_scatter"])
 
-    # Mean lap time rank vs finish pos scatter plot
-    mltr_fp_scatter = generate_mltr_fp_scatter(cc_results, cc_races, cc_driver_standings)
+    mltr_fp_scatter = PlotItem(generate_mltr_fp_scatter, [cc_results, cc_races, cc_driver_standings],
+                               COMMON_PLOT_DESCRIPTIONS["generate_mltr_fp_scatter"])
 
-    # Stats div
-    stats_div = generate_stats_layout(cc_years, cc_races, cc_results, cc_fastest_lap_data, positions_source,
-                                      circuit_id, constructor_id)
+    description = u"Various statistics on this constructor at this circuit"
+    stats_div = PlotItem(generate_stats_layout, [cc_years, cc_races, cc_results, cc_fastest_lap_data, positions_source,
+                                                 circuit_id, constructor_id], description)
 
-    # Results table
-    results_table = generate_results_table(cc_results, cc_fastest_lap_data, circuit_results, circuit_fastest_lap_data)
+    description = u"Results Table \u2014 table showing this constructor's results at every race this circuit"
+    results_table = PlotItem(generate_results_table, [cc_results, cc_fastest_lap_data, circuit_results,
+                                                      circuit_fastest_lap_data], description)
 
-    # Get track image
     if download_image:
         # Track image
         circuit_row = circuits.loc[circuit_id]
@@ -92,28 +93,29 @@ def get_layout(circuit_id=-1, constructor_id=-1, download_image=True, **kwargs):
         image_view = column([image_view, disclaimer], sizing_mode="stretch_both")
     else:
         image_view = Div()
+    image_view = PlotItem(image_view, [], "", listed=False)
 
-    # Header
     circuit_name = get_circuit_name(circuit_id)
     constructor_name = get_constructor_name(constructor_id)
-    header = Div(text=f"<h2><b>What did/does {constructor_name}'s performance at "
-                      f"{circuit_name} look like?</b></h2><br>")
+    header = generate_div_item(f"<h2><b>What did/does {constructor_name}'s performance at "
+                               f"{circuit_name} look like?</b></h2><br>")
 
-    middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
-    layout = column([header,
-                     positions_plot, middle_spacer,
-                     win_plot, middle_spacer,
-                     lap_time_distribution_plot, middle_spacer,
-                     finish_position_bar_plot, middle_spacer,
-                     row([spvfp_scatter, mltr_fp_scatter], sizing_mode="stretch_width"), middle_spacer,
-                     row([image_view], sizing_mode="stretch_width"),
-                     stats_div,
-                     results_table],
-                    sizing_mode="stretch_width")
+    middle_spacer = generate_spacer_item()
+    group = generate_plot_list_selector([
+        [header],
+        [positions_plot], [middle_spacer],
+        [win_plot], [middle_spacer],
+        [lap_time_distribution_plot], [middle_spacer],
+        [finish_position_bar_plot], [middle_spacer],
+        [spvfp_scatter, mltr_fp_scatter], [middle_spacer],
+        [image_view],
+        [stats_div],
+        [results_table]
+    ])
 
     logging.info("Finished generating layout for mode CIRCUITCONSTRUCTOR")
 
-    return layout
+    return group
 
 
 def generate_lap_time_plot(cc_lap_times, cc_rids, circuit_id, constructor_id):

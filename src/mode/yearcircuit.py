@@ -10,7 +10,7 @@ import numpy as np
 from bokeh.models import HoverTool, Div, Legend, LegendItem, ColumnDataSource, Range1d, Spacer, \
     CrosshairTool, DataRange1d, Span, TableColumn, DataTable, DatetimeTickFormatter, HTMLTemplateFormatter
 from bokeh.models.tickers import FixedTicker
-from mode import driver
+from mode import driver, yearcircuitdriver
 from utils import get_line_thickness, ColorDashGenerator, plot_image_url, DATETIME_TICK_KWARGS, int_to_ordinal, \
     get_race_name, position_text_to_str, PlotItem, COMMON_PLOT_DESCRIPTIONS, generate_div_item, generate_spacer_item, \
     generate_plot_list_selector
@@ -58,23 +58,23 @@ def get_layout(year_id=-1, circuit_id=-1, **kwargs):
     logging.info(f"Generating layout for mode YEARCIRCUIT in yearcircuit, year_id={year_id}, "
                  f"circuit_id={circuit_id}, race_id={race_id}")
 
-    sc_disclaimer_div, sc_start, sc_end = detect_safety_car(race_laps, race)
+    sc_disclaimer_div, sc_start, sc_ends = detect_safety_car(race_laps, race)
     sc_disclaimer_div = PlotItem(sc_disclaimer_div, [], "", listed=False)
 
-    gap_plot, cached_driver_map = generate_gap_plot(race_laps, race_results, sc_starts=sc_start, sc_ends=sc_end)
+    gap_plot, cached_driver_map = generate_gap_plot(race_laps, race_results, sc_starts=sc_start, sc_ends=sc_ends)
     gap_plot = PlotItem(gap_plot, [], COMMON_PLOT_DESCRIPTIONS["generate_gap_plot"])
 
     position_plot = PlotItem(generate_position_plot, [race_laps, cached_driver_map],
                              COMMON_PLOT_DESCRIPTIONS["generate_position_plot"],
-                             kwargs=dict(sc_starts=sc_start, sc_ends=sc_end))
+                             kwargs=dict(sc_starts=sc_start, sc_ends=sc_ends))
 
     lap_time_plot_layout = PlotItem(generate_lap_time_plot, [race_laps, cached_driver_map],
                                     COMMON_PLOT_DESCRIPTIONS["generate_times_plot"],
-                                    kwargs=dict(sc_starts=sc_start, sc_ends=sc_end))
+                                    kwargs=dict(sc_starts=sc_start, sc_ends=sc_ends))
 
     description = u"Pit Stop Plot \u2014 plots every driver's pit stop(s)"
     pit_stop_plot = PlotItem(generate_pit_stop_plot, [race_pit_stops, cached_driver_map, race_laps], description,
-                             kwargs=dict(sc_starts=sc_start, sc_ends=sc_end))
+                             kwargs=dict(sc_starts=sc_start, sc_ends=sc_ends))
 
     spvfp_scatter = PlotItem(generate_spvfp_scatter, [race_results, race, race_driver_standings],
                              COMMON_PLOT_DESCRIPTIONS["generate_spvfp_scatter"])
@@ -854,7 +854,7 @@ def generate_pit_stop_plot(race_pit_stops, cached_driver_map, race_laps, sc_star
 
 
 def generate_lap_time_plot(race_laps, cached_driver_map, stdev_range=(1, 1), include_hist=True, highlight_dids=None,
-                           muted_dids=None, sc_starts=None, sc_ends=None):
+                           muted_dids=None, sc_starts=None, sc_ends=None, overtake_data=None):
     """
     Generates a plot of lap times.
     :param race_laps: Race laps
@@ -866,6 +866,7 @@ def generate_lap_time_plot(race_laps, cached_driver_map, stdev_range=(1, 1), inc
     :param muted_dids: List of driver IDs to have initially muted
     :param sc_starts: List of starts of safety car periods
     :param sc_ends: List of starts of safety car periods
+    :param overtake_data: Overtake data tuple list
     :return: The full lap time plot layout, the plot itself
     """
     logging.info("Generating lap time plot")
@@ -997,6 +998,9 @@ def generate_lap_time_plot(race_laps, cached_driver_map, stdev_range=(1, 1), inc
 
     # Mark safety car
     mark_sc_periods(sc_starts, sc_ends, [lap_time_plot])
+
+    if overtake_data:
+        yearcircuitdriver.mark_overtakes(overtake_data, [lap_time_plot])
 
     y = race_laps["milliseconds"]
     vhist, vedges = np.histogram(y, bins=500)

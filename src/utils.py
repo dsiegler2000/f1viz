@@ -75,8 +75,8 @@ COMMON_PLOT_DESCRIPTIONS = {
     "generate_teammate_comparison_line_plot": u"""Teammate Comparison Plot \u2014 plots the finishing position of the
      driver along with his/her teammate vs time""",
 
-    "generate_positions_plot": u"""Positions Plot \u2014 plots finishing position, grid position, and WDC position vs 
-    time, providing a concise summary of results for every race""",
+    "generate_positions_plot": u"""Positions Plot \u2014 plots finishing position, grid position, and championship 
+    position vs time, providing a concise summary of results for every race""",
 
     "generate_circuit_performance_table": u"""Circuit Performance Table \u2014 table of performance at every circuit 
     they've raced at""",
@@ -156,7 +156,7 @@ def generate_plot_list_selector(plot_items):
                 layout.append(row(row_layouts, sizing_mode="stretch_width"))
         new_layout = column([select_all_button_row, checkbox_group, generate_button,
                              column(layout, sizing_mode="stretch_width")], sizing_mode="scale_width")
-        main.generate_main(new_layout)
+        main.generate_main(new_layout, keep_prev_values=True)
 
     generate_button.on_click(lambda event: update())
     return column([select_all_button_row, checkbox_group, generate_button], sizing_mode="scale_width")
