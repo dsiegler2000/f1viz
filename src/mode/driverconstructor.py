@@ -1,17 +1,18 @@
 import logging
 import math
-import pandas as pd
 import numpy as np
-from bokeh.layouts import column, row
-from bokeh.models import Div, Spacer, Span, Label, Title, Slider, ColumnDataSource, Range1d, LegendItem, Legend, \
+import pandas as pd
+from bokeh.layouts import column
+from bokeh.models import Div, Span, Label, Title, Slider, ColumnDataSource, Range1d, LegendItem, Legend, \
     FixedTicker, CrosshairTool, HoverTool, LabelSet
 from bokeh.plotting import figure
 from pandas import Series
 from data_loading.data_loader import load_drivers, load_results, load_driver_standings, load_races, \
     load_fastest_lap_data, load_constructor_standings
 from mode import driver, constructor
-from utils import get_constructor_name, get_driver_name, PLOT_BACKGROUND_COLOR, rounds_to_str, int_to_ordinal, \
-    position_text_to_str, get_race_name, result_to_str, plot_image_url, vdivider
+from utils import get_constructor_name, get_driver_name, rounds_to_str, int_to_ordinal, \
+    position_text_to_str, get_race_name, result_to_str, plot_image_url, generate_plot_list_selector, \
+    generate_vdivider_item, generate_spacer_item, generate_div_item, PlotItem, COMMON_PLOT_DESCRIPTIONS
 
 # Note, DC stands for driverconstructor
 
@@ -41,50 +42,51 @@ def get_layout(driver_id=-1, constructor_id=-1, download_image=True, **kwargs):
     logging.info(f"Generating layout for mode DRIVERCONSTRUCTOR in driverconstructor, "
                  f"driver_id={driver_id}, constructor_id={constructor_id}")
 
-    # Positions plot
     positions_plot, positions_source = generate_positions_plot(dc_years, dc_driver_standings, dc_results,
-                                                               dc_fastest_lap_data, driver_id, constructor_id)
-    mark_teammate_changes(positions_source, constructor_results, driver_id, positions_plot)
+                                                               dc_fastest_lap_data, constructor_results,
+                                                               driver_id, constructor_id)
+    positions_plot = PlotItem(positions_plot, [], COMMON_PLOT_DESCRIPTIONS["generate_positions_plot"])
 
-    # Win plot
-    win_plot = generate_win_plot(positions_source)
+    win_plot = PlotItem(generate_win_plot, [positions_source], COMMON_PLOT_DESCRIPTIONS["generate_win_plot"])
 
-    # Teammate finish pos vs driver finish pos scatter
-    teammatefp_fp_scatter = generate_teammatefp_fp_scatter(positions_source, constructor_results, driver_id)
+    teammatefp_fp_scatter = PlotItem(generate_teammatefp_fp_scatter, [positions_source, constructor_results, driver_id],
+                                     "generate_teammatefp_fp_scatter" * 5)
 
-    # Teammate diff plot
-    teammate_diff_plot, explanation_div, teammate_diff_source = generate_teammate_diff_comparison_scatter(
+    teammate_diff_plot, teammate_diff_source = generate_teammate_diff_comparison_scatter(
         positions_source, constructor_results, driver_id)
+    description = u"Teammate Difference Scatter Plot \u2014 complex scatter plot with a dot for each race that shows " \
+                  u"how this driver performed compared to his/her teammate"
+    teammate_diff_plot = PlotItem(teammate_diff_plot, [], description)
 
-    # Teammate finish pos vs driver finish pos line plot
-    slider, teammate_comparison_line, source = generate_teammate_comparison_line_plot(positions_source,
-                                                                                      constructor_results, driver_id,
-                                                                                      return_components_and_source=True)
-    mark_teammate_changes(positions_source, constructor_results, driver_id, teammate_comparison_line)
-    teammate_comparison_line = column([slider, teammate_comparison_line], sizing_mode="stretch_width")
+    teammate_comparison_line = PlotItem(generate_teammate_comparison_line_plot, [positions_source, constructor_results,
+                                                                                 driver_id],
+                                        COMMON_PLOT_DESCRIPTIONS["generate_teammate_comparison_line_plot"])
 
-    # Finishing position bar plot
-    finishing_position_bar_plot = generate_finishing_position_bar_plot(dc_results)
+    finishing_position_bar_plot = PlotItem(generate_finishing_position_bar_plot, [dc_results],
+                                           COMMON_PLOT_DESCRIPTIONS["generate_finishing_position_bar_plot"])
 
-    # WDC position bar plot
-    wdc_position_bar_plot = generate_wdc_position_bar_plot(positions_source)
+    wdc_position_bar_plot = PlotItem(generate_wdc_position_bar_plot, [positions_source],
+                                     COMMON_PLOT_DESCRIPTIONS["generate_wdc_position_bar_plot"])
 
-    # WCC position bar plot
     wcc_position_bar_plot, wcc_position_source = generate_wcc_position_bar_plot(dc_years,
                                                                                 constructor_constructor_standings)
+    wcc_position_bar_plot = PlotItem(wcc_position_bar_plot, [],
+                                     COMMON_PLOT_DESCRIPTIONS["generate_wcc_position_bar_plot"])
 
-    # Start pos. vs finish pos. scatter
-    spvfp_scatter = generate_spvfp_scatter(dc_results, dc_races, driver_driver_standings)
+    spvfp_scatter = PlotItem(generate_spvfp_scatter, [dc_results, dc_races, driver_driver_standings],
+                             COMMON_PLOT_DESCRIPTIONS["generate_spvfp_scatter"])
 
-    # Mean lap time rank vs finish pos. scatter
-    mltr_fp_scatter = generate_mltr_fp_scatter(dc_results, dc_races, driver_driver_standings, driver_id)
+    mltr_fp_scatter = PlotItem(generate_mltr_fp_scatter, [dc_results, dc_races, driver_driver_standings, driver_id],
+                               COMMON_PLOT_DESCRIPTIONS["generate_mltr_fp_scatter"])
 
-    # Circuit performance table
-    circuit_performance_table = generate_circuit_performance_table(dc_results, dc_races, driver_id, constructor_id)
+    circuit_performance_table = PlotItem(generate_circuit_performance_table, [dc_results, dc_races, driver_id,
+                                                                              constructor_id],
+                                         COMMON_PLOT_DESCRIPTIONS["generate_circuit_performance_table"])
 
-    # Stats
-    stats_layout = generate_stats_layout(dc_years, dc_races, dc_results, positions_source, wcc_position_source,
-                                         teammate_diff_source, driver_id, constructor_id)
+    description = u"Various statistics on this driver at this circuit"
+    stats_layout = PlotItem(generate_stats_layout, [dc_years, dc_races, dc_results, positions_source,
+                                                    wcc_position_source, teammate_diff_source, driver_id,
+                                                    constructor_id], description)
 
     # Driver image
     # TODO make this an image of this driver at this constructor
@@ -93,34 +95,36 @@ def get_layout(driver_id=-1, constructor_id=-1, download_image=True, **kwargs):
         image_view = plot_image_url(image_url)
     else:
         image_view = Div()
+    image_view = PlotItem(image_view, [], "", listed=False)
 
     header = get_driver_name(driver_id) + " at "
     header += get_constructor_name(constructor_id)
     header += " (" + rounds_to_str(dc_years) + ")"
-    header = Div(text=f"<h2><b>{header}</b></h2>")
+    header = generate_div_item(f"<h2><b>{header}</b></h2>")
 
-    middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
-    divider = vdivider()
-    layout = column([header,
-                     positions_plot, middle_spacer,
-                     win_plot, middle_spacer,
-                     row([teammatefp_fp_scatter, teammate_diff_plot], sizing_mode="stretch_width"),
-                     explanation_div, middle_spacer,
-                     teammate_comparison_line, middle_spacer,
-                     finishing_position_bar_plot, middle_spacer,
-                     wdc_position_bar_plot, middle_spacer,
-                     wcc_position_bar_plot, middle_spacer,
-                     row([spvfp_scatter, mltr_fp_scatter], sizing_mode="stretch_width"),
-                     circuit_performance_table,
-                     row([image_view, divider, stats_layout], sizing_mode="stretch_both")],
-                    sizing_mode="stretch_width")
+    middle_spacer = generate_spacer_item()
+    group = generate_plot_list_selector([
+         [header],
+         [positions_plot], [middle_spacer],
+         [win_plot], [middle_spacer],
+         [teammatefp_fp_scatter, teammate_diff_plot],
+         # [explanation_div], [middle_spacer],
+         [teammate_comparison_line], [middle_spacer],
+         [finishing_position_bar_plot], [middle_spacer],
+         [wdc_position_bar_plot], [middle_spacer],
+         [wcc_position_bar_plot], [middle_spacer],
+         [spvfp_scatter, mltr_fp_scatter],
+         [circuit_performance_table],
+         [image_view, generate_vdivider_item(), stats_layout]
+    ])
 
     logging.info("Finished generating layout for mode DRIVERCONSTRUCTOR")
 
-    return layout
+    return group
 
 
-def generate_positions_plot(dc_years, dc_driver_standings, dc_results, dc_fastest_lap_data, driver_id, constructor_id):
+def generate_positions_plot(dc_years, dc_driver_standings, dc_results, dc_fastest_lap_data, constructor_results,
+                            driver_id, constructor_id):
     """
     Plot WDC position (both rounds and full season), quali, fastest lap, and finishing position rank vs time all on the
     same graph along with smoothed versions of the quali, fastest lap, and finish position ranks.
@@ -129,6 +133,7 @@ def generate_positions_plot(dc_years, dc_driver_standings, dc_results, dc_fastes
     :param dc_driver_standings: DC driver standings
     :param dc_results: DC results
     :param dc_fastest_lap_data: DC fastest lap data
+    :param constructor_results: Constructor results
     :param driver_id: Driver ID
     :param constructor_id: Constructor ID
     :return: Positions plot layout, positions source
@@ -141,6 +146,9 @@ def generate_positions_plot(dc_years, dc_driver_standings, dc_results, dc_fastes
                                                                       include_team_changes=False)
     subtitle = "Teammates who stayed for more than five races are marked with a vertical line."
     positions_plot.add_layout(Title(text=subtitle, text_font_style="italic"), "above")
+
+    mark_teammate_changes(positions_source, constructor_results, driver_id, positions_plot)
+
     return positions_plot, positions_source
 
 
@@ -411,7 +419,7 @@ def generate_teammate_diff_comparison_scatter(positions_source, constructor_resu
     :param driver_id: Driver ID
     :param include_year_labels: Whether to include year labels on the plot
     :param include_race_labels: Whether to include race labels on the plot
-    :return: Teammate diff. comparison scatter, explanation div
+    :return: Teammate diff. comparison scatter, source
     """
     # TODO make this plot use mean lap time percent rather than rank
     logging.info("Generating teammate diff comparison scatter")
@@ -507,7 +515,7 @@ def generate_teammate_diff_comparison_scatter(positions_source, constructor_resu
     teammate_diff_scatter.yaxis.ticker = FixedTicker(ticks=np.arange(-45, 45, 5).tolist())
 
     driver_name = get_driver_name(driver_id, include_flag=False, just_last=True)
-    explanation = f"The right plot is meant to show when {driver_name} was faster than his/her teammate, but yet " \
+    explanation = f"The above plot is meant to show when {driver_name} was faster than his/her teammate, but yet " \
                   f"finished lower, and vice \nversa, along with the more regular cases of when {driver_name} was " \
                   f"faster than his/her teammate, and finished higher (and vice versa).<br>To compute the x axis, " \
                   f"first every driver in each race is ranked based on their average lap time (1 being fastest). " \
@@ -571,11 +579,12 @@ def generate_teammate_diff_comparison_scatter(positions_source, constructor_resu
     # Crosshair tooltip
     teammate_diff_scatter.add_tools(CrosshairTool(line_color="white", line_alpha=0.6))
 
-    return teammate_diff_scatter, explanation, source
+    return column([teammate_diff_scatter, explanation], sizing_mode="stretch_width"), source
 
 
 def generate_teammate_comparison_line_plot(positions_source, constructor_results, driver_id,
-                                           return_components_and_source=False, default_alpha=0.1, mute_smoothed=False):
+                                           return_components_and_source=False, default_alpha=0.1, mute_smoothed=False,
+                                           show_teammate_changes=False):
     """
     Line plot of driver and teammate finish position vs time
     :param positions_source: Positions source
@@ -585,6 +594,7 @@ def generate_teammate_comparison_line_plot(positions_source, constructor_results
     return full layout
     :param default_alpha: Default alpha for smoothing
     :param mute_smoothed: If True, will mute the smoothed lines, if False will mute unsmoothed
+    :param show_teammate_changes: If True, will mark teammate changes using driverconstructor.mark_teammate_changes
     :return: Teammate comparison line plot layout or a tuple of slider, figure depending on `return_components`
     """
     # TODO add mean lap time percent to this plot
@@ -724,6 +734,9 @@ def generate_teammate_comparison_line_plot(positions_source, constructor_results
 
     # Crosshair tooltip
     teammate_fp_plot.add_tools(CrosshairTool(line_color="white", line_alpha=0.6))
+
+    if show_teammate_changes:
+        mark_teammate_changes(positions_source, constructor_results, driver_id, teammate_fp_plot)
 
     if return_components_and_source:
         return smoothing_slider, teammate_fp_plot, source

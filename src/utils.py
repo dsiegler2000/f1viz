@@ -79,7 +79,11 @@ COMMON_PLOT_DESCRIPTIONS = {
     time, providing a concise summary of results for every race""",
 
     "generate_circuit_performance_table": u"""Circuit Performance Table \u2014 table of performance at every circuit 
-    they've raced at"""
+    they've raced at""",
+
+    "generate_gap_plot": u"""Gap Plot \u2014 plot of each driver's gap to the leader throughout the race""",
+
+    "generate_position_plot": u"""Position Plot \u2014 plot of each driver's position throughout the race"""
 }
 
 select_unselect = True

@@ -3,7 +3,7 @@ import traceback
 from data_loading.data_loader import load_races, load_lap_times, load_results, load_qualifying, load_pit_stops, \
     load_driver_standings, load_constructor_standings, load_fastest_lap_data
 from mode.yearcircuit import get_layout, generate_gap_plot, generate_position_plot, generate_lap_time_plot, \
-    generate_pit_stop_plot, detect_mark_safety_car_end, mark_fastest_lap, generate_stats_layout, generate_spvfp_scatter, \
+    generate_pit_stop_plot, detect_safety_car, mark_fastest_lap, generate_stats_layout, generate_spvfp_scatter, \
     generate_mltr_fp_scatter
 import time
 import pandas as pd
@@ -70,7 +70,7 @@ generate_mltr_fp_scatter = time_decorator(generate_mltr_fp_scatter)
 mltr_fp_scatter = generate_mltr_fp_scatter(race_results, race, race_driver_standings)
 
 # Mark safety car and fastest lap
-detect_mark_safety_car_end = time_decorator(detect_mark_safety_car_end)
+detect_mark_safety_car_end = time_decorator(detect_safety_car)
 sc_disclaimer_div = detect_mark_safety_car_end(race_laps, race, race_results, all_plots)
 
 # Generate race stats

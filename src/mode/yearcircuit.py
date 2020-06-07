@@ -12,7 +12,8 @@ from bokeh.models import HoverTool, Div, Legend, LegendItem, ColumnDataSource, R
 from bokeh.models.tickers import FixedTicker
 from mode import driver
 from utils import get_line_thickness, ColorDashGenerator, plot_image_url, DATETIME_TICK_KWARGS, int_to_ordinal, \
-    get_race_name, position_text_to_str
+    get_race_name, position_text_to_str, PlotItem, COMMON_PLOT_DESCRIPTIONS, generate_div_item, generate_spacer_item, \
+    generate_plot_list_selector
 from utils import millis_to_str, get_driver_name, get_constructor_name, PLOT_BACKGROUND_COLOR, \
     vdivider, hdivider
 from datetime import datetime
@@ -33,8 +34,6 @@ fastest_lap_data = load_fastest_lap_data()
 UP_ARROW = "^"
 DOWN_ARROW = "v"
 SIDE_ARROW = ">"
-
-# TODO change to checklist style
 
 
 def get_layout(year_id=-1, circuit_id=-1, **kwargs):
@@ -59,54 +58,55 @@ def get_layout(year_id=-1, circuit_id=-1, **kwargs):
     logging.info(f"Generating layout for mode YEARCIRCUIT in yearcircuit, year_id={year_id}, "
                  f"circuit_id={circuit_id}, race_id={race_id}")
 
-    # Generate the gap plot
-    gap_plot, cached_driver_map = generate_gap_plot(race_laps, race_results)
+    sc_disclaimer_div, sc_start, sc_end = detect_safety_car(race_laps, race)
+    sc_disclaimer_div = PlotItem(sc_disclaimer_div, [], "", listed=False)
 
-    # Generate position plot
-    position_plot = generate_position_plot(race_laps, cached_driver_map)
+    gap_plot, cached_driver_map = generate_gap_plot(race_laps, race_results, sc_starts=sc_start, sc_ends=sc_end)
+    gap_plot = PlotItem(gap_plot, [], COMMON_PLOT_DESCRIPTIONS["generate_gap_plot"])
 
-    # Generate the lap time plot
-    lap_time_plot_layout, lap_time_plot = generate_lap_time_plot(race_laps, cached_driver_map)
+    position_plot = PlotItem(generate_position_plot, [race_laps, cached_driver_map],
+                             COMMON_PLOT_DESCRIPTIONS["generate_position_plot"],
+                             kwargs=dict(sc_starts=sc_start, sc_ends=sc_end))
 
-    # Generate the pit stop plot
-    pit_stop_plot = generate_pit_stop_plot(race_pit_stops, cached_driver_map, race_laps)
+    lap_time_plot_layout = PlotItem(generate_lap_time_plot, [race_laps, cached_driver_map],
+                                    COMMON_PLOT_DESCRIPTIONS["generate_times_plot"],
+                                    kwargs=dict(sc_starts=sc_start, sc_ends=sc_end))
 
-    all_plots = [gap_plot, position_plot, lap_time_plot, pit_stop_plot]
+    description = u"Pit Stop Plot \u2014 plots every driver's pit stop(s)"
+    pit_stop_plot = PlotItem(generate_pit_stop_plot, [race_pit_stops, cached_driver_map, race_laps], description,
+                             kwargs=dict(sc_starts=sc_start, sc_ends=sc_end))
 
-    # Start position vs finish position
-    spvfp_scatter = generate_spvfp_scatter(race_results, race, race_driver_standings)
+    spvfp_scatter = PlotItem(generate_spvfp_scatter, [race_results, race, race_driver_standings],
+                             COMMON_PLOT_DESCRIPTIONS["generate_spvfp_scatter"])
 
-    # Mean lap time rank vs finish position
-    mltr_fp_scatter = generate_mltr_fp_scatter(race_results, race, race_driver_standings)
+    mltr_fp_scatter = PlotItem(generate_mltr_fp_scatter, [race_results, race, race_driver_standings],
+                               COMMON_PLOT_DESCRIPTIONS["generate_mltr_fp_scatter"])
 
-    # Mark safety car and fastest lap
-    sc_disclaimer_div = detect_mark_safety_car_end(race_laps, race, race_results, all_plots)
+    description = u"Various statistics on this race, including qualifying, results, fastest lap information, and " \
+                  u"impact of the WDC and WCC"
+    race_stats_layout = PlotItem(generate_stats_layout, [race_quali, race_results, race_laps, circuit_id,
+                                                         race_driver_standings, race_constructor_standings,
+                                                         race_fastest_lap_data, race_id], description)
 
-    # Generate race stats
-    race_stats_layout = generate_stats_layout(race_quali, race_results, race_laps, circuit_id,
-                                              race_driver_standings, race_constructor_standings,
-                                              race_fastest_lap_data, race_id)
-
-    # Create a header
     title = get_race_name(race_id, include_year=True)
-    header = Div(text=f"<h2><b>What did the {title} look like?</b></h2><br><i>Yellow dashed vertical lines show the "
-                      f"start of a safety car period, orange vertical lines show the end*.</i>")
+    header = generate_div_item(f"<h2><b>What did the {title} look like?</b></h2><br><i>Yellow dashed vertical lines "
+                               f"show the start of a safety car period, orange vertical lines show the end*.</i>")
+    middle_spacer = generate_spacer_item()
 
-    # Bring it all together
-    middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
-    layout = column(header,
-                    gap_plot, middle_spacer,
-                    position_plot, middle_spacer,
-                    lap_time_plot_layout, middle_spacer,
-                    pit_stop_plot, middle_spacer,
-                    row([spvfp_scatter, mltr_fp_scatter], sizing_mode="stretch_width"),
-                    sc_disclaimer_div,
-                    race_stats_layout,
-                    sizing_mode="stretch_width")
+    group = generate_plot_list_selector([
+        [header],
+        [gap_plot], [middle_spacer],
+        [position_plot], [middle_spacer],
+        [lap_time_plot_layout], [middle_spacer],
+        [pit_stop_plot], [middle_spacer],
+        [spvfp_scatter, mltr_fp_scatter],
+        [sc_disclaimer_div],
+        [race_stats_layout]
+    ])
 
     logging.info("Finished generating layout for mode YEARCIRCUIT")
 
-    return layout
+    return group
 
 
 def generate_stats_layout(race_quali, race_results, race_laps, circuit_id, race_driver_standings,
@@ -691,16 +691,13 @@ def mark_fastest_lap(race_results, plots, color="white"):
         p.renderers.extend([line])
 
 
-def detect_mark_safety_car_end(race_laps, race, race_results, plots, draw_finish_line=False):
+def detect_safety_car(race_laps, race):
     """
     Detects safety car periods by comparing the per-lap mean lap time with the whole race mean. Adds lines to mark the
     start and end of safety car periods.
     :param race_laps: Race laps
     :param race: Race
-    :param race_results: Race results
-    :param plots: Plots to add lines to
-    :param draw_finish_line: Whether to draw the finish line
-    :return: A "disclaimer" Div.
+    :return: A "disclaimer" Div, safety car start laps, safety car end laps
     """
     # Detect safety cars using mean variance method
     if race_laps.shape[0] == 0:
@@ -741,12 +738,6 @@ def detect_mark_safety_car_end(race_laps, race, race_results, plots, draw_finish
     if in_safety_car:
         safety_car_end.append(race_laps["lap"].max())
 
-    for start, end in zip(safety_car_start, safety_car_end):
-        start_line = Span(location=start, dimension="height", line_color="yellow", line_width=3, line_dash="dashed")
-        end_line = Span(location=end, dimension="height", line_color="orange", line_width=3, line_dash="dashed")
-        for p in plots:
-            if isinstance(p, Figure):
-                p.renderers.extend([start_line, end_line])
     real_sc_laps = race["SCLaps"].values[0]
     has_sc_laps = real_sc_laps is not "" and not isnan(real_sc_laps)
 
@@ -761,33 +752,40 @@ def detect_mark_safety_car_end(race_laps, race, race_results, plots, draw_finish
 
     disclaimer = Div(text=f"<b>{text}</b>")
 
-    if draw_finish_line:
-        # Find the end of the race
-        winner_did = race_results[race_results["position"] == 1]["driverId"].values[0]
-        last_lap = race_laps[race_laps["driverId"] == winner_did]["lap"].max()
+    return disclaimer, safety_car_start, safety_car_end
+
+
+def mark_sc_periods(safety_car_start, safety_car_end, plots):
+    """
+    Marks safety car periods
+    :param safety_car_start: Safety car period starts
+    :param safety_car_end: Safety car period ends
+    :param plots: Plots to mark
+    :return: None
+    """
+    for start, end in zip(safety_car_start, safety_car_end):
+        start_line = Span(location=start, dimension="height", line_color="yellow", line_width=3, line_dash="dashed")
+        end_line = Span(location=end, dimension="height", line_color="orange", line_width=3, line_dash="dashed")
         for p in plots:
-            kwargs = dict(
-                location=last_lap - 0.5,
-                dimension="height",
-                line_alpha=0.5,
-                line_width=3,
-            )
-            start_line1 = Span(line_color="white", line_dash=[30], **kwargs)
-            start_line2 = Span(line_color="black", line_dash=[35], line_dash_offset=30, **kwargs)
-            p.renderers.extend([start_line1, start_line2])
-
-    return disclaimer
+            if isinstance(p, Figure):
+                p.renderers.extend([start_line, end_line])
 
 
-def generate_pit_stop_plot(race_pit_stops, cached_driver_map, race_laps):
+def generate_pit_stop_plot(race_pit_stops, cached_driver_map, race_laps, sc_starts=None, sc_ends=None):
     """
     Generates a plot of when pit stops happened.
     :param race_pit_stops: Pit stop data for this race
     :param cached_driver_map: Cached driver map
     :param race_laps: Race laps
+    :param sc_starts: List of starts of safety car periods
+    :param sc_ends: List of starts of safety car periods
     :return: Figure layout
     """
     logging.info("Generating pit stop plot")
+    if (sc_starts is None and sc_ends is not None) or (sc_starts is not None and sc_ends is None):
+        sc_starts = []
+        sc_ends = []
+        logging.info("Safety car information passed improperly")
 
     if race_pit_stops.shape[0] == 0:
         return Div(text="Unfortunately, we do not have any pit stop timing data on this race. We have lap timing data "
@@ -850,11 +848,13 @@ def generate_pit_stop_plot(race_pit_stops, cached_driver_map, race_laps):
         ("Name", "$name")
     ]))
 
+    mark_sc_periods(sc_starts, sc_ends, [pit_stop_plot])
+
     return pit_stop_plot
 
 
 def generate_lap_time_plot(race_laps, cached_driver_map, stdev_range=(1, 1), include_hist=True, highlight_dids=None,
-                           muted_dids=None):
+                           muted_dids=None, sc_starts=None, sc_ends=None):
     """
     Generates a plot of lap times.
     :param race_laps: Race laps
@@ -864,13 +864,19 @@ def generate_lap_time_plot(race_laps, cached_driver_map, stdev_range=(1, 1), inc
     :param include_hist: If True, will include the histogram of lap time distribution on the side, if False then won't
     :param highlight_dids: List of driver IDs to highlight
     :param muted_dids: List of driver IDs to have initially muted
+    :param sc_starts: List of starts of safety car periods
+    :param sc_ends: List of starts of safety car periods
     :return: The full lap time plot layout, the plot itself
     """
+    logging.info("Generating lap time plot")
     if muted_dids is None:
         muted_dids = []
     if highlight_dids is None:
         highlight_dids = []
-    logging.info("Generating lap time plot")
+    if (sc_starts is None and sc_ends is not None) or (sc_starts is not None and sc_ends is None):
+        sc_starts = []
+        sc_ends = []
+        logging.info("Safety car information passed improperly")
 
     if race_laps.shape[0] == 0:
         dummy = Spacer(width=0, height=0, background=PLOT_BACKGROUND_COLOR)
@@ -989,6 +995,9 @@ def generate_lap_time_plot(race_laps, cached_driver_map, stdev_range=(1, 1), inc
         ("Constructor", "@constructor"),
     ]))
 
+    # Mark safety car
+    mark_sc_periods(sc_starts, sc_ends, [lap_time_plot])
+
     y = race_laps["milliseconds"]
     vhist, vedges = np.histogram(y, bins=500)
     vmax = max(vhist) * 1.1
@@ -1019,13 +1028,16 @@ def generate_lap_time_plot(race_laps, cached_driver_map, stdev_range=(1, 1), inc
     return layout, lap_time_plot
 
 
-def generate_position_plot(race_laps, cached_driver_map, highlight_dids=None, muted_dids=None):
+def generate_position_plot(race_laps, cached_driver_map, highlight_dids=None, muted_dids=None, sc_starts=None,
+                           sc_ends=None):
     """
     Generates a position vs. time plot.
     :param race_laps: Lap times for this race
     :param cached_driver_map: Map storing some info on each driver
     :param highlight_dids: Driver IDs to highlight
     :param muted_dids: Driver IDs to have initially muted
+    :param sc_starts: List of starts of safety car periods
+    :param sc_ends: List of starts of safety car periods
     :return: The position plot or a Spacer if there is an error
     """
     logging.info("Generating position plot")
@@ -1033,6 +1045,10 @@ def generate_position_plot(race_laps, cached_driver_map, highlight_dids=None, mu
         muted_dids = []
     if highlight_dids is None:
         highlight_dids = []
+    if (sc_starts is None and sc_ends is not None) or (sc_starts is not None and sc_ends is None):
+        sc_starts = []
+        sc_ends = []
+        logging.info("Safety car information passed improperly")
 
     if race_laps.shape[0] == 0:
         return Spacer(width=0, height=0, background=PLOT_BACKGROUND_COLOR)
@@ -1125,16 +1141,21 @@ def generate_position_plot(race_laps, cached_driver_map, highlight_dids=None, mu
         ("Constructor", "@constructor"),
     ]))
 
+    # Mark safety car
+    mark_sc_periods(sc_starts, sc_ends, [position_plot])
+
     return position_plot
 
 
-def generate_gap_plot(race_laps, race_results, highlight_dids=None, muted_dids=None):
+def generate_gap_plot(race_laps, race_results, highlight_dids=None, muted_dids=None, sc_starts=None, sc_ends=None):
     """
     Generates the gap plot for the given race.
     :param race_laps: Slice of lap times for this race
     :param race_results: Slice of results for this race
     :param highlight_dids: Driver IDs to highlight
     :param muted_dids: Driver IDs to have initially muted
+    :param sc_starts: List of starts of safety car periods
+    :param sc_ends: List of starts of safety car periods
     :return: The full gap plot along with some cached info on each driver or an error div
     """
     logging.info("Generating gap plot")
@@ -1142,6 +1163,10 @@ def generate_gap_plot(race_laps, race_results, highlight_dids=None, muted_dids=N
         muted_dids = []
     if highlight_dids is None:
         highlight_dids = []
+    if (sc_starts is None and sc_ends is not None) or (sc_starts is not None and sc_ends is None):
+        sc_starts = []
+        sc_ends = []
+        logging.info("Safety car information passed improperly")
 
     if race_laps.shape[0] == 0:
         return Div(text="Unfortunately, we do not have any lap timing data on this race. We have lap timing data for "
@@ -1311,6 +1336,9 @@ def generate_gap_plot(race_laps, race_results, highlight_dids=None, muted_dids=N
         ("Lap time", "@lap_times"),
         ("Gap to winner", "@gap")
     ]))
+
+    # Mark safety car
+    mark_sc_periods(sc_starts, sc_ends, [gap_plot])
 
     return gap_plot, cached_driver_map
 

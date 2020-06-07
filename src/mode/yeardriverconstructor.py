@@ -70,8 +70,8 @@ def get_layout(year_id=-1, driver_id=-1, constructor_id=-1, download_image=True,
     teammatefp_fp_scatter = generate_teammatefp_fp_scatter(positions_source, constructor_results, driver_id)
 
     # Teammate diff plot
-    teammate_diff_plot, explanation_div, teammate_diff_source = generate_teammate_diff_comparison_scatter(
-        positions_source, constructor_results, driver_id)
+    teammate_diff_plot, teammate_diff_source = generate_teammate_diff_comparison_scatter(positions_source,
+                                                                                         constructor_results, driver_id)
 
     # Teammate comparison line plot
     teammate_comparison_line_plot, comparison_source = generate_teammate_comparison_line_plot(positions_source,
@@ -369,7 +369,7 @@ def generate_teammate_diff_comparison_scatter(positions_source, constructor_resu
     :param positions_source: Positions source
     :param constructor_results: Constructor results
     :param driver_id: Driver ID
-    :return: Teammate diff. comparison scatter, explanation div
+    :return: Teammate diff. comparison scatter, source
     """
     kwargs = dict(include_year_labels=False,
                   include_race_labels=True)

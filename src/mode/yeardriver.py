@@ -22,6 +22,8 @@ fastest_lap_data = load_fastest_lap_data()
 status = load_status()
 drivers = load_drivers()
 
+# TODO add checklist thing to this mode next, see circuit.py for inspiration
+
 
 def get_layout(year_id=-1, driver_id=-1, download_image=True, **kwargs):
     year_races = races[races["year"] == year_id]

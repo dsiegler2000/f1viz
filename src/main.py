@@ -94,9 +94,9 @@ constructor_completions = ["<select constructor>", "All Constructors"] + [c for 
 #   circuit                                 √
 #   driver                                  √
 #   constructor                             √
-#   yearcircuit
-#   circuitdriver
-#   driverconstructor
+#   yearcircuit                             √
+#   circuitdriver                           √
+#   driverconstructor                       √
 #   yeardriver
 #   yearconstructor
 #   circuitconstructor
@@ -231,12 +231,13 @@ def generate_main(plots_layout, year_v=None, circuit_v=None, driver_v=None, cons
     curdoc().title = "F1Viz"
     curdoc().theme = "dark_minimal"
 
+    if first_time:
+        # Put any default values here
+
+        _update(year_input, circuit_input, driver_input, constructor_input)
+
     for s in search_bars:
         s.on_change("value", lambda attr, old, new: _update(year_input, circuit_input, driver_input, constructor_input))
-
-    if first_time:
-        _update(year_input, circuit_input, driver_input, constructor_input)
-        # Put any default values here
 
 
 logging.info("Constructing initial layout...")

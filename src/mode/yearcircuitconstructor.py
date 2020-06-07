@@ -154,7 +154,8 @@ def detect_mark_safety_car(race_laps, race, race_results, plots):
     :param plots: Plots
     :return: Disclaimer div
     """
-    disclaimer = yearcircuit.detect_mark_safety_car_end(race_laps, race, race_results, plots)
+    disclaimer, sc_starts, sc_ends = yearcircuit.detect_safety_car(race_laps, race)
+    # TODO FIX ME
     return disclaimer
 
 
