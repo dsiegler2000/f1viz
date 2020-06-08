@@ -1,13 +1,15 @@
 import logging
 import math
-from bokeh.layouts import column, row
-from bokeh.models import Div, Spacer, Range1d, FixedTicker
+import numpy as np
+from bokeh.layouts import column
+from bokeh.models import Div, Range1d, FixedTicker
 from pandas import Series
 from data_loading.data_loader import load_results, load_races, load_driver_standings, load_constructor_standings, \
     load_fastest_lap_data, load_drivers
 from mode import year, driver, driverconstructor, yeardriver
-import numpy as np
-from utils import get_driver_name, get_constructor_name, PLOT_BACKGROUND_COLOR, plot_image_url, vdivider
+from utils import get_driver_name, get_constructor_name, plot_image_url, generate_vdivider_item, \
+    generate_plot_list_selector, generate_spacer_item, PlotItem, generate_div_item, \
+    COMMON_PLOT_DESCRIPTIONS
 
 # Note, ydc=yeardriverconstructor and yd=yeardriver
 
@@ -17,6 +19,8 @@ driver_standings = load_driver_standings()
 constructor_standings = load_constructor_standings()
 fastest_lap_data = load_fastest_lap_data()
 drivers = load_drivers()
+
+# TODO checklist me next
 
 
 def get_layout(year_id=-1, driver_id=-1, constructor_id=-1, download_image=True, **kwargs):
@@ -44,77 +48,79 @@ def get_layout(year_id=-1, driver_id=-1, constructor_id=-1, download_image=True,
     yd_fastest_lap_data = year_fastest_lap_data[year_fastest_lap_data["driver_id"] == driver_id]
     constructor_results = year_results[year_results["constructorId"] == constructor_id]
 
-    # WDC plot
-    wdc_plot = generate_wdc_plot(year_races, year_driver_standings, year_results, driver_id, consider_window=2)
+    wdc_plot = PlotItem(generate_wdc_plot, [year_races, year_driver_standings, year_results, driver_id],
+                        COMMON_PLOT_DESCRIPTIONS["generate_wdc_plot"])
 
-    # WCC plot
-    wcc_plot = generate_wcc_plot(year_races, year_constructor_standings, year_results, constructor_id)
+    wcc_plot = PlotItem(generate_wcc_plot, [year_races, year_constructor_standings, year_results, constructor_id],
+                        COMMON_PLOT_DESCRIPTIONS["generate_wcc_plot"])
 
-    # Positions plot
     positions_plot, positions_source = generate_positions_plot(ydc_results, yd_driver_standings, yd_fastest_lap_data,
                                                                driver_id, year_id)
+    positions_plot = PlotItem(positions_plot, [], COMMON_PLOT_DESCRIPTIONS["generate_positions_plot"])
 
-    # Start pos vs finish pos scatter
-    spvfp_scatter = generate_spvfp_scatter(ydc_results, yd_races, yd_driver_standings)
+    spvfp_scatter = PlotItem(generate_spvfp_scatter, [ydc_results, yd_races, yd_driver_standings],
+                             COMMON_PLOT_DESCRIPTIONS["generate_spvfp_scatter"])
 
-    # Mean lap time rank vs finish pos scatter
-    mltr_fp_scatter = generate_mltr_fp_scatter(ydc_results, yd_races, yd_driver_standings)
+    mltr_fp_scatter = PlotItem(generate_mltr_fp_scatter, [ydc_results, yd_races, yd_driver_standings],
+                               COMMON_PLOT_DESCRIPTIONS["generate_mltr_fp_scatter"])
 
-    # Win plot
-    win_plot = generate_win_plot(positions_source, driver_id)
+    win_plot = PlotItem(generate_win_plot, [positions_source, driver_id], COMMON_PLOT_DESCRIPTIONS["generate_win_plot"])
 
-    # Finishing position bar plot
-    position_dist = generate_finishing_position_bar_plot(ydc_results)
+    position_dist = PlotItem(generate_finishing_position_bar_plot, [ydc_results],
+                             COMMON_PLOT_DESCRIPTIONS["generate_finishing_position_bar_plot"])
 
-    # Teammate finish pos vs finish pos scatter
-    teammatefp_fp_scatter = generate_teammatefp_fp_scatter(positions_source, constructor_results, driver_id)
+    teammatefp_fp_scatter = PlotItem(generate_teammatefp_fp_scatter, [positions_source, constructor_results, driver_id],
+                                     COMMON_PLOT_DESCRIPTIONS["generate_teammatefp_fp_scatter"])
 
-    # Teammate diff plot
-    teammate_diff_plot, teammate_diff_source = generate_teammate_diff_comparison_scatter(positions_source,
-                                                                                         constructor_results, driver_id)
+    teammate_diff_plot = PlotItem(generate_teammate_diff_comparison_scatter, [positions_source, constructor_results,
+                                                                              driver_id],
+                                  COMMON_PLOT_DESCRIPTIONS["generate_teammate_diff_comparison_scatter"])
 
-    # Teammate comparison line plot
     teammate_comparison_line_plot, comparison_source = generate_teammate_comparison_line_plot(positions_source,
                                                                                               constructor_results,
                                                                                               driver_id)
+    teammate_comparison_line_plot = PlotItem(teammate_comparison_line_plot, [],
+                                             COMMON_PLOT_DESCRIPTIONS["generate_teammate_comparison_line_plot"])
 
-    # Results table
-    results_table = generate_results_table(ydc_results, yd_fastest_lap_data, year_results, year_fastest_lap_data,
-                                           driver_id)
+    description = u"Results Table \u2014 table of results for every race this driver competed at this year with " \
+                  u"this constructor"
+    results_table = PlotItem(generate_results_table, [ydc_results, yd_fastest_lap_data, year_results,
+                                                      year_fastest_lap_data, driver_id], description)
 
-    # Stats layout
-    stats_layout = generate_stats_layout(positions_source, comparison_source, constructor_results, year_id, driver_id)
+    description = u"Various statistics on this driver at this constructor during this year"
+    stats_layout = PlotItem(generate_stats_layout, [positions_source, comparison_source, constructor_results, year_id,
+                                                    driver_id], description)
 
-    driver_name = get_driver_name(driver_id)
-    constructor_name = get_constructor_name(constructor_id)
-    header = Div(text=f"<h2><b>What did {driver_name}'s {year_id} season with {constructor_name} look like?</b></h2>")
-
-    # Driver image
     if download_image:
         image_url = str(drivers.loc[driver_id, "imgUrl"])
         image_view = plot_image_url(image_url)
     else:
         image_view = Div()
+    image_view = PlotItem(image_view, [], "", listed=False)
 
-    middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
-    divider = vdivider()
-    layout = column([header,
-                     wdc_plot, middle_spacer,
-                     wcc_plot, middle_spacer,
-                     positions_plot, middle_spacer,
-                     win_plot,
-                     row([spvfp_scatter, mltr_fp_scatter], sizing_mode="stretch_width"), middle_spacer,
-                     position_dist, middle_spacer,
-                     row([teammatefp_fp_scatter, teammate_diff_plot], sizing_mode="stretch_width"),
-                     explanation_div, middle_spacer,
-                     teammate_comparison_line_plot,
-                     results_table,
-                     row([image_view, divider, stats_layout], sizing_mode="stretch_both")],
-                    sizing_mode="stretch_width")
+    driver_name = get_driver_name(driver_id)
+    constructor_name = get_constructor_name(constructor_id)
+    header = generate_div_item(f"<h2><b>What did {driver_name}'s {year_id} season with "
+                               f"{constructor_name} look like?</b></h2>")
+
+    middle_spacer = generate_spacer_item()
+    group = generate_plot_list_selector([
+        [header],
+        [wdc_plot], [middle_spacer],
+        [wcc_plot], [middle_spacer],
+        [positions_plot], [middle_spacer],
+        [win_plot], [middle_spacer],
+        [spvfp_scatter, mltr_fp_scatter], [middle_spacer],
+        [position_dist], [middle_spacer],
+        [teammatefp_fp_scatter, teammate_diff_plot], [middle_spacer],
+        [teammate_comparison_line_plot],
+        [results_table],
+        [image_view, generate_vdivider_item(), stats_layout]
+    ])
 
     logging.info("Finished generating layout for mode YEARDRIVERCONSTRUCTOR")
 
-    return layout
+    return group
 
 
 def generate_wdc_plot(year_races, year_driver_standings, year_results, driver_id, consider_window=2):

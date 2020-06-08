@@ -1,10 +1,10 @@
 import logging
-from bokeh.layouts import column, row
-from bokeh.models import Div, Spacer
+from bokeh.layouts import column
+from bokeh.models import Div
 from data_loading.data_loader import load_results, load_races, load_fastest_lap_data, load_lap_times, \
     load_driver_standings, load_constructor_standings, load_circuits
 from mode import circuitdriver, constructor, yearconstructor, driver
-from utils import get_circuit_name, get_constructor_name, PLOT_BACKGROUND_COLOR, plot_image_url, generate_spacer_item, \
+from utils import get_circuit_name, get_constructor_name, plot_image_url, generate_spacer_item, \
     generate_div_item, PlotItem, COMMON_PLOT_DESCRIPTIONS, generate_plot_list_selector
 
 # Note, CC = circuit constructor

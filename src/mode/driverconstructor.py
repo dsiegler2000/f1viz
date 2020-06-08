@@ -54,9 +54,9 @@ def get_layout(driver_id=-1, constructor_id=-1, download_image=True, **kwargs):
 
     teammate_diff_plot, teammate_diff_source = generate_teammate_diff_comparison_scatter(
         positions_source, constructor_results, driver_id)
-    description = u"Teammate Difference Scatter Plot \u2014 complex scatter plot with a dot for each race that shows " \
-                  u"how this driver performed compared to his/her teammate"
-    teammate_diff_plot = PlotItem(teammate_diff_plot, [], description)
+
+    teammate_diff_plot = PlotItem(teammate_diff_plot, [],
+                                  COMMON_PLOT_DESCRIPTIONS["generate_teammate_diff_comparison_scatter"])
 
     teammate_comparison_line = PlotItem(generate_teammate_comparison_line_plot, [positions_source, constructor_results,
                                                                                  driver_id],

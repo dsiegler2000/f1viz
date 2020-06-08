@@ -1,13 +1,13 @@
 import logging
 import math
 from collections import defaultdict
+import numpy as np
 from bokeh.layouts import column, row
-from bokeh.models import Spacer, Div, Span, Label
+from bokeh.models import Div, Span, Label
 from data_loading.data_loader import load_results, load_lap_times, load_pit_stops, load_qualifying, load_circuits, \
     load_fastest_lap_data, load_driver_standings, load_races
 from mode import yearcircuit
-import numpy as np
-from utils import PLOT_BACKGROUND_COLOR, get_driver_name, get_race_name, get_circuit_name, plot_image_url, \
+from utils import get_driver_name, get_race_name, get_circuit_name, plot_image_url, \
     get_constructor_name, int_to_ordinal, result_to_str, millis_to_str, vdivider, rounds_to_str, PlotItem, \
     COMMON_PLOT_DESCRIPTIONS, generate_plot_list_selector, generate_spacer_item, generate_div_item
 
@@ -47,58 +47,6 @@ def get_layout(year_id=-1, circuit_id=-1, driver_id=-1, download_image=True, **k
     ycd_fastest_lap_data = fastest_lap_data[(fastest_lap_data["raceId"] == rid) &
                                             (fastest_lap_data["driver_id"] == driver_id)]
     year_driver_standings = driver_standings[driver_standings["raceId"].isin(year_races.index.values)]
-
-    # # Gap plot
-    # gap_plot, cached_driver_map = generate_gap_plot(race_laps, race_results, driver_id)
-    #
-    # # Position plot
-    # position_plot = generate_position_plot(race_laps, race_results, cached_driver_map, driver_id)
-    #
-    # # Lap time plot
-    # lap_time_plot = generate_lap_time_plot(race_laps, race_results, cached_driver_map, driver_id)
-    #
-    # plots = [gap_plot, position_plot, lap_time_plot]
-    #
-    # # Mark safety car
-    # disclaimer_sc = detect_mark_safety_car(race_laps, race, race_results, plots)
-    #
-    # # Mark fastest lap
-    # mark_fastest_lap(ycd_results, plots)
-    #
-    # plots = [gap_plot, lap_time_plot]
-    #
-    # # Mark overtakes
-    # disclaimer_overtakes = detect_mark_overtakes(ycd_laps, race_laps, plots)
-    #
-    # # Mark pit stops
-    # mark_pit_stops(ycd_pit_stop_data, [gap_plot, lap_time_plot], driver_id)
-    #
-    # # Quali table
-    # quali_table, quali_source = generate_quali_table(race_quali, race_results, driver_id)
-    #
-    # # Stats layout
-    # stats_layout = generate_stats_layout(ycd_results, ycd_pit_stop_data, ycd_fastest_lap_data, year_driver_standings,
-    #                                      race_results, quali_source, rid, circuit_id, driver_id,
-    #                                      download_image=download_image)
-    #
-    # driver_name = get_driver_name(driver_id)
-    # race_name = get_race_name(rid, include_year=True)
-    # header = Div(text=f"<h2><b>What did {driver_name}'s {race_name} look like?</b></h2><br><i>Yellow dashed "
-    #                   f"vertical lines show the start of a safety car period, orange vertical lines show the end*. "
-    #                   f"<br>The white line marks the fastest lap of the race."
-    #                   f"<br>Green lines show overtakes and red lines show being overtaken**."
-    #                   f"<br>Pink lines show pit stops along with how long was spent in the pits.</i>")
-    #
-    # middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
-    # layout = column([header,
-    #                  gap_plot, middle_spacer,
-    #                  position_plot, middle_spacer,
-    #                  lap_time_plot, middle_spacer,
-    #                  disclaimer_sc,
-    #                  disclaimer_overtakes,
-    #                  quali_table,
-    #                  stats_layout],
-    #                 sizing_mode="stretch_width")
 
     disclaimer_sc, sc_starts, sc_ends = detect_safety_car(race_laps, race)
     disclaimer_sc = PlotItem(disclaimer_sc, [], "", listed=False)

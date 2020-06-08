@@ -88,23 +88,8 @@ constructor_completions = ["<select constructor>", "All Constructors"] + [c for 
 #  Add the top-n support for all win plots as well as the calculate 95th percentile and set that as n feature
 #  Add smoothing slider to positions plots
 #  Check all stats divs for things that need to be `strip`-ed
-#  Add the plots checklists for efficiency, make it into a class so it's easy to implement, see Trello and utils
-#   home                                    √
-#   year                                    √
-#   circuit                                 √
-#   driver                                  √
-#   constructor                             √
-#   yearcircuit                             √
-#   circuitdriver                           √
-#   driverconstructor                       √
-#   yeardriver                              √
-#   yearconstructor                         √
-#   circuitconstructor                      √
-#   yearcircuitdriver                       √
-#   yearcircuitconstructor
-#   yeardriverconstructor
-#   circuitdriverconstructor
-#   yearcircuitdriverconstructor
+#  Add the plots checklists for efficiency, make it into a class so it's easy to implement                          √
+#  Add reset button that resets all 4 selectors back to their default (nothing)
 #  Release to r/Formula1 (without the all_ modes)
 #  Start on the all_years or home mode
 
@@ -249,9 +234,7 @@ def generate_main(plots_layout, year_v=None, circuit_v=None, driver_v=None, cons
 
     if first_time:
         # Put any default values here
-        # circuit_input.value = "Monaco Grand Prix"
-        # constructor_input.value = "Mercedes"
-        # year_input.value = "2016"
+
         _update(year_input, circuit_input, driver_input, constructor_input)
 
     for s in search_bars:

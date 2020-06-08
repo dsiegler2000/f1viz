@@ -83,7 +83,14 @@ COMMON_PLOT_DESCRIPTIONS = {
 
     "generate_gap_plot": u"""Gap Plot \u2014 plot of each driver's gap to the leader throughout the race""",
 
-    "generate_position_plot": u"""Position Plot \u2014 plot of each driver's position throughout the race"""
+    "generate_position_plot": u"""Position Plot \u2014 plot of each driver's position throughout the race""",
+
+    "generate_teammatefp_fp_scatter": u"""Teammate Finish Position vs Driver Finish Position Scatter Plot \u2014 each 
+    dot on this plot represents a race and shows races where this driver compared well or poorly compared to his/her 
+    teammate""",
+
+    "generate_teammate_diff_comparison_scatter": u"""Teammate Difference Scatter Plot \u2014 complex scatter plot with 
+    a dot for each race that shows how this driver performed compared to his/her teammate"""
 }
 
 select_unselect = True

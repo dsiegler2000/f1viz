@@ -1,11 +1,11 @@
 import logging
-
-from bokeh.layouts import column, row
-from bokeh.models import Div, Spacer
+from bokeh.layouts import column
+from bokeh.models import Div
 from data_loading.data_loader import load_races, load_results, load_driver_standings, load_fastest_lap_data, \
     load_lap_times, load_circuits
 from mode import circuitdriver, driverconstructor
-from utils import get_circuit_name, get_driver_name, get_constructor_name, plot_image_url, PLOT_BACKGROUND_COLOR
+from utils import get_circuit_name, get_driver_name, get_constructor_name, plot_image_url, generate_spacer_item, \
+    generate_plot_list_selector, generate_div_item, PlotItem, COMMON_PLOT_DESCRIPTIONS
 
 races = load_races()
 results = load_results()
@@ -46,37 +46,39 @@ def get_layout(circuit_id=-1, driver_id=-1, constructor_id=-1, download_image=Tr
         constructor_results_idxs.extend(results_slice.index.values.tolist())
     constructor_results = circuit_results.loc[constructor_results_idxs]
 
-    # Positions plot
     positions_plot, positions_source = circuitdriver.generate_positions_plot(cdc_years, driver_driver_standings,
                                                                              driver_results, cdc_fastest_lap_data,
                                                                              cdc_races, driver_id)
+    positions_plot = PlotItem(positions_plot, [], COMMON_PLOT_DESCRIPTIONS["generate_positions_plot"])
 
-    # Win plot
-    win_plot = circuitdriver.generate_win_plot(positions_source)
+    win_plot = PlotItem(circuitdriver.generate_win_plot, [positions_source],
+                        COMMON_PLOT_DESCRIPTIONS["generate_win_plot"])
 
-    # Lap time distribution plot
-    lap_time_dist = circuitdriver.generate_lap_time_plot(cdc_lap_times, cdc_rids, circuit_id, driver_id)
+    lap_time_dist = PlotItem(circuitdriver.generate_lap_time_plot, [cdc_lap_times, cdc_rids, circuit_id, driver_id],
+                             COMMON_PLOT_DESCRIPTIONS["generate_times_plot"])
 
-    # Starting position vs finish position scatter
-    spvfp_scatter = circuitdriver.generate_spvfp_scatter(cdc_results, cdc_races, driver_driver_standings)
+    spvfp_scatter = PlotItem(circuitdriver.generate_spvfp_scatter, [cdc_results, cdc_races, driver_driver_standings],
+                             COMMON_PLOT_DESCRIPTIONS["generate_spvfp_scatter"])
 
-    # Mean lap time rank vs finish position scatter plot
-    mltr_fp_scatter = circuitdriver.generate_mltr_fp_scatter(cdc_results, cdc_races, driver_driver_standings)
+    mltr_fp_scatter = PlotItem(circuitdriver.generate_mltr_fp_scatter, [cdc_results, cdc_races,
+                                                                        driver_driver_standings],
+                               COMMON_PLOT_DESCRIPTIONS["generate_mltr_fp_scatter"])
 
-    # Finish position distribution plot
-    finish_pos_dist = circuitdriver.generate_finishing_position_bar_plot(cdc_results)
+    finish_pos_dist = PlotItem(circuitdriver.generate_finishing_position_bar_plot, [cdc_results],
+                               COMMON_PLOT_DESCRIPTIONS["generate_finishing_position_bar_plot"])
 
-    # Teammate comparison line plot
-    teammate_comparison_line_plot = generate_teammate_comparison_line_plot(positions_source,
-                                                                           constructor_results, driver_id)
+    teammate_comparison_line_plot = PlotItem(generate_teammate_comparison_line_plot, [positions_source,
+                                                                                      constructor_results, driver_id],
+                                             COMMON_PLOT_DESCRIPTIONS["generate_teammate_comparison_line_plot"])
 
-    # Results table
-    results_table, results_source = circuitdriver.generate_results_table(cdc_results, cdc_fastest_lap_data,
-                                                                         circuit_results, circuit_fastest_lap_data)
+    description = u"Results Table \u2014 table containing results for every time this driver raced at this circuit " \
+                  u"with this constructor"
+    results_table = PlotItem(circuitdriver.generate_results_table, [cdc_results, cdc_fastest_lap_data, circuit_results,
+                                                                    circuit_fastest_lap_data], description)
 
-    # Stats div
-    stats_div = circuitdriver.generate_stats_layout(cdc_years, cdc_races, cdc_results, cdc_fastest_lap_data,
-                                                    positions_source, circuit_id, driver_id)
+    stats_div = PlotItem(circuitdriver.generate_stats_layout, [cdc_years, cdc_races, cdc_results, cdc_fastest_lap_data,
+                                                               positions_source, circuit_id, driver_id],
+                         "description " * 5)
 
     if download_image:
         # Track image
@@ -87,22 +89,25 @@ def get_layout(circuit_id=-1, driver_id=-1, constructor_id=-1, download_image=Tr
         image_view = column([image_view, disclaimer], sizing_mode="stretch_both")
     else:
         image_view = Div()
+    image_view = PlotItem(image_view, [], "", listed=False)
 
-    header = Div(text=f"<h2><b>{get_driver_name(driver_id)} at {get_circuit_name(circuit_id)} with "
-                      f"{get_constructor_name(constructor_id)}</b></h2><br>")
+    header = generate_div_item(f"<h2><b>{get_driver_name(driver_id)} at {get_circuit_name(circuit_id)} with "
+                               f"{get_constructor_name(constructor_id)}</b></h2><br>")
 
-    middle_spacer = Spacer(width=5, background=PLOT_BACKGROUND_COLOR)
-    layout = column([header,
-                     positions_plot, middle_spacer,
-                     win_plot, middle_spacer,
-                     lap_time_dist, middle_spacer,
-                     row([spvfp_scatter, mltr_fp_scatter], sizing_mode="stretch_width"),
-                     finish_pos_dist,
-                     teammate_comparison_line_plot,
-                     row([image_view], sizing_mode="stretch_width"),
-                     results_table,
-                     stats_div],
-                    sizing_mode="stretch_width")
+    middle_spacer = generate_spacer_item()
+    layout = generate_plot_list_selector([
+        [header],
+        [positions_plot], [middle_spacer],
+        [win_plot], [middle_spacer],
+        [lap_time_dist], [middle_spacer],
+        [spvfp_scatter, mltr_fp_scatter], [middle_spacer],
+        [finish_pos_dist],
+        [teammate_comparison_line_plot],
+        [image_view],
+        [results_table],
+        [stats_div]
+    ])
+
     logging.info("Finished generating layout for mode CIRCUITDRIVERCONSTRUCTOR")
 
     return layout
