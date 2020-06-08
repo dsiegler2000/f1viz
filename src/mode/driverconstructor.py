@@ -50,7 +50,7 @@ def get_layout(driver_id=-1, constructor_id=-1, download_image=True, **kwargs):
     win_plot = PlotItem(generate_win_plot, [positions_source], COMMON_PLOT_DESCRIPTIONS["generate_win_plot"])
 
     teammatefp_fp_scatter = PlotItem(generate_teammatefp_fp_scatter, [positions_source, constructor_results, driver_id],
-                                     "generate_teammatefp_fp_scatter" * 5)
+                                     COMMON_PLOT_DESCRIPTIONS["generate_teammatefp_fp_scatter"])
 
     teammate_diff_plot, teammate_diff_source = generate_teammate_diff_comparison_scatter(
         positions_source, constructor_results, driver_id)

@@ -799,13 +799,14 @@ def generate_team_performance_layout(driver_races, positions_source, driver_resu
                   sizing_mode="stretch_width"), source
 
 
-def generate_win_plot(positions_source, driver_id=None, constructor_id=None):
+def generate_win_plot(positions_source, driver_id=None, constructor_id=None, cutoff_pct=0.95):
     """
     Plots number of races, win percentage, number of wins, podium percentage, and number of podiums on the same plot
     (2 different axes on each side).
     :param positions_source: Positions source
     :param driver_id: Driver ID, if left None then the "subtitle" won't be included
     :param constructor_id: Constructor ID, must be set to use constructor mode
+    :param cutoff_pct: Percent used as cutoff when calculating top-n finishes (if needed)
     :return: Plot layout
     """
     # TODO refactor to add support for top-n finishes too and dynamically come up with n (like top 6),
@@ -825,6 +826,8 @@ def generate_win_plot(positions_source, driver_id=None, constructor_id=None):
     podiums = 0
     dnfs = 0
     n_races = 0
+    n_finishes = 0
+    position_counts = defaultdict(int)
     for idx, row in positions_source.sort_values(by="x").iterrows():
         x = row["x"]
         if constructor_id:
@@ -833,12 +836,16 @@ def generate_win_plot(positions_source, driver_id=None, constructor_id=None):
                 if not np.isnan(pos):
                     wins += 1 if pos == 1 else 0
                     podiums += 1 if 3 >= pos > 0 else 0
+                    position_counts[pos] += 1
+                    n_finishes += 1
             dnfs += row["num_dnfs_this_race"]
         else:
             pos = row["finish_position_int"]
             if not np.isnan(pos):
                 wins += 1 if pos == 1 else 0
                 podiums += 1 if 3 >= pos > 0 else 0
+                position_counts[pos] += 1
+                n_finishes += 1
         n_races += 1
         win_pct = wins / n_races
         podium_pct = podiums / n_races
@@ -891,8 +898,18 @@ def generate_win_plot(positions_source, driver_id=None, constructor_id=None):
     max_podium_pct = win_source["podium_pct"].max()
     max_dnf_pct = win_source["dnf_pct"].max()
     if max_podium == 0:
-        return Div()  # Theoretically this case could be handled but not really useful,
-        # will have to be handled when doing the top-n calculate
+        # Calculate top n
+        position_counts = pd.Series(position_counts).sort_index(ascending=False)
+        total_count = 0
+        for pos, count in position_counts.items():
+            total_count += count
+            if total_count / n_finishes > cutoff_pct:
+                # TODO to finish this, I just have to keep track of all of the top-n finishes in the wins_source then
+                #  keep just the appropriate column
+                cutoff_pos = pos
+                break
+        win_source["topn"] = None
+        return Div()
     if max_podium > max_dnfs:
         k = max_podium / max_podium_pct
     elif max_dnf_pct > 0:

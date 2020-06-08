@@ -1,5 +1,5 @@
 from bokeh.layouts import column, row
-from bokeh.models import AutocompleteInput, Div, Select
+from bokeh.models import AutocompleteInput, Div, Select, Button
 from bokeh.io import curdoc
 from data_loading.data_loader import load_races, load_drivers, load_circuits, load_constructors
 from mode import home, yearcircuit, unimplemented, year, driver, circuit, constructor, circuitdriver, \
@@ -76,22 +76,22 @@ constructor_completions = ["<select constructor>", "All Constructors"] + [c for 
 
 
 # TODO master list:
-#  Go through each existing mode and do a "second pass" to add simple features and make small clean-up changes      √
-#   Make sure tables are sortable                                                                                   √
-#   Make sure second axes are scaled properly                                                                       √
-#   Make sure using ordinals (1st, 2nd, 3rd) on everything                                                          √
-#   Make sure the mode has a header                                                                                 √
-#  Get rid of axis sharing on whatever mode that is                                                                 √
-#  Add axis overrides to position plot, SP v FP, MLTR vs FP, and any other plots to make the axes ordinal           √
-#   Try this out on one mode, see how it feels then make a decision                                                 √
 #  Change all mean lap time ranks to be mean lap time percent (except in position plot)
 #  Add the top-n support for all win plots as well as the calculate 95th percentile and set that as n feature
+#   yeardriver
+#   year
+#   driver
+#   Make sure they all work when number of podiums = 0
 #  Add smoothing slider to positions plots
+#   Do this last, it'll be annoying because of all of the things that modify the positions plot's axes
 #  Check all stats divs for things that need to be `strip`-ed
-#  Add the plots checklists for efficiency, make it into a class so it's easy to implement                          √
-#  Add reset button that resets all 4 selectors back to their default (nothing)
 #  Release to r/Formula1 (without the all_ modes)
 #  Start on the all_years or home mode
+
+year_completions.remove("All Years")
+racecircuit_completions.remove("All Circuits")
+driver_completions.remove("All Drivers")
+constructor_completions.remove("All Constructors")
 
 
 def _get_mode(year_input, circuit_input, driver_input, constructor_input):
@@ -173,7 +173,12 @@ def _get_mode(year_input, circuit_input, driver_input, constructor_input):
     return mode, year_id, circuit_id, driver_id, constructor_id
 
 
+suspend_updates = False  # Really sketchy flag to support the reset button
+
+
 def _update(year_input, circuit_input, driver_input, constructor_input):
+    if suspend_updates:
+        return
     mode, year_id, circuit_id, driver_id, constructor_id = _get_mode(year_input, circuit_input, driver_input,
                                                                      constructor_input)
     logging.info(f"Updating to mode: {mode[0]}...")
@@ -183,18 +188,9 @@ def _update(year_input, circuit_input, driver_input, constructor_input):
                   constructor_v=constructor_input.value)
 
 
-prev_year_v = None
-prev_circuit_v = None
-prev_driver_v = None
-prev_constructor_v = None
-
-
-def generate_main(plots_layout, year_v=None, circuit_v=None, driver_v=None, constructor_v=None, first_time=False,
-                  keep_prev_values=False):
+def generate_main(plots_layout, year_v=None, circuit_v=None, driver_v=None, constructor_v=None, first_time=False):
     logging.info(f"Generating main, year_v={year_v}, circuit_v={circuit_v}, driver_v={driver_v}, "
                  f"constructor_v={constructor_v}")
-
-    global prev_year_v, prev_circuit_v, prev_driver_v, prev_constructor_v
 
     # Header and footer
     header = Div(text=open(os.path.join("src", "header.html")).read(), sizing_mode="stretch_width")
@@ -205,12 +201,6 @@ def generate_main(plots_layout, year_v=None, circuit_v=None, driver_v=None, cons
     driver_input = Select(options=driver_completions)
     constructor_input = Select(options=constructor_completions)
 
-    if keep_prev_values:
-        year_v = prev_year_v
-        circuit_v = prev_circuit_v
-        driver_v = prev_driver_v
-        constructor_v = prev_constructor_v
-
     if year_v:
         year_input.value = year_v
     if circuit_v:
@@ -220,12 +210,26 @@ def generate_main(plots_layout, year_v=None, circuit_v=None, driver_v=None, cons
     if constructor_v:
         constructor_input.value = constructor_v
 
+    reset_button = Button(label="Reset")
+
+    def handle_reset():
+        global suspend_updates
+        suspend_updates = True
+        year_input.value = ""
+        circuit_input.value = ""
+        driver_input.value = ""
+        constructor_input.value = ""
+        suspend_updates = False
+        _update(year_input, circuit_input, driver_input, constructor_input)
+
+    reset_button.on_click(lambda event: handle_reset())
+
     search_bars = [circuit_input, year_input, driver_input, constructor_input]
     search_bars_layout = row(*search_bars, sizing_mode="scale_width")
 
     search_bars_layout = column([search_bars_layout], sizing_mode="scale_width")
 
-    lay = column([header, search_bars_layout, plots_layout, footer], sizing_mode="scale_width")
+    lay = column([header, reset_button, search_bars_layout, plots_layout, footer], sizing_mode="scale_width")
 
     curdoc().clear()
     curdoc().add_root(lay)
@@ -234,7 +238,7 @@ def generate_main(plots_layout, year_v=None, circuit_v=None, driver_v=None, cons
 
     if first_time:
         # Put any default values here
-
+        # driver_input.value = "Nico Hülkenberg"
         _update(year_input, circuit_input, driver_input, constructor_input)
 
     for s in search_bars:

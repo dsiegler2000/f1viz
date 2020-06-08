@@ -10,9 +10,11 @@ import flag
 import requests
 from PIL import Image
 from bokeh.colors import RGB
+from bokeh.document import Document
+from bokeh.io import curdoc
 from bokeh.palettes import Set3_12 as palette
 from bokeh.layouts import row, column
-from bokeh.models import Div, Spacer, CheckboxGroup, Button
+from bokeh.models import Div, Spacer, CheckboxGroup, Button, Column
 from bokeh.plotting import figure
 import pandas as pd
 from reportlab.graphics import renderPM
@@ -93,8 +95,6 @@ COMMON_PLOT_DESCRIPTIONS = {
     a dot for each race that shows how this driver performed compared to his/her teammate"""
 }
 
-select_unselect = True
-
 
 def generate_plot_list_selector(plot_items):
     """
@@ -132,14 +132,13 @@ def generate_plot_list_selector(plot_items):
     select_all_button = Button(label="Select All", width=100)
 
     def select_all_handler(event):
-        global select_unselect
+        select_unselect = select_all_button.label == "Select All"
         if select_unselect:
             checkbox_group.active = list(range(len(descriptions)))
             select_all_button.label = "Unselect All"
         else:
             checkbox_group.active = []
             select_all_button.label = "Select All"
-        select_unselect = not select_unselect
     select_all_button.on_click(select_all_handler)
     select_all_button_row = row([select_all_button], sizing_mode="fixed")
     prev_active = []
@@ -163,7 +162,14 @@ def generate_plot_list_selector(plot_items):
                 layout.append(row(row_layouts, sizing_mode="stretch_width"))
         new_layout = column([select_all_button_row, checkbox_group, generate_button,
                              column(layout, sizing_mode="stretch_width")], sizing_mode="scale_width")
-        main.generate_main(new_layout, keep_prev_values=True)
+        #             doc      column  search column search row
+        search_bars = curdoc().roots[0].children[2].children[0].children
+        circuit_v = search_bars[0].value
+        year_v = search_bars[1].value
+        driver_v = search_bars[2].value
+        constructor_v = search_bars[3].value
+        main.generate_main(new_layout, circuit_v=circuit_v, year_v=year_v,
+                           driver_v=driver_v, constructor_v=constructor_v)
 
     generate_button.on_click(lambda event: update())
     return column([select_all_button_row, checkbox_group, generate_button], sizing_mode="scale_width")

@@ -607,7 +607,7 @@ def generate_stats_layout(positions_source, comparison_source, constructor_resul
         wins_str = str(num_wins)
     else:
         wins_str = str(num_wins) + " (" + ", ".join(wins_slice["roundName"]) + ")"
-        if len(wins_str) > 120:
+        if len(wins_str) > 95:
             split = wins_str.split(" ")
             split.insert(int(len(split) / 2), "<br>    " + "".ljust(20))
             wins_str = " ".join(split)
@@ -617,7 +617,7 @@ def generate_stats_layout(positions_source, comparison_source, constructor_resul
         podiums_str = str(num_podiums)
     else:
         podiums_str = str(num_podiums) + " (" + ", ".join(podiums_slice["roundName"]) + ")"
-        if len(podiums_str) > 120:
+        if len(podiums_str) > 95:
             split = podiums_str.split(" ")
             split.insert(int(len(split) / 2), "<br>    " + "".ljust(20))
             podiums_str = " ".join(split)

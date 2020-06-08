@@ -76,9 +76,9 @@ def get_layout(circuit_id=-1, driver_id=-1, constructor_id=-1, download_image=Tr
     results_table = PlotItem(circuitdriver.generate_results_table, [cdc_results, cdc_fastest_lap_data, circuit_results,
                                                                     circuit_fastest_lap_data], description)
 
+    description = u"Various statistics on this driver at this circuit with this constructor"
     stats_div = PlotItem(circuitdriver.generate_stats_layout, [cdc_years, cdc_races, cdc_results, cdc_fastest_lap_data,
-                                                               positions_source, circuit_id, driver_id],
-                         "description " * 5)
+                                                               positions_source, circuit_id, driver_id], description)
 
     if download_image:
         # Track image
