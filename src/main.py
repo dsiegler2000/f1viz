@@ -46,8 +46,7 @@ modes = {
     "all_constructors": None
 }
 
-year_completions = ["<select year>", "All Years"] + [str(y) for y in
-                                                     races.sort_values(by="year", ascending=False)["year"].unique()]
+year_completions = ["<select year>"] + [str(y) for y in races.sort_values(by="year", ascending=False)["year"].unique()]
 
 race_completions = []
 for i, r in races.iterrows():
@@ -66,16 +65,22 @@ for i, r in races.iterrows():
         if n not in race_completions:
             race_completions.append(n)
 circuit_completions = [c for c in circuits["name"].unique()]
-racecircuit_completions = ["<select race or circuit>", "All Circuits"] + race_completions + circuit_completions
+racecircuit_completions = ["<select race or circuit>"] + race_completions + circuit_completions
 
-driver_completions = ["<select driver>", "All Drivers"]
+driver_completions = ["<select driver>"]
 for i, r in drivers.iterrows():
     driver_completions.append(r["forename"] + " " + r["surname"])
 
-constructor_completions = ["<select constructor>", "All Constructors"] + [c for c in constructors["name"].unique()]
+constructor_completions = ["<select constructor>"] + [c for c in constructors["name"].unique()]
+
+racecircuit_completions = sorted(racecircuit_completions)
+year_completions = sorted(year_completions, reverse=True)
+driver_completions = sorted(driver_completions)
+constructor_completions = sorted(constructor_completions)
 
 
 # TODO master list:
+#  Start on the all_years (same thing as home mode?)
 #  Change all mean lap time ranks to be mean lap time percent (except in position plot)
 #  Add the top-n support for all win plots as well as the calculate 95th percentile and set that as n feature
 #   yeardriver
@@ -83,15 +88,12 @@ constructor_completions = ["<select constructor>", "All Constructors"] + [c for 
 #   driver
 #   Make sure they all work when number of podiums = 0
 #  Add smoothing slider to positions plots
-#   Do this last, it'll be annoying because of all of the things that modify the positions plot's axes
-#  Check all stats divs for things that need to be `strip`-ed
 #  Release to r/Formula1 (without the all_ modes)
-#  Start on the all_years or home mode
 
-year_completions.remove("All Years")
-racecircuit_completions.remove("All Circuits")
-driver_completions.remove("All Drivers")
-constructor_completions.remove("All Constructors")
+year_completions.insert(1, "All Years")
+racecircuit_completions.insert(1, "All Circuits")
+driver_completions.insert(1, "All Drivers")
+constructor_completions.insert(1, "All Constructors")
 
 
 def _get_mode(year_input, circuit_input, driver_input, constructor_input):
@@ -238,16 +240,11 @@ def generate_main(plots_layout, year_v=None, circuit_v=None, driver_v=None, cons
 
     if first_time:
         # Put any default values here
-        # driver_input.value = "Nico Hülkenberg"
+        year_input.value = "All Years"
         _update(year_input, circuit_input, driver_input, constructor_input)
 
     for s in search_bars:
         s.on_change("value", lambda attr, old, new: _update(year_input, circuit_input, driver_input, constructor_input))
-
-    prev_year_v = year_input.value
-    prev_circuit_v = circuit_input.value
-    prev_driver_v = driver_input.value
-    prev_constructor_v = constructor_input.value
 
 
 logging.info("Constructing initial layout...")
