@@ -4,17 +4,17 @@ import logging
 import time
 import traceback
 from collections import defaultdict, Iterable
+from functools import lru_cache
 from io import BytesIO
 import numpy as np
 import flag
 import requests
 from PIL import Image
 from bokeh.colors import RGB
-from bokeh.document import Document
 from bokeh.io import curdoc
 from bokeh.palettes import Set3_12 as palette
 from bokeh.layouts import row, column
-from bokeh.models import Div, Spacer, CheckboxGroup, Button, Column
+from bokeh.models import Div, Spacer, CheckboxGroup, Button
 from bokeh.plotting import figure
 import pandas as pd
 from reportlab.graphics import renderPM
@@ -316,6 +316,7 @@ def millis_to_str(millis, format_seconds=False, fallback=""):
             return dt.strftime("%M:%S.%f")[:-3].rjust(9)
 
 
+@lru_cache(maxsize=16)
 def get_driver_name(did, include_flag=True, just_last=False):
     """
     Gets the stylized version of the given driver's name
@@ -641,7 +642,7 @@ class ColorDashGenerator:
     """
     This class does NOT follow the regular generator template.
     """
-    def __init__(self, colors=palette, dashes=None):
+    def __init__(self, colors=palette, dashes=None, driver_only_mode=False):
         if dashes is None:
             dashes = ["solid", "dashed", "dotted", "dotdash"]
         global constructor_colors
@@ -651,10 +652,11 @@ class ColorDashGenerator:
         self.constructor_dashes_map = defaultdict(lambda: itertools.cycle(dashes))
         self.driver_dashes_map = {}
         self.colors = itertools.cycle(colors)
+        self.driver_only_mode = driver_only_mode
 
     def get_color_dash(self, did, cid):
         # First, check if we have the constructor in the csv
-        if cid in constructor_colors.index.values:
+        if cid in constructor_colors.index.values and not self.driver_only_mode:
             color = constructor_colors.loc[cid]
             color = RGB(color["R"], color["G"], color["B"])
         else:
