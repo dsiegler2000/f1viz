@@ -3,20 +3,21 @@ import math
 from collections import defaultdict
 import numpy as np
 import pandas as pd
-from bokeh.layouts import column
+from bokeh.layouts import column, row
 from bokeh.models import Div, Range1d, HoverTool, CrosshairTool, FixedTicker, Legend, LegendItem, NumeralTickFormatter, \
     ColumnDataSource, LabelSet, Label, TableColumn, DataTable
 from bokeh.palettes import Category20_20, Set3_12
 from bokeh.plotting import figure
 from data_loading.data_loader import load_races, load_fastest_lap_data, load_driver_standings, load_results, \
-    load_lap_times
-from utils import get_driver_name, get_constructor_name, ColorDashGenerator
+    load_lap_times, load_constructor_standings
+from utils import get_driver_name, get_constructor_name, ColorDashGenerator, rounds_to_str, vdivider
 
 races = load_races()
 fastest_lap_data = load_fastest_lap_data()
 driver_standings = load_driver_standings()
 results = load_results()
 lap_times = load_lap_times()
+constructor_standings = load_constructor_standings()
 
 
 def get_layout(**kwargs):
@@ -37,6 +38,10 @@ def get_layout(**kwargs):
 
     win_plot = generate_top_drivers_win_plot()
 
+    wcc_table, wcc_winners_dict = generate_wcc_table(years)
+
+    top_tables = generate_top_tables(wdc_winners_dict, wcc_winners_dict)
+
     header = Div(text=u"<h2><b>All Years \u2014 A Quick Summary of Formula 1</h2></b>")
 
     middle_spacer = Div()
@@ -48,7 +53,9 @@ def get_layout(**kwargs):
         wdc_bar_plot, middle_spacer,
         num_overtakes_plot, middle_spacer,
         win_plot,
-        wdc_table
+        wdc_table,
+        wcc_table,
+        top_tables
     ], sizing_mode="stretch_width")
 
     logging.info("Finished generating layout for mode ALLYEARS")
@@ -268,12 +275,12 @@ def generate_wdc_margin_plot_table(years):
     :param years: Years
     :return: WDC margin plot layout, WDC winner's table, winners dict
     """
-    logging.info("Generating WDC margin plot")
+    logging.info("Generating WDC margin plot and WDC table")
     source = pd.DataFrame(columns=["year", "win_margin_pct", "win_margin_str",
                                    "first_str", "second_str", "third_str",
                                    "color", "first_short_str"])
     table_source = pd.DataFrame(columns=["year", "first_str", "second_str", "third_str"])
-    winners_dict = defaultdict(int)
+    winners_dict = defaultdict(lambda: (0, []))
 
     color_gen = ColorDashGenerator(colors=Category20_20)
     for year in years:
@@ -294,7 +301,8 @@ def generate_wdc_margin_plot_table(years):
         cid = year_results[year_results["driverId"] == first_row["driverId"]]["constructorId"].mode().values[0]
         first_constructor = get_constructor_name(cid)
         first_str_short = get_driver_name(first_row["driverId"], include_flag=False, just_last=True)
-        winners_dict[first_name] += 1
+        curr_entry = winners_dict[first_name]
+        winners_dict[first_name] = (curr_entry[0] + 1, curr_entry[1] + [year])
 
         second_row = final_driver_standings[final_driver_standings["position"] == 2].iloc[0]
         second_name = get_driver_name(second_row["driverId"])
@@ -363,7 +371,7 @@ def generate_wdc_margin_plot_table(years):
     wdc_margin_plot.add_tools(CrosshairTool(dimensions="both", line_color="white", line_alpha=0.6))
 
     wdc_winners_columns = [
-        TableColumn(field="year", title="Year", width=50),
+        TableColumn(field="year", title="Year", width=30),
         TableColumn(field="first_str", title="Winner", width=150),
         TableColumn(field="second_str", title="2nd Place", width=150),
         TableColumn(field="third_str", title="3rd Place", width=150),
@@ -383,6 +391,7 @@ def generate_wdc_bar_plot(wdc_winners_dict, top_n=10):
     :param top_n: Top N drivers to consider
     :return: WDC bar plot layout
     """
+    wdc_winners_dict = {name: entry[0] for name, entry in wdc_winners_dict.items()}
     wdc_winners_dict = pd.DataFrame.from_dict(wdc_winners_dict, orient="index").rename(columns={0: "count"})
     wdc_winners_dict = wdc_winners_dict.sort_values(by="count", ascending=False)
     wdc_winners_dict.index.name = "name"
@@ -507,6 +516,11 @@ def generate_num_overtakes_plot(years):
 
 
 def generate_top_drivers_win_plot(dids=None):
+    """
+    Generates a win plot for some select top drivers.
+    :param dids: Driver IDs of drivers to consider
+    :return: Win plot layout
+    """
     logging.info("Generating top drivers win plot")
     if dids is None:
         dids = [
@@ -577,8 +591,122 @@ def generate_top_drivers_win_plot(dids=None):
     return win_plot
 
 
-def generate_wcc_table():
-    # todo this, see wdc table
-    pass
+def generate_wcc_table(years):
+    """
+    Generates a table of results for every WCC.
+    :param years: Years
+    :return: WCC table, WCC winner dict
+    """
+    logging.info("Generating WCC table")
+    source = pd.DataFrame(columns=["year", "first_str", "second_str", "third_str"])
+    winners_dict = defaultdict(lambda: (0, []))
+    for year in years:
+        # Get final race ID
+        year_races = races[races["year"] == year]
+        year_results = results[results["raceId"].isin(year_races.index)]
+        final_rid = year_races["round"].idxmax()
+
+        # Get final WCC standings
+        final_constructor_standings = constructor_standings[constructor_standings["raceId"] == final_rid]
+        if final_constructor_standings.shape[0] == 0:
+            continue
+
+        first_row = final_constructor_standings[final_constructor_standings["position"] == 1].iloc[0]
+        first_name = get_constructor_name(first_row["constructorId"])
+        first_dids = year_results[year_results["constructorId"] == first_row["constructorId"]]["driverId"].unique()
+        first_drivers = []
+        for did in first_dids:
+            first_drivers.append(get_driver_name(did))
+        first_str = first_name + " (" + ",".join(first_drivers) + ")"
+        curr_entry = winners_dict[first_name]
+        winners_dict[first_name] = (curr_entry[0] + 1, curr_entry[1] + [year])
+
+        second_row = final_constructor_standings[final_constructor_standings["position"] == 2].iloc[0]
+        second_name = get_constructor_name(second_row["constructorId"])
+        second_dids = year_results[year_results["constructorId"] == second_row["constructorId"]]["driverId"].unique()
+        second_drivers = []
+        for did in second_dids:
+            second_drivers.append(get_driver_name(did))
+        second_str = second_name + " (" + ",".join(second_drivers) + ")"
+
+        third_row = final_constructor_standings[final_constructor_standings["position"] == 3].iloc[0]
+        third_name = get_constructor_name(third_row["constructorId"])
+        third_dids = year_results[year_results["constructorId"] == third_row["constructorId"]]["driverId"].unique()
+        third_drivers = []
+        for did in third_dids:
+            third_drivers.append(get_driver_name(did))
+        third_str = third_name + " (" + ",".join(third_drivers) + ")"
+
+        source = source.append({
+            "year": year,
+            "first_str": first_str,
+            "second_str": second_str,
+            "third_str": third_str
+        }, ignore_index=True)
+
+    wcc_winners_columns = [
+        TableColumn(field="year", title="Year", width=30),
+        TableColumn(field="first_str", title="Winner", width=150),
+        TableColumn(field="second_str", title="2nd Place", width=150),
+        TableColumn(field="third_str", title="3rd Place", width=150),
+    ]
+
+    wcc_winners_table = DataTable(source=ColumnDataSource(data=source), columns=wcc_winners_columns,
+                                  index_position=None, height=530)
+    title = Div(text=f"<h2><b>World Constructors' Championship Results</b></h2>")
+
+    return column([title, wcc_winners_table], sizing_mode="stretch_width"), winners_dict
+
+
+def generate_top_tables(wdc_winners_dict, wcc_winners_dict):
+    """
+    Generates a tables of top drivers and constructors
+    :param wdc_winners_dict:
+    :param wcc_winners_dict:
+    :return: Top tables layout
+    """
+    logging.info("Generating top tables")
+    source = pd.DataFrame(columns=["name", "num_wins", "years_str"])
+    for name, entry in wdc_winners_dict.items():
+        source = source.append({
+            "name": name,
+            "num_wins": entry[0],
+            "years_str": rounds_to_str(entry[1])
+        }, ignore_index=True)
+    source = source.sort_values(by="num_wins", ascending=False)
+    top_winners_columns = [
+        TableColumn(field="name", title="Driver", width=100),
+        TableColumn(field="num_wins", title="WDCs", width=50),
+        TableColumn(field="years_str", title="Years", width=150),
+    ]
+
+    wdc_winners_table = DataTable(source=ColumnDataSource(data=source), columns=top_winners_columns,
+                                  index_position=None, height=530)
+    title = Div(text=f"<h2><b>Top WDC Winners</b></h2>")
+    wdc_winners_table = column([title, wdc_winners_table], sizing_mode="stretch_width")
+
+    source = pd.DataFrame(columns=["name", "num_wins", "years_str"])
+    for name, entry in wcc_winners_dict.items():
+        source = source.append({
+            "name": name,
+            "num_wins": entry[0],
+            "years_str": rounds_to_str(entry[1])
+        }, ignore_index=True)
+    source = source.sort_values(by="num_wins", ascending=False)
+    top_winners_columns = [
+        TableColumn(field="name", title="Constructor", width=60),
+        TableColumn(field="num_wins", title="WDCs", width=25),
+        TableColumn(field="years_str", title="Years", width=150),
+    ]
+
+    wcc_winners_table = DataTable(source=ColumnDataSource(data=source), columns=top_winners_columns,
+                                  index_position=None, height=530)
+    title = Div(text=f"<h2><b>Top WCC Winners</b></h2>")
+    wcc_winners_table = column([title, wcc_winners_table], sizing_mode="stretch_width")
+
+    return row([wdc_winners_table, vdivider(), wcc_winners_table], sizing_mode="stretch_width")
+
+
+
 
 
