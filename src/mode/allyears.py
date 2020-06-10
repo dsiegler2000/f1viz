@@ -10,7 +10,8 @@ from bokeh.palettes import Category20_20, Set3_12
 from bokeh.plotting import figure
 from data_loading.data_loader import load_races, load_fastest_lap_data, load_driver_standings, load_results, \
     load_lap_times, load_constructor_standings
-from utils import get_driver_name, get_constructor_name, ColorDashGenerator, rounds_to_str, vdivider
+from utils import get_driver_name, get_constructor_name, ColorDashGenerator, rounds_to_str, vdivider, \
+    generate_plot_list_selector, generate_spacer_item, generate_div_item, PlotItem
 
 races = load_races()
 fastest_lap_data = load_fastest_lap_data()
@@ -26,41 +27,89 @@ def get_layout(**kwargs):
 
     logging.info(f"Generating layout for mode ALLYEARS in allyears")
 
-    num_races_plot = generate_num_races_plot()
+    # num_races_plot = generate_num_races_plot()
+    #
+    # speed_times_plot = generate_avg_speed_plot(years)
+    #
+    # wdc_margin_plot, wdc_table, wdc_winners_dict = generate_wdc_margin_plot_table(years)
+    #
+    # wdc_bar_plot = generate_wdc_bar_plot(wdc_winners_dict)
+    #
+    # num_overtakes_plot = generate_num_overtakes_plot(years)
+    #
+    # win_plot = generate_top_drivers_win_plot()
+    #
+    # wcc_table, wcc_winners_dict = generate_wcc_table(years)
+    #
+    # top_tables = generate_top_tables(wdc_winners_dict, wcc_winners_dict)
+    #
+    # header = Div(text=u"<h2><b>All Years \u2014 A Quick Summary of Formula 1</h2></b>")
+    #
+    # middle_spacer = Div()
+    # layout = column([
+    #     header,
+    #     num_races_plot, middle_spacer,
+    #     speed_times_plot, middle_spacer,
+    #     wdc_margin_plot, middle_spacer,
+    #     wdc_bar_plot, middle_spacer,
+    #     num_overtakes_plot, middle_spacer,
+    #     win_plot,
+    #     wdc_table,
+    #     wcc_table,
+    #     top_tables
+    # ], sizing_mode="stretch_width")
 
-    speed_times_plot = generate_avg_speed_plot(years)
+    description = u"Number of Races Plot \u2014 plots the number of races each season has had"
+    num_races_plot = PlotItem(generate_num_races_plot, [], description)
 
+    description = u"Speeds Plot \u2014 plots average speed at few classic circuits over the seasons"
+    speed_times_plot = PlotItem(generate_avg_speed_plot, [years], description)
+
+    description = u"WDC Win Margin Plot \u2014 plots percent winning margin of the champion for every season"
     wdc_margin_plot, wdc_table, wdc_winners_dict = generate_wdc_margin_plot_table(years)
+    wdc_margin_plot = PlotItem(wdc_margin_plot, [], description)
 
-    wdc_bar_plot = generate_wdc_bar_plot(wdc_winners_dict)
+    description = u"WDC Table \u2014 table of the results of the World Drivers' Championship for every season"
+    wdc_table = PlotItem(wdc_table, [], description)
 
-    num_overtakes_plot = generate_num_overtakes_plot(years)
+    description = u"WDC Bar Plot \u2014 plots the number of championships some of the top drivers have"
+    wdc_bar_plot = PlotItem(generate_wdc_bar_plot, [wdc_winners_dict], description)
 
-    win_plot = generate_top_drivers_win_plot()
+    description = u"Overtakes Plot \u2014 plots the average number of overtakes and position changes per race for " \
+                  u"every season"
+    num_overtakes_plot = PlotItem(generate_num_overtakes_plot, [years], description)
 
+    description = u"Win Plot \u2014 plots the win percentage of a few top drivers vs the number of years into their " \
+                  u"career they were/are"
+    win_plot = PlotItem(generate_top_drivers_win_plot, [], description)
+
+    description = u"WCC Table \u2014 table of the results of the World Constructors' Championship for every season"
     wcc_table, wcc_winners_dict = generate_wcc_table(years)
+    wcc_table = PlotItem(wcc_table, [], description)
 
-    top_tables = generate_top_tables(wdc_winners_dict, wcc_winners_dict)
+    description = u"Top Drivers and Constructors Tables \u2014 table of how many championships every winning driver " \
+                  u"and constructor has won"
+    top_tables = PlotItem(generate_top_tables, [wdc_winners_dict, wcc_winners_dict], description)
 
-    header = Div(text=u"<h2><b>All Years \u2014 A Quick Summary of Formula 1</h2></b>")
+    header = generate_div_item(u"<h2><b>All Years \u2014 A Quick Summary of Formula 1</h2></b>")
 
-    middle_spacer = Div()
-    layout = column([
-        header,
-        num_races_plot, middle_spacer,
-        speed_times_plot, middle_spacer,
-        wdc_margin_plot, middle_spacer,
-        wdc_bar_plot, middle_spacer,
-        num_overtakes_plot, middle_spacer,
-        win_plot,
-        wdc_table,
-        wcc_table,
-        top_tables
-    ], sizing_mode="stretch_width")
+    middle_spacer = generate_spacer_item()
+    group = generate_plot_list_selector([
+        [header],
+        [num_races_plot], [middle_spacer],
+        [speed_times_plot], [middle_spacer],
+        [wdc_margin_plot], [middle_spacer],
+        [wdc_bar_plot], [middle_spacer],
+        [num_overtakes_plot], [middle_spacer],
+        [win_plot],
+        [wdc_table],
+        [wcc_table],
+        [top_tables]
+    ])
 
     logging.info("Finished generating layout for mode ALLYEARS")
 
-    return layout
+    return group
 
 
 def generate_num_races_plot():

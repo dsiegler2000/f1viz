@@ -88,7 +88,7 @@ constructor_completions = sorted(constructor_completions)
 #   driver
 #   Make sure they all work when number of podiums = 0
 #  Add smoothing slider to positions plots
-#  Release to r/Formula1 (without the all_ modes)
+#  Release update to r/Formua1
 
 year_completions.insert(1, "All Years")
 racecircuit_completions.insert(1, "All Circuits")
