@@ -24,6 +24,7 @@ parser.add_argument("--enable_runtime", nargs="?", const=True, default=False, he
 parser.add_argument("--enable_round_num_name", nargs="?", const=True, default=False, help="Round number and name.")
 parser.add_argument("--enable_imgs", nargs="?", const=True, default=False, help="Image.")
 parser.add_argument("--enable_fastest_lap", nargs="?", const=True, default=False, help="Fastest lap info.")
+parser.add_argument("--enable_wdc_final_positions", nargs="?", const=True, default=False, help="WDC final positions.")
 
 args = parser.parse_args()
 if not args.custom:
@@ -33,6 +34,7 @@ if not args.custom:
     args.enable_round_num_name = True
     args.enable_imgs = True
     args.enable_fastest_lap = True
+    args.enable_wdc_final_positions = True
 else:
     args.load_from_data = True
 
@@ -335,6 +337,23 @@ if args.enable_fastest_lap:
                                                                     "avg_lap_time_rank"])
     fastest_lap_data["rank"] = fastest_lap_data["rank"].apply(lambda x: str(x).rjust(2))  # TODO why do I do this??
     fastest_lap_data.to_csv("data/fastest_lap_data.csv", encoding="utf-8")
+
+if args.enable_wdc_final_positions:
+    print("On WDC final positions")
+    years = races["year"].unique()
+    years.sort()
+    wdc_final_position_source = pd.DataFrame(columns=["year", "driverId", "position"])
+    for year in years:
+        year_races = races[races["year"] == year]
+        final_rid = year_races[year_races["round"] == year_races["round"].max()].index.values[0]
+        final_driver_standings = driver_standings[driver_standings["raceId"] == final_rid]
+        for idx, row in final_driver_standings.iterrows():
+            wdc_final_position_source = wdc_final_position_source.append({
+                "year": year,
+                "driverId": row["driverId"],
+                "position": row["position"]
+            }, ignore_index=True)
+    wdc_final_position_source.to_csv("data/wdc_final_positions.csv")
 
 # ======================================================================================================================
 # Save everything

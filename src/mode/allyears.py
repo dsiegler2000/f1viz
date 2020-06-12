@@ -27,38 +27,6 @@ def get_layout(**kwargs):
 
     logging.info(f"Generating layout for mode ALLYEARS in allyears")
 
-    # num_races_plot = generate_num_races_plot()
-    #
-    # speed_times_plot = generate_avg_speed_plot(years)
-    #
-    # wdc_margin_plot, wdc_table, wdc_winners_dict = generate_wdc_margin_plot_table(years)
-    #
-    # wdc_bar_plot = generate_wdc_bar_plot(wdc_winners_dict)
-    #
-    # num_overtakes_plot = generate_num_overtakes_plot(years)
-    #
-    # win_plot = generate_top_drivers_win_plot()
-    #
-    # wcc_table, wcc_winners_dict = generate_wcc_table(years)
-    #
-    # top_tables = generate_top_tables(wdc_winners_dict, wcc_winners_dict)
-    #
-    # header = Div(text=u"<h2><b>All Years \u2014 A Quick Summary of Formula 1</h2></b>")
-    #
-    # middle_spacer = Div()
-    # layout = column([
-    #     header,
-    #     num_races_plot, middle_spacer,
-    #     speed_times_plot, middle_spacer,
-    #     wdc_margin_plot, middle_spacer,
-    #     wdc_bar_plot, middle_spacer,
-    #     num_overtakes_plot, middle_spacer,
-    #     win_plot,
-    #     wdc_table,
-    #     wcc_table,
-    #     top_tables
-    # ], sizing_mode="stretch_width")
-
     description = u"Number of Races Plot \u2014 plots the number of races each season has had"
     num_races_plot = PlotItem(generate_num_races_plot, [], description)
 

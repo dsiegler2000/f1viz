@@ -88,3 +88,9 @@ def load_constructor_colors():
 def load_fastest_lap_data():
     logging.info("Loading fastest lap data for the first time")
     return pd.read_csv("data/fastest_lap_data.csv", index_col=0)
+
+
+@lru_cache(maxsize=None)
+def load_wdc_final_positions():
+    logging.info("Loading WDC final positions for the first time")
+    return pd.read_csv("data/wdc_final_positions.csv", index_col=0)

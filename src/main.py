@@ -4,7 +4,7 @@ from bokeh.io import curdoc
 from data_loading.data_loader import load_races, load_drivers, load_circuits, load_constructors
 from mode import home, yearcircuit, unimplemented, year, driver, circuit, constructor, circuitdriver, \
     driverconstructor, yeardriver, yearconstructor, circuitconstructor, yearcircuitdriver, yearcircuitconstructor, \
-    yeardriverconstructor, circuitdriverconstructor, yearcircuitdriverconstructor, allyears
+    yeardriverconstructor, circuitdriverconstructor, yearcircuitdriverconstructor, allyears, allcircuits
 import os
 import logging
 
@@ -41,7 +41,7 @@ modes = {
     0b0111: ["CIRCUITDRIVERCONSTRUCTOR", circuitdriverconstructor],
     0b1111: ["YEARCIRCUITDRIVERCONSTRUCTOR", yearcircuitdriverconstructor],
     "all_years": ["ALLYEARS", allyears],
-    "all_circuits": None,
+    "all_circuits": ["ALLYEARS", allcircuits],
     "all_drivers": None,
     "all_constructors": None
 }
@@ -80,7 +80,7 @@ constructor_completions = sorted(constructor_completions)
 
 
 # TODO master list:
-#  Start on the all_years (same thing as home mode?)
+#  Start on the all_ modes
 #  Change all mean lap time ranks to be mean lap time percent (except in position plot)
 #  Add the top-n support for all win plots as well as the calculate 95th percentile and set that as n feature
 #   yeardriver
@@ -240,7 +240,7 @@ def generate_main(plots_layout, year_v=None, circuit_v=None, driver_v=None, cons
 
     if first_time:
         # Put any default values here
-        year_input.value = "All Years"
+        circuit_input.value = "All Circuits"
         _update(year_input, circuit_input, driver_input, constructor_input)
 
     for s in search_bars:
