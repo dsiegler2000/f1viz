@@ -1,15 +1,16 @@
 import logging
 import math
 from bokeh.layouts import column
-from bokeh.models import Range1d, Div, NumeralTickFormatter, Title, Label, LabelSet, ColumnDataSource, \
-    DatetimeTickFormatter, HoverTool
+from bokeh.models import Range1d, Div, NumeralTickFormatter, Title, LabelSet, ColumnDataSource, DatetimeTickFormatter, \
+    HoverTool, FixedTicker, CrosshairTool, Label
 from bokeh.palettes import Turbo256
 from bokeh.plotting import figure
 import pandas as pd
 import numpy as np
 from data_loading.data_loader import load_circuits, load_races, load_results, load_fastest_lap_data, load_pit_stops, \
     load_driver_standings, load_wdc_final_positions
-from utils import get_circuit_name, rounds_to_str, get_status_classification, millis_to_str, DATETIME_TICK_KWARGS
+from utils import get_circuit_name, rounds_to_str, get_status_classification, millis_to_str, DATETIME_TICK_KWARGS, \
+    int_to_ordinal
 
 circuits = load_circuits()
 circuits = circuits.drop(72)  # Drop Port Imperial Street Circuit as it was never raced on
@@ -401,7 +402,11 @@ def generate_pit_stop_bar():
     return pit_stops_bar
 
 
-def generate_upset_scatter(years):
+def generate_upset_scatter():
+    """
+    Generates a scatter plot showing how prone circuits are to upsets.
+    :return: Upset plot layout
+    """
     logging.info("Generating upset scatter plot")
 
     def get_winner_wdc_position(cid):
@@ -430,46 +435,99 @@ def generate_upset_scatter(years):
                 wdc_did = wdc_did["driverId"].values[0]
                 wdc_position = circuit_results[circuit_results["driverId"] == wdc_did]
                 if wdc_position.shape[0] > 0:
-                    # TODO try to change this to just "position"
-                    wdc_positions.append(wdc_position["positionOrder"].shape[0])
+                    wdc_positions.append(wdc_position["positionOrder"].values[0])
         return np.mean(wdc_positions)
 
     source = pd.DataFrame(circuits.index.values, columns=["circuit_id"])
     source["winner_wdc_position"] = source["circuit_id"].apply(get_winner_wdc_position)
     source["wdc_position"] = source["circuit_id"].apply(get_wdc_position)
     source["circuit_name"] = source["circuit_id"].apply(get_circuit_name_custom)
+    source["flag"] = source["circuit_name"].apply(lambda s: s[-2:])
 
-    # TODO
-    #  hover tooltip that has circuit name, each axis data, number of races held there
-    #  axes, axes labels, titel, explanation, potentially even label every dot w/ circuit name
-    #  draw the y=x line (I think that's the relevant one at least)
-    #  crosshair
-    #  label regions
-    #  make dots bigger
-    #  potentially determine size or shape based on number of races there
-    #  see the impact of changing from "positionOrder" to "position" (see above)
-    #  check other scatters for stuff
+    def get_years(cid):
+        years = races[races["circuitId"] == cid]["year"].unique()
+        years.sort()
+        return rounds_to_str(years)
+    source["years"] = source["circuit_id"].apply(get_years)
+    source["num_races"] = source["circuit_id"].apply(lambda cid: races[races["circuitId"] == cid].shape[0])
+    source["size"] = source["num_races"].apply(lambda n: math.pow(n, 0.5) + 2)
 
     palette = Turbo256
     n_circuits = source.shape[0]
     colors = []
-    di = 230 / n_circuits
+    di = 180 / n_circuits
     i = 20
     for _ in range(n_circuits):
         colors.append(palette[int(i)])
         i += di
     source["color"] = colors
 
-    upset_scatter = figure()
+    upset_scatter = figure(title=u"Upset Plot",
+                           x_axis_label="Avg. WDC position for winner at this circuit",
+                           y_axis_label="Avg. Position for the WDC at this circuit",
+                           x_range=Range1d(0, 10, bounds=(0, 60)),
+                           y_range=Range1d(0, 20, bounds=(0, 60)),
+                           plot_height=650)
+    upset_scatter.xaxis.ticker = FixedTicker(ticks=np.arange(5, 61, 5).tolist() + [1])
+    upset_scatter.yaxis.ticker = FixedTicker(ticks=np.arange(5, 61, 5).tolist() + [1])
+    upset_scatter.xaxis.major_label_overrides = {i: int_to_ordinal(i) for i in range(1, 60)}
+    upset_scatter.yaxis.major_label_overrides = {i: int_to_ordinal(i) for i in range(1, 60)}
 
-    upset_scatter.scatter(x="winner_wdc_position", y="wdc_position", source=source, color="color")
+    upset_scatter.scatter(x="winner_wdc_position", y="wdc_position", source=source, color="color", size="size")
+    upset_scatter.line(x=[-60, 60], y=[-60, 60], color="white", line_alpha=0.5)
 
-    tooltips = [
-        ("Circuit Name", "@circuit_name")
-    ]
-    upset_scatter.add_tools(HoverTool(show_arrow=False, tooltips=tooltips))
+    marker_label_kwargs = dict(x="winner_wdc_position",
+                               y="wdc_position",
+                               level="glyph",
+                               x_offset=0,
+                               y_offset=0,
+                               source=ColumnDataSource(source),
+                               render_mode="canvas",
+                               text_color="white",
+                               text_font_size="10pt")
+    labels = LabelSet(text="flag", **marker_label_kwargs)
+    upset_scatter.add_layout(labels)
 
-    return upset_scatter
+    label_kwargs = dict(render_mode="canvas",
+                        text_color="white",
+                        text_font_size="12pt")
+    label1 = Label(x=0.5, y=19, text="Winner here does well in WDC", **label_kwargs)
+    label2 = Label(x=0.5, y=18.2, text="Eventual WDC does poorly here", **label_kwargs)
+    label3 = Label(x=7, y=1.5, text="Winner here does poorly in WDC", **label_kwargs)
+    label4 = Label(x=7, y=0.7, text="Eventual WDC does well here", **label_kwargs)
+    upset_scatter.add_layout(label1)
+    upset_scatter.add_layout(label2)
+    upset_scatter.add_layout(label3)
+    upset_scatter.add_layout(label4)
+
+    upset_scatter.add_tools(HoverTool(show_arrow=False, tooltips=[
+        ("Circuit Name", "@circuit_name"),
+        ("Number of races", "@num_races"),
+        ("The winner at this circuit on average finishes in position", "@winner_wdc_position in the WDC"),
+        ("The WDC finishes", "position @wdc_position at this circuit on average")
+    ]))
+
+    upset_scatter.add_tools(CrosshairTool(line_color="white", line_alpha=0.6))
+
+    explanation = """The x axis is calculated by, for every circuit, finding the average World Drivers' Championship 
+    position for the winner at this circuit.<br>
+    The y axis is calculated by, for every circuit, finding the average finishing position for the World Driver's 
+    Champion for that year at that circuit.<br>
+    This means that dots far away from the origin represent circuits where the winner tends to finish low in the 
+    championship and the (eventual) champion tends to finish low at this circuit, thus indicating that there are often 
+    upsets. Dots near the origin indicate the opposite. Dots far from the origin near the x axis represent circuits 
+    whose winner tends to do poorly in the WDC but the eventual World Champion does well here. Dots far from the 
+    origin but near the y axis represent the opposite, or that the eventual World Champion does poorly here while 
+    the winner at this circuit tends to do well in the WDC.<br>
+    Dot size is calculated based on the number of races held at that circuit."""
+    explanation = Div(text=explanation)
+
+    return column([upset_scatter, explanation], sizing_mode="stretch_width")
+
+
+def generate_spvfp_scatter():
+    # TODO make this plot, potentially add DNF adjustment if it just reflects number of DNFs again
+    pass
 
 
 def get_circuit_name_custom(cid):

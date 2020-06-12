@@ -538,6 +538,7 @@ def generate_top_drivers_win_plot(dids=None):
     :param dids: Driver IDs of drivers to consider
     :return: Win plot layout
     """
+    # TODO potentially move to alldrivers
     logging.info("Generating top drivers win plot")
     if dids is None:
         dids = [
