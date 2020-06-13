@@ -2,7 +2,7 @@ import logging
 import math
 from bokeh.layouts import column, row
 from bokeh.models import Range1d, Div, NumeralTickFormatter, Title, LabelSet, ColumnDataSource, DatetimeTickFormatter, \
-    HoverTool, FixedTicker, CrosshairTool, Label
+    HoverTool, FixedTicker, CrosshairTool, Label, PrintfTickFormatter, TableColumn, DataTable
 from bokeh.palettes import Turbo256
 from bokeh.plotting import figure
 import pandas as pd
@@ -10,7 +10,7 @@ import numpy as np
 from data_loading.data_loader import load_circuits, load_races, load_results, load_fastest_lap_data, load_pit_stops, \
     load_driver_standings, load_wdc_final_positions
 from utils import get_circuit_name, rounds_to_str, get_status_classification, millis_to_str, DATETIME_TICK_KWARGS, \
-    int_to_ordinal
+    int_to_ordinal, get_driver_name, get_constructor_name
 
 circuits = load_circuits()
 circuits = circuits.drop(72)  # Drop Port Imperial Street Circuit as it was never raced on
@@ -22,8 +22,6 @@ pit_stop_data = load_pit_stops()
 driver_standings = load_driver_standings()
 wdc_final_positions = load_wdc_final_positions()
 
-# TODO make the upsets scatter, try as 2 bar plots if it doesn't work potentially (see Trello)
-
 
 def get_layout(**kwargs):
     years = races["year"].unique()
@@ -33,7 +31,7 @@ def get_layout(**kwargs):
 
     dnf_bar_chart = generate_dnf_bar()
 
-    overtakes_bar_chart = num_overtakes_bar()
+    overtakes_bar_chart = generate_num_overtakes_bar()
 
     mspmfp_bar_chart = generate_mspmfp_bar()
 
@@ -45,9 +43,15 @@ def get_layout(**kwargs):
 
     pit_stop_bar_chart = generate_pit_stop_bar()
 
+    sc_laps_bar_chart = generate_sc_laps_bar()
+
+    weather_bar_chart = generate_weather_bar()
+
     upset_scatter = generate_upset_scatter()
 
     spvfp_scatter = generate_spvfp_scatter()
+
+    circuits_table = generate_circuits_table()
 
     header = Div(text=u"<h2><b>All Circuits \u2014 Some Stats on All Circuits that have held F1 Races")
 
@@ -61,8 +65,11 @@ def get_layout(**kwargs):
         rating_bar_chart, middle_spacer,
         avg_lap_time_bar_chart, middle_spacer,
         pit_stop_bar_chart, middle_spacer,
+        sc_laps_bar_chart, middle_spacer,
+        weather_bar_chart, middle_spacer,
         countries_bar_chart, middle_spacer,
-        row([upset_scatter, spvfp_scatter], sizing_mode="stretch_width"), middle_spacer
+        row([upset_scatter, spvfp_scatter], sizing_mode="stretch_width"), middle_spacer,
+        circuits_table
     ], sizing_mode="stretch_width")
 
     return layout
@@ -597,7 +604,7 @@ def generate_spvfp_scatter():
     return spvfp_scatter
 
 
-def num_overtakes_bar():
+def generate_num_overtakes_bar():
     """
     Generates number of overtakes bar plot. No, this is not just mirroring what the DNF percent bar chart says.
     :return: Num overtakes bar plot layout
@@ -649,6 +656,174 @@ def num_overtakes_bar():
     explanation = Div(text=explanation)
 
     return row([overtakes_bar, explanation], sizing_mode="stretch_width")
+
+
+def generate_sc_laps_bar():
+    """
+    Generates number of safety car laps bar plot.
+    :return: Safety car bar plot layout.
+    """
+    logging.info("Generating safety car laps bar plot")
+
+    source = pd.DataFrame(races.groupby("circuitId")["SCLaps"].mean())
+    source = source[source["SCLaps"].notna()]
+    source["circuit_name"] = source.index.map(get_circuit_name_custom)
+    source = source.sort_values(by="SCLaps", ascending=False)
+
+    sc_bar = figure(
+        title=u"Average Number of Safety Car Laps at Each Circuit (2009-2017)",
+        y_axis_label="Avg. Num. Safety Car Laps",
+        x_range=source["circuit_name"].unique(),
+        y_range=Range1d(0, 15, bounds=(0, 15)),
+        plot_height=600,
+        toolbar_location=None,
+        tools="",
+        tooltips="Circuit: @circuit_name<br>"
+                 "Avg. Safety Car Laps: @SCLaps"
+    )
+    sc_bar.xaxis.major_label_orientation = math.pi / 2
+
+    palette = Turbo256
+    n_circuits = source.shape[0]
+    colors = []
+    di = 230 / n_circuits
+    i = 20
+    for _ in range(n_circuits):
+        colors.append(palette[int(i)])
+        i += di
+    source["color"] = colors
+
+    sc_bar.vbar(x="circuit_name", top="SCLaps", source=source, width=0.8, color="color")
+
+    return sc_bar
+
+
+def generate_weather_bar():
+    """
+    Generates a bar plot showing weather at circuits.
+    :return: Weather bar plot layout
+    """
+    source = races.groupby("circuitId")["weather"].value_counts(normalize=True)
+
+    cids = set()
+    for idx, _ in source.iteritems():
+        cids.add(idx[0])
+
+    circuit_names = []
+    drys = []
+    varieds = []
+    wets = []
+    weathers = ["Dry", "Varied", "Wet"]
+    colors = ["green", "orange", "red"]
+
+    for cid in cids:
+        dry = 0
+        varied = 0
+        wet = 0
+        counts_row = source.loc[cid]
+        if "dry" in counts_row:
+            dry = counts_row["dry"]
+        if "varied" in counts_row:
+            varied = counts_row["varied"]
+        if "wet" in counts_row:
+            wet = counts_row["wet"]
+        dry *= 100
+        varied *= 100
+        wet *= 100
+        drys.append(dry)
+        varieds.append(varied)
+        wets.append(wet)
+        circuit_names.append(get_circuit_name_custom(cid))
+
+    data = {
+        "circuit_name": circuit_names,
+        "Dry": drys,
+        "Varied": varieds,
+        "Wet": wets
+    }
+
+    weather_bar = figure(
+        title=u"Circuit Weather (2009-2017)",
+        y_axis_label="Percentage",
+        x_range=circuit_names,
+        y_range=Range1d(0, 100, bounds=(0, 100)),
+        plot_height=600,
+        toolbar_location=None,
+        tools="",
+        tooltips="Circuit: @circuit_name<br>"
+                 "$name @circuit_name: @$name%"
+    )
+    weather_bar.yaxis.formatter = PrintfTickFormatter(format="%s%%")
+    weather_bar.xaxis.major_label_orientation = math.pi / 2
+
+    weather_bar.vbar_stack(weathers, x="circuit_name", width=0.8, color=colors, source=data,
+                           legend_label=weathers)
+
+    weather_bar.legend.location = "top_left"
+    weather_bar.legend.orientation = "horizontal"
+
+    return weather_bar
+
+
+def generate_circuits_table():
+    """
+    Generates a table with information on every circuit.
+    :return: Circuits table layout
+    """
+    source = pd.DataFrame(columns=["circuit_name", "location", "num_races", "years", "top_driver", "top_constructor"])
+    for cid, circuit_row in circuits.iterrows():
+        circuit_name = get_circuit_name(cid)
+        location = circuit_row["location"] + ", " + circuit_row["country"]
+        circuit_races = races[races["circuitId"] == cid]
+        num_races = circuit_races.shape[0]
+        years = circuit_races["year"].unique()
+        years.sort()
+        years = rounds_to_str(years)
+        circuit_winners = results[(results["raceId"].isin(circuit_races.index)) & (results["position"] == 1)]
+        driver_winners = circuit_winners["driverId"].value_counts()
+        top_num_wins = driver_winners.iloc[0]
+        top_driver_winners = []
+        for did, num_wins in driver_winners.iteritems():
+            if num_wins == top_num_wins:
+                top_driver_winners.append(get_driver_name(did) + " (" + str(num_wins) + " wins)")
+            else:
+                break
+        top_driver_winners = ", ".join(top_driver_winners)
+
+        constructor_winners = circuit_winners["constructorId"].value_counts()
+        top_num_wins = constructor_winners.iloc[0]
+        top_constructor_winners = []
+        for constructor_id, num_wins in constructor_winners.iteritems():
+            if num_wins == top_num_wins:
+                top_constructor_winners.append(get_constructor_name(constructor_id) + " (" + str(num_wins) + " wins)")
+            else:
+                break
+        top_constructor_winners = ", ".join(top_constructor_winners)
+
+        source = source.append({
+            "circuit_name": circuit_name,
+            "location": location,
+            "num_races": num_races,
+            "years": years,
+            "top_driver": top_driver_winners,
+            "top_constructor": top_constructor_winners
+        }, ignore_index=True)
+    source = source.sort_values(by="num_races", ascending=False)
+
+    circuits_columns = [
+        TableColumn(field="circuit_name", title="Circuit Name", width=150),
+        TableColumn(field="location", title="Location", width=100),
+        TableColumn(field="num_races", title="Num. Races", width=50),
+        TableColumn(field="years", title="Years", width=130),
+        TableColumn(field="top_driver", title="Top Winner(s) (Driver)", width=275),
+        TableColumn(field="top_constructor", title="Top Winner(s) (Constructor)", width=200),
+    ]
+
+    circuits_table = DataTable(source=ColumnDataSource(data=source), columns=circuits_columns, index_position=None)
+
+    title = Div(text="<h2><b>All Circuits</b></h2>")
+
+    return column([title, circuits_table], sizing_mode="stretch_width")
 
 
 def get_circuit_name_custom(cid):
