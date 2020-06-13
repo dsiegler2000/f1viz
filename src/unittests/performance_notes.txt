@@ -275,3 +275,6 @@ Completed generate_teammate_diff_comparison_scatter in 154.10399436950684 millis
 Completed generate_teammate_comparison_line_plot in 188.3401870727539 milliseconds
 Completed generate_results_table in 167.91796684265137 milliseconds
 Completed generate_stats_layout in 3.103971481323242 milliseconds
+
+allcircuits.py
+12.44 seconds to generate all

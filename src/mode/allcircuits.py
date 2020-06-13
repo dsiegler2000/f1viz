@@ -10,7 +10,8 @@ import numpy as np
 from data_loading.data_loader import load_circuits, load_races, load_results, load_fastest_lap_data, load_pit_stops, \
     load_driver_standings, load_wdc_final_positions
 from utils import get_circuit_name, rounds_to_str, get_status_classification, millis_to_str, DATETIME_TICK_KWARGS, \
-    int_to_ordinal, get_driver_name, get_constructor_name
+    int_to_ordinal, get_driver_name, get_constructor_name, generate_div_item, generate_spacer_item, \
+    generate_plot_list_selector, PlotItem
 
 circuits = load_circuits()
 circuits = circuits.drop(72)  # Drop Port Imperial Street Circuit as it was never raced on
@@ -24,53 +25,73 @@ wdc_final_positions = load_wdc_final_positions()
 
 
 def get_layout(**kwargs):
-    years = races["year"].unique()
-    years.sort()
+    description = u"Number of Races Bar Chart \u2014 bar chart showing number of races held at each circuit"
+    num_races_bar_chart = PlotItem(generate_num_races_bar, [], description)
 
-    num_races_bar_chart = generate_num_races_bar()
+    description = u"DNF Percent Bar Chart \u2014 bar chart showing the average DNF percent at each circuit"
+    dnf_bar_chart = PlotItem(generate_dnf_bar, [], description)
 
-    dnf_bar_chart = generate_dnf_bar()
+    description = u"Number of Overtakes Bar Chart \u2014 bar chart showing the average number of overtakes at " \
+                  u"each circuit"
+    overtakes_bar_chart = PlotItem(generate_num_overtakes_bar, [], description)
 
-    overtakes_bar_chart = generate_num_overtakes_bar()
+    description = u"Average Start Pos. - Finish Pos. Bar Chart \u2014 bar chart showing the average start position " \
+                  u"minus finish position, giving an indication of how many places drivers make up on average at " \
+                  u"each circuit"
+    mspmfp_bar_chart = PlotItem(generate_mspmfp_bar, [], description)
 
-    mspmfp_bar_chart = generate_mspmfp_bar()
+    description = u"Countries Bar Chart \u2014 bar chart showing how many circuits are in each country"
+    countries_bar_chart = PlotItem(generate_countries_bar, [], description)
 
-    countries_bar_chart = generate_countries_bar()
+    description = u"Ratings Bar Chart \u2014 bar chart showing the average rating of races at many circuits, " \
+                  u"according to racefans.net"
+    rating_bar_chart = PlotItem(generate_rating_bar, [], description)
 
-    rating_bar_chart = generate_rating_bar()
+    description = u"Average Lap Time Bar Chart \u2014 bar chart showing the average lap time of every circuit across " \
+                  u"all of its years"
+    avg_lap_time_bar_chart = PlotItem(generate_avg_lap_time_bar, [], description)
 
-    avg_lap_time_bar_chart = generate_avg_lap_time_bar()
+    description = u"Pit Stop Bar Chart \u2014 bar chart showing how many pit stops per race a circuit has on average"
+    pit_stop_bar_chart = PlotItem(generate_pit_stop_bar, [], description)
 
-    pit_stop_bar_chart = generate_pit_stop_bar()
+    description = u"Safety Car Bar Chart \u2014 bar chart showing how many safety car laps per race a circuit has " \
+                  u"on average"
+    sc_laps_bar_chart = PlotItem(generate_sc_laps_bar, [], description)
 
-    sc_laps_bar_chart = generate_sc_laps_bar()
+    description = u"Weather Bar Chart \u2014 bar chart showing how often there are dry, varied, and wet races at " \
+                  u"each circuit"
+    weather_bar_chart = PlotItem(generate_weather_bar, [], description)
 
-    weather_bar_chart = generate_weather_bar()
+    description = u"""Upset Scatter Plot \u2014 complex scatter plot showing with a dot for each circuit showing which 
+    circuits are prone to "upsets" """
+    upset_scatter = PlotItem(generate_upset_scatter, [], description)
 
-    upset_scatter = generate_upset_scatter()
+    description = u"Start Position vs Finish Position Scatter Plot \u2014 each dot on this plot represents a circuit " \
+                  u"and can show circuits where drivers on average make up many positions in a race"
+    spvfp_scatter = PlotItem(generate_spvfp_scatter, [], description)
 
-    spvfp_scatter = generate_spvfp_scatter()
+    description = u"Circuits Table \u2014 table of all circuits, showing information such as how many times there was" \
+                  u" a race held at each circuit and who won the most at each circuit"
+    circuits_table = PlotItem(generate_circuits_table, [], description)
 
-    circuits_table = generate_circuits_table()
+    header = generate_div_item(text=u"<h2><b>All Circuits \u2014 Some Stats on All Circuits that have held F1 Races")
 
-    header = Div(text=u"<h2><b>All Circuits \u2014 Some Stats on All Circuits that have held F1 Races")
-
-    middle_spacer = Div()
-    layout = column([
-        header,
-        num_races_bar_chart, middle_spacer,
-        dnf_bar_chart, middle_spacer,
-        overtakes_bar_chart, middle_spacer,
-        mspmfp_bar_chart, middle_spacer,
-        rating_bar_chart, middle_spacer,
-        avg_lap_time_bar_chart, middle_spacer,
-        pit_stop_bar_chart, middle_spacer,
-        sc_laps_bar_chart, middle_spacer,
-        weather_bar_chart, middle_spacer,
-        countries_bar_chart, middle_spacer,
-        row([upset_scatter, spvfp_scatter], sizing_mode="stretch_width"), middle_spacer,
-        circuits_table
-    ], sizing_mode="stretch_width")
+    middle_spacer = generate_spacer_item()
+    layout = generate_plot_list_selector([
+        [header],
+        [num_races_bar_chart], [middle_spacer],
+        [dnf_bar_chart], [middle_spacer],
+        [overtakes_bar_chart], [middle_spacer],
+        [mspmfp_bar_chart], [middle_spacer],
+        [rating_bar_chart], [middle_spacer],
+        [avg_lap_time_bar_chart], [middle_spacer],
+        [pit_stop_bar_chart], [middle_spacer],
+        [sc_laps_bar_chart], [middle_spacer],
+        [weather_bar_chart], [middle_spacer],
+        [upset_scatter, spvfp_scatter],
+        [countries_bar_chart], [middle_spacer],
+        [circuits_table]
+    ])
 
     return layout
 
