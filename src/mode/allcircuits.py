@@ -1,6 +1,6 @@
 import logging
 import math
-from bokeh.layouts import column
+from bokeh.layouts import column, row
 from bokeh.models import Range1d, Div, NumeralTickFormatter, Title, LabelSet, ColumnDataSource, DatetimeTickFormatter, \
     HoverTool, FixedTicker, CrosshairTool, Label
 from bokeh.palettes import Turbo256
@@ -33,6 +33,8 @@ def get_layout(**kwargs):
 
     dnf_bar_chart = generate_dnf_bar()
 
+    overtakes_bar_chart = num_overtakes_bar()
+
     mspmfp_bar_chart = generate_mspmfp_bar()
 
     countries_bar_chart = generate_countries_bar()
@@ -43,7 +45,9 @@ def get_layout(**kwargs):
 
     pit_stop_bar_chart = generate_pit_stop_bar()
 
-    upset_scatter = generate_upset_scatter(years)
+    upset_scatter = generate_upset_scatter()
+
+    spvfp_scatter = generate_spvfp_scatter()
 
     header = Div(text=u"<h2><b>All Circuits \u2014 Some Stats on All Circuits that have held F1 Races")
 
@@ -52,12 +56,13 @@ def get_layout(**kwargs):
         header,
         num_races_bar_chart, middle_spacer,
         dnf_bar_chart, middle_spacer,
-        countries_bar_chart, middle_spacer,
+        overtakes_bar_chart, middle_spacer,
         mspmfp_bar_chart, middle_spacer,
         rating_bar_chart, middle_spacer,
         avg_lap_time_bar_chart, middle_spacer,
         pit_stop_bar_chart, middle_spacer,
-        upset_scatter, middle_spacer
+        countries_bar_chart, middle_spacer,
+        row([upset_scatter, spvfp_scatter], sizing_mode="stretch_width"), middle_spacer
     ], sizing_mode="stretch_width")
 
     return layout
@@ -443,14 +448,9 @@ def generate_upset_scatter():
     source["wdc_position"] = source["circuit_id"].apply(get_wdc_position)
     source["circuit_name"] = source["circuit_id"].apply(get_circuit_name_custom)
     source["flag"] = source["circuit_name"].apply(lambda s: s[-2:])
-
-    def get_years(cid):
-        years = races[races["circuitId"] == cid]["year"].unique()
-        years.sort()
-        return rounds_to_str(years)
-    source["years"] = source["circuit_id"].apply(get_years)
+    source["years"] = source["circuit_id"].apply(get_circuit_years)
     source["num_races"] = source["circuit_id"].apply(lambda cid: races[races["circuitId"] == cid].shape[0])
-    source["size"] = source["num_races"].apply(lambda n: math.pow(n, 0.5) + 2)
+    source["size"] = source["num_races"].apply(get_circuit_size)
 
     palette = Turbo256
     n_circuits = source.shape[0]
@@ -493,8 +493,8 @@ def generate_upset_scatter():
                         text_font_size="12pt")
     label1 = Label(x=0.5, y=19, text="Winner here does well in WDC", **label_kwargs)
     label2 = Label(x=0.5, y=18.2, text="Eventual WDC does poorly here", **label_kwargs)
-    label3 = Label(x=7, y=1.5, text="Winner here does poorly in WDC", **label_kwargs)
-    label4 = Label(x=7, y=0.7, text="Eventual WDC does well here", **label_kwargs)
+    label3 = Label(x=5.5, y=1.5, text="Winner here does poorly in WDC", **label_kwargs)
+    label4 = Label(x=5.5, y=0.7, text="Eventual WDC does well here", **label_kwargs)
     upset_scatter.add_layout(label1)
     upset_scatter.add_layout(label2)
     upset_scatter.add_layout(label3)
@@ -526,8 +526,129 @@ def generate_upset_scatter():
 
 
 def generate_spvfp_scatter():
-    # TODO make this plot, potentially add DNF adjustment if it just reflects number of DNFs again
-    pass
+    """
+    Generates a scatter plot of starting position vs finish position.
+    :return: SPvFP scatter plot layout
+    """
+    logging.info("Generating start pos vs finish pos scatter")
+
+    def get_start_pos(cid):
+        circuit_races = races[races["circuitId"] == cid]
+        circuit_results = results[results["raceId"].isin(circuit_races.index)]
+        return circuit_results["grid"].mean()
+
+    def get_finish_pos(cid):
+        circuit_races = races[races["circuitId"] == cid]
+        circuit_results = results[results["raceId"].isin(circuit_races.index)]
+        return circuit_results["positionOrder"].mean()
+
+    source = pd.DataFrame(circuits.index.values, columns=["circuit_id"])
+    source["start_pos"] = source["circuit_id"].apply(get_start_pos)
+    source["finish_pos"] = source["circuit_id"].apply(get_finish_pos)
+    source["circuit_name"] = source["circuit_id"].apply(get_circuit_name_custom)
+    source["flag"] = source["circuit_name"].apply(lambda s: s[-2:])
+    source["years"] = source["circuit_id"].apply(get_circuit_years)
+    source["num_races"] = source["circuit_id"].apply(lambda cid: races[races["circuitId"] == cid].shape[0])
+    source["size"] = source["num_races"].apply(get_circuit_size)
+
+    palette = Turbo256
+    n_circuits = source.shape[0]
+    colors = []
+    di = 180 / n_circuits
+    i = 20
+    for _ in range(n_circuits):
+        colors.append(palette[int(i)])
+        i += di
+    source["color"] = colors
+
+    spvfp_scatter = figure(title=u"Average Starting Position vs Average Finishing Position \u2014 includes DNFs",
+                           x_axis_label="Avg. Starting Position at this Circuit",
+                           y_axis_label="Avg. Finishing Position at this circuit",
+                           x_range=Range1d(7, 20, bounds=(0, 60)),
+                           y_range=Range1d(7, 20, bounds=(0, 60)),
+                           plot_height=650)
+    spvfp_scatter.xaxis.ticker = FixedTicker(ticks=np.arange(5, 61, 5).tolist() + [1])
+    spvfp_scatter.yaxis.ticker = FixedTicker(ticks=np.arange(5, 61, 5).tolist() + [1])
+    spvfp_scatter.xaxis.major_label_overrides = {i: int_to_ordinal(i) for i in range(1, 60)}
+    spvfp_scatter.yaxis.major_label_overrides = {i: int_to_ordinal(i) for i in range(1, 60)}
+    subtitle = "Dot size is calculated based on the number of races held at that circuit"
+    spvfp_scatter.add_layout(Title(text=subtitle, text_font_style="italic"), "above")
+
+    spvfp_scatter.scatter(x="start_pos", y="finish_pos", source=source, color="color", size="size")
+    spvfp_scatter.line(x=[-60, 60], y=[-60, 60], color="white", line_alpha=0.5)
+
+    label_kwargs = dict(render_mode="canvas",
+                        text_color="white",
+                        text_font_size="12pt")
+    label1 = Label(x=16, y=9, text="Drivers tend to finish higher than started", **label_kwargs)
+    label2 = Label(x=8, y=19, text="Drivers tend to finish lower than started", **label_kwargs)
+    spvfp_scatter.add_layout(label1)
+    spvfp_scatter.add_layout(label2)
+
+    spvfp_scatter.add_tools(HoverTool(show_arrow=False, tooltips=[
+        ("Circuit Name", "@circuit_name"),
+        ("Number of races", "@num_races"),
+        ("Average starting position", "@start_pos"),
+        ("Average finishing position", "@finish_pos")
+    ]))
+
+    spvfp_scatter.add_tools(CrosshairTool(line_color="white", line_alpha=0.6))
+
+    return spvfp_scatter
+
+
+def num_overtakes_bar():
+    """
+    Generates number of overtakes bar plot. No, this is not just mirroring what the DNF percent bar chart says.
+    :return: Num overtakes bar plot layout
+    """
+    logging.info("Generating overtakes bar plot")
+
+    def get_num_overtakes(cid):
+        circuit_races = races[races["circuitId"] == cid]
+        return circuit_races["num_overtakes"].mean()
+
+    source = pd.DataFrame(circuits.index.values, columns=["circuit_id"])
+    source["avg_num_overtakes"] = source["circuit_id"].apply(get_num_overtakes)
+    source = source[(source["avg_num_overtakes"].notna()) & (source["avg_num_overtakes"] > 0)]
+    source["circuit_name"] = source["circuit_id"].apply(get_circuit_name_custom)
+    source["avg_num_overtakes_str"] = source["avg_num_overtakes"].apply(lambda x: str(round(x, 1)))
+    source = source.sort_values(by="avg_num_overtakes", ascending=False)
+
+    overtakes_bar = figure(
+        title=u"Average Number of Overtakes* per Race (1996 onward)",
+        y_axis_label="Avg. Num. Overtakes",
+        x_range=source["circuit_name"].unique(),
+        y_range=Range1d(0, 150, bounds=(0, 150)),
+        plot_height=600,
+        toolbar_location=None,
+        tools="",
+        tooltips="Circuit: @circuit_name<br>"
+                 "Average Number of Overtakes: @avg_num_overtakes_str"
+    )
+    overtakes_bar.xaxis.major_label_orientation = math.pi / 2
+
+    palette = Turbo256
+    n_circuits = source.shape[0]
+    colors = []
+    di = 230 / n_circuits
+    i = 20
+    for _ in range(n_circuits):
+        colors.append(palette[int(i)])
+        i += di
+    source["color"] = colors
+
+    overtakes_bar.vbar(x="circuit_name", top="avg_num_overtakes", source=source, width=0.8, color="color")
+
+    explanation = """Overtakes here are considered as a position change that last at least a lap. This means that if 
+    two drivers swap places then swap back in the same lap, it is not counted, but if they swap one lap then swap 
+    back the next, it is counted.<br>
+    Furthermore, overtakes from DNFs are counted.<br>
+    Though this overtake metric does not precisely match the official definition of an overtaking move, the relative 
+    positions of circuits still is useful."""
+    explanation = Div(text=explanation)
+
+    return row([overtakes_bar, explanation], sizing_mode="stretch_width")
 
 
 def get_circuit_name_custom(cid):
@@ -537,3 +658,13 @@ def get_circuit_name_custom(cid):
     if "Autódromo Internacional Nelson Piquet" in circuit_name:
         circuit_name = circuit_name.replace("Autódromo Internacional Nelson Piquet", "Nelson Piquet (Jacarepaguá)")
     return circuit_name
+
+
+def get_circuit_years(cid):
+    years = races[races["circuitId"] == cid]["year"].unique()
+    years.sort()
+    return rounds_to_str(years)
+
+
+def get_circuit_size(n_races):
+    return math.pow(n_races, 0.5) + 2

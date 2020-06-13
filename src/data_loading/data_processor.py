@@ -25,6 +25,7 @@ parser.add_argument("--enable_round_num_name", nargs="?", const=True, default=Fa
 parser.add_argument("--enable_imgs", nargs="?", const=True, default=False, help="Image.")
 parser.add_argument("--enable_fastest_lap", nargs="?", const=True, default=False, help="Fastest lap info.")
 parser.add_argument("--enable_wdc_final_positions", nargs="?", const=True, default=False, help="WDC final positions.")
+parser.add_argument("--enable_num_overtakes", nargs="?", const=True, default=False, help="Number of overtakes info.")
 
 args = parser.parse_args()
 if not args.custom:
@@ -34,7 +35,7 @@ if not args.custom:
     args.enable_round_num_name = True
     args.enable_imgs = True
     args.enable_fastest_lap = True
-    args.enable_wdc_final_positions = True
+    args.enable_num_overtakes = True
 else:
     args.load_from_data = True
 
@@ -255,7 +256,6 @@ if args.enable_imgs:
     circuits["imgUrl"] = img_url
     img_url = pd.read_csv("data/static_data/driver_image_urls.csv").set_index("driverId")
     drivers["imgUrl"] = img_url
-    print(drivers["imgUrl"].isna().sum())
 
 # ======================================================================================================================
 # Fastest lap info
@@ -338,6 +338,9 @@ if args.enable_fastest_lap:
     fastest_lap_data["rank"] = fastest_lap_data["rank"].apply(lambda x: str(x).rjust(2))  # TODO why do I do this??
     fastest_lap_data.to_csv("data/fastest_lap_data.csv", encoding="utf-8")
 
+# ======================================================================================================================
+# WDC final positions
+# ======================================================================================================================
 if args.enable_wdc_final_positions:
     print("On WDC final positions")
     years = races["year"].unique()
@@ -355,6 +358,31 @@ if args.enable_wdc_final_positions:
             }, ignore_index=True)
     wdc_final_position_source.to_csv("data/wdc_final_positions.csv")
 
+if args.enable_num_overtakes:
+    print("On number of overtakes")
+
+    def get_num_overtakes(rid):
+        """
+        Counts the total number of overtakes by counting
+        the number of places lost/gained per driver and dividing by 2.
+        """
+        race_laps = lap_times[lap_times["raceId"] == rid]
+        if race_laps.shape[0] == 0:
+            return np.nan
+        competing_dids = race_laps["driverId"].unique().tolist()
+
+        overtakings = 0
+        for did in competing_dids:
+            previous_position = None
+            for lap_pos in lap_times[(lap_times["raceId"] == rid) & (lap_times["driverId"] == did)]["position"]:
+                if previous_position is None:
+                    previous_position = lap_pos
+                elif lap_pos != previous_position:
+                    previous_position = lap_pos
+                    overtakings += 1
+
+        return int(overtakings / 2)
+    races["num_overtakes"] = races.index.map(get_num_overtakes)
 # ======================================================================================================================
 # Save everything
 # ======================================================================================================================
