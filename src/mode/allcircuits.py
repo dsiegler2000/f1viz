@@ -25,6 +25,8 @@ wdc_final_positions = load_wdc_final_positions()
 
 
 def get_layout(**kwargs):
+    logging.info(f"Generating layout for mode ALLCIRCUITS in allcircuits")
+
     description = u"Number of Races Bar Chart \u2014 bar chart showing number of races held at each circuit"
     num_races_bar_chart = PlotItem(generate_num_races_bar, [], description)
 
@@ -92,6 +94,8 @@ def get_layout(**kwargs):
         [countries_bar_chart], [middle_spacer],
         [circuits_table]
     ])
+
+    logging.info("Finished generating layout for mode ALLCIRCUITS")
 
     return layout
 

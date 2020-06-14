@@ -4,7 +4,7 @@ from bokeh.io import curdoc
 from data_loading.data_loader import load_races, load_drivers, load_circuits, load_constructors
 from mode import home, yearcircuit, unimplemented, year, driver, circuit, constructor, circuitdriver, \
     driverconstructor, yeardriver, yearconstructor, circuitconstructor, yearcircuitdriver, yearcircuitconstructor, \
-    yeardriverconstructor, circuitdriverconstructor, yearcircuitdriverconstructor, allyears, allcircuits
+    yeardriverconstructor, circuitdriverconstructor, yearcircuitdriverconstructor, allyears, allcircuits, alldrivers
 import os
 import logging
 
@@ -42,7 +42,7 @@ modes = {
     0b1111: ["YEARCIRCUITDRIVERCONSTRUCTOR", yearcircuitdriverconstructor],
     "all_years": ["ALLYEARS", allyears],
     "all_circuits": ["ALLYEARS", allcircuits],
-    "all_drivers": None,
+    "all_drivers": ["ALLDRIVERS", alldrivers],
     "all_constructors": None
 }
 
@@ -240,7 +240,7 @@ def generate_main(plots_layout, year_v=None, circuit_v=None, driver_v=None, cons
 
     if first_time:
         # Put any default values here
-        # circuit_input.value = "All Circuits"
+        driver_input.value = "All Drivers"
         _update(year_input, circuit_input, driver_input, constructor_input)
 
     for s in search_bars:
