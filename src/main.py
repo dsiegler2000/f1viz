@@ -80,7 +80,7 @@ constructor_completions = sorted(constructor_completions)
 
 
 # TODO master list:
-#  Start on the all_ modes
+#  allconstructors mode
 #  Change all mean lap time ranks to be mean lap time percent (except in position plot)
 #  Add the top-n support for all win plots as well as the calculate 95th percentile and set that as n feature
 #   yeardriver
@@ -240,7 +240,7 @@ def generate_main(plots_layout, year_v=None, circuit_v=None, driver_v=None, cons
 
     if first_time:
         # Put any default values here
-        driver_input.value = "All Drivers"
+        # driver_input.value = "All Drivers"
         _update(year_input, circuit_input, driver_input, constructor_input)
 
     for s in search_bars:

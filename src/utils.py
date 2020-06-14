@@ -96,10 +96,11 @@ COMMON_PLOT_DESCRIPTIONS = {
 }
 
 
-def generate_plot_list_selector(plot_items):
+def generate_plot_list_selector(plot_items, header_addition=None):
     """
     See Trello, this is going to be a fat one
     :param plot_items: List of lists, with each list containing at least one object of type `PlotItem`
+    :param header_addition: Text to add to the header
     :return: Layout
     """
     # TODO add loading animation
@@ -160,7 +161,7 @@ def generate_plot_list_selector(plot_items):
                     idx += 1
             if len(row_layouts) > 0:
                 layout.append(row(row_layouts, sizing_mode="stretch_width"))
-        new_layout = column([select_all_button_row, checkbox_group, generate_button,
+        new_layout = column([header, select_all_button_row, checkbox_group, generate_button,
                              column(layout, sizing_mode="stretch_width")], sizing_mode="scale_width")
         #             doc      column  search column search row
         search_bars = curdoc().roots[0].children[2].children[0].children
@@ -172,7 +173,17 @@ def generate_plot_list_selector(plot_items):
                            driver_v=driver_v, constructor_v=constructor_v)
 
     generate_button.on_click(lambda event: update())
-    return column([select_all_button_row, checkbox_group, generate_button], sizing_mode="scale_width")
+    if header_addition is None:
+        header_addition = "<br><i>Please note that if you select all plots, " \
+                          "the page may take up to 10 seconds to load.</i>"
+    style = """
+    margin-block-end: 0em;
+    font-size: 1.5em;
+    line-height: 1;
+    """
+    header = Div(text=f"""<h2 style="{style}"><b>Select all plots you want to see (or click Select All) and then click 
+                          "Generate Plots"!</h2></b>""" + header_addition)
+    return column([header, select_all_button_row, checkbox_group, generate_button], sizing_mode="scale_width")
 
 
 def generate_div_item(text):
