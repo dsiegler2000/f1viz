@@ -240,7 +240,7 @@ def generate_main(plots_layout, year_v=None, circuit_v=None, driver_v=None, cons
 
     if first_time:
         # Put any default values here
-        # TODO add to my resume :)
+        # TODO add to my resume along w/ JD :)
         _update(year_input, circuit_input, driver_input, constructor_input)
 
     for s in search_bars:

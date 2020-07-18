@@ -612,7 +612,7 @@ def generate_spvfp_scatter():
     label_kwargs = dict(render_mode="canvas",
                         text_color="white",
                         text_font_size="12pt")
-    label1 = Label(x=16, y=9, text="Drivers tend to finish higher than started", **label_kwargs)
+    label1 = Label(x=12, y=9, text="Drivers tend to finish higher than started", **label_kwargs)
     label2 = Label(x=8, y=19, text="Drivers tend to finish lower than started", **label_kwargs)
     spvfp_scatter.add_layout(label1)
     spvfp_scatter.add_layout(label2)
